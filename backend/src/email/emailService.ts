@@ -39,20 +39,22 @@ export function getEmailTemplate(
 // Créer le transporter nodemailer
 // En production, on crée un nouveau transporter à chaque fois pour éviter les problèmes de connexion persistante
 function getTransporter() {
-  // Détecter l'environnement Railway (plusieurs méthodes pour être sûr)
+  // Détecter l'environnement de production (Railway, Render, etc.)
   const isProduction = 
     process.env.NODE_ENV === "production" || 
     process.env.RAILWAY_ENVIRONMENT ||
     process.env.RAILWAY_SERVICE_NAME ||
-    (process.env.PORT && !process.env.NODE_ENV); // Railway définit toujours PORT
+    process.env.RENDER || // Render définit RENDER=true
+    process.env.RENDER_SERVICE_NAME ||
+    (process.env.PORT && !process.env.NODE_ENV); // Les plateformes cloud définissent toujours PORT
   
   // Configuration pour Railway : utiliser port 587 (TLS) au lieu de 465 (SSL)
   const smtpConfig: any = {
-    host: "erable.o2switch.net",
-    auth: {
-      user: process.env.EMAIL_SENDER,
-      pass: process.env.EMAIL_PASSWORD,
-    },
+      host: "erable.o2switch.net",
+      auth: {
+        user: process.env.EMAIL_SENDER,
+        pass: process.env.EMAIL_PASSWORD,
+      },
     // Timeouts très augmentés pour Railway
     connectionTimeout: isProduction ? 90000 : 30000, // 90s en prod
     greetingTimeout: isProduction ? 90000 : 30000,
@@ -63,7 +65,7 @@ function getTransporter() {
   };
 
   if (isProduction) {
-    // En production (Railway) : utiliser port 587 avec TLS
+    // En production (Railway, Render, etc.) : utiliser port 587 avec TLS
     smtpConfig.port = 587;
     smtpConfig.secure = false; // false pour TLS
     smtpConfig.requireTLS = true;

@@ -82,11 +82,13 @@ export async function sendEmailConfirmation(req: Request, res: Response) {
       confirmationUrl: confirmationUrl,
     });
 
-    // Configuration adaptée pour Railway (port 587 TLS) ou local (port 465 SSL)
+    // Configuration adaptée pour production (port 587 TLS) ou local (port 465 SSL)
     const isProduction = 
       process.env.NODE_ENV === "production" || 
       process.env.RAILWAY_ENVIRONMENT ||
       process.env.RAILWAY_SERVICE_NAME ||
+      process.env.RENDER ||
+      process.env.RENDER_SERVICE_NAME ||
       (process.env.PORT && !process.env.NODE_ENV);
     
     const smtpConfig: any = {
