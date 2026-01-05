@@ -82,15 +82,35 @@ export async function sendEmailConfirmation(req: Request, res: Response) {
       confirmationUrl: confirmationUrl,
     });
 
-    const transporter = nodemailer.createTransport({
+    // Configuration adaptée pour Railway (port 587 TLS) ou local (port 465 SSL)
+    const isProduction = process.env.NODE_ENV === "production" || process.env.RAILWAY_ENVIRONMENT;
+    
+    const smtpConfig: any = {
       host: "erable.o2switch.net",
-      port: 465,
-      secure: true,
       auth: {
         user: process.env.EMAIL_SENDER,
         pass: process.env.EMAIL_PASSWORD,
       },
-    });
+      connectionTimeout: isProduction ? 60000 : 30000,
+      greetingTimeout: isProduction ? 60000 : 30000,
+      socketTimeout: isProduction ? 60000 : 30000,
+    };
+
+    if (isProduction) {
+      // Railway : port 587 avec TLS
+      smtpConfig.port = 587;
+      smtpConfig.secure = false;
+      smtpConfig.requireTLS = true;
+      smtpConfig.tls = { rejectUnauthorized: false };
+      smtpConfig.pool = false;
+    } else {
+      // Local : port 465 avec SSL
+      smtpConfig.port = 465;
+      smtpConfig.secure = true;
+      smtpConfig.pool = true;
+    }
+
+    const transporter = nodemailer.createTransport(smtpConfig);
 
     const info = await transporter.sendMail({
       from: `MyTrackLy <${process.env.EMAIL_SENDER}>`,
