@@ -82,32 +82,46 @@ export async function sendEmailConfirmation(req: Request, res: Response) {
       confirmationUrl: confirmationUrl,
     });
 
-    // Configuration SMTP : utiliser port 465 (SSL) partout
-    const isProduction = 
-      process.env.NODE_ENV === "production" || 
+    // Configuration SMTP : utiliser port 587 (TLS) en production, 465 (SSL) en local
+    const isProduction =
+      process.env.NODE_ENV === "production" ||
       process.env.RAILWAY_ENVIRONMENT ||
       process.env.RAILWAY_SERVICE_NAME ||
       process.env.RENDER ||
       process.env.RENDER_SERVICE_NAME ||
       (process.env.PORT && !process.env.NODE_ENV);
-    
+
     const smtpConfig: any = {
       host: "erable.o2switch.net",
       auth: {
         user: process.env.EMAIL_SENDER,
         pass: process.env.EMAIL_PASSWORD,
       },
-      connectionTimeout: isProduction ? 30000 : 30000, // 30s suffit pour Render
-      greetingTimeout: isProduction ? 30000 : 30000,
-      socketTimeout: isProduction ? 30000 : 30000,
+      connectionTimeout: isProduction ? 60000 : 30000, // 60s en prod pour Render
+      greetingTimeout: isProduction ? 60000 : 30000,
+      socketTimeout: isProduction ? 60000 : 30000,
       debug: false,
       logger: false,
     };
 
-    // Utiliser port 465 avec SSL partout (production et développement)
-    smtpConfig.port = 465;
-    smtpConfig.secure = true; // true pour SSL
-    smtpConfig.pool = isProduction ? false : true; // Pas de pool en production
+    if (isProduction) {
+      // En production (Render) : utiliser port 587 avec TLS (plus fiable que 465)
+      smtpConfig.port = 587;
+      smtpConfig.secure = false; // false pour TLS
+      smtpConfig.requireTLS = true;
+      smtpConfig.tls = {
+        rejectUnauthorized: false,
+        minVersion: "TLSv1.2",
+      };
+      smtpConfig.pool = false; // Pas de pool en production
+      smtpConfig.ignoreTLS = false;
+      smtpConfig.opportunisticTLS = true;
+    } else {
+      // En développement : utiliser port 465 avec SSL
+      smtpConfig.port = 465;
+      smtpConfig.secure = true; // true pour SSL
+      smtpConfig.pool = true;
+    }
 
     const transporter = nodemailer.createTransport(smtpConfig);
 

@@ -48,27 +48,39 @@ function getTransporter() {
     process.env.RENDER_SERVICE_NAME ||
     (process.env.PORT && !process.env.NODE_ENV); // Les plateformes cloud définissent toujours PORT
 
-  // Configuration SMTP : utiliser port 465 (SSL) partout
+  // Configuration SMTP : utiliser port 587 (TLS) en production, 465 (SSL) en local
   const smtpConfig: any = {
     host: "erable.o2switch.net",
     auth: {
       user: process.env.EMAIL_SENDER,
       pass: process.env.EMAIL_PASSWORD,
     },
-    // Timeouts adaptés pour production (Render ne bloque pas les ports, donc moins de timeout nécessaire)
-    connectionTimeout: isProduction ? 30000 : 30000, // 30s suffit pour Render
-    greetingTimeout: isProduction ? 30000 : 30000,
-    socketTimeout: isProduction ? 30000 : 30000,
+    // Timeouts augmentés pour production
+    connectionTimeout: isProduction ? 60000 : 30000, // 60s en prod pour Render
+    greetingTimeout: isProduction ? 60000 : 30000,
+    socketTimeout: isProduction ? 60000 : 30000,
     // Options supplémentaires pour améliorer la connexion
     debug: false,
     logger: false,
   };
 
-  // Utiliser port 465 avec SSL partout (production et développement)
-  smtpConfig.port = 465;
-  smtpConfig.secure = true; // true pour SSL
-  smtpConfig.pool = isProduction ? false : true; // Pas de pool en production
-  if (!isProduction) {
+  if (isProduction) {
+    // En production (Render) : utiliser port 587 avec TLS (plus fiable que 465)
+    smtpConfig.port = 587;
+    smtpConfig.secure = false; // false pour TLS
+    smtpConfig.requireTLS = true;
+    smtpConfig.tls = {
+      rejectUnauthorized: false,
+      minVersion: "TLSv1.2",
+    };
+    smtpConfig.pool = false; // Pas de pool en production
+    smtpConfig.ignoreTLS = false;
+    smtpConfig.opportunisticTLS = true;
+  } else {
+    // En développement : utiliser port 465 avec SSL
+    smtpConfig.port = 465;
+    smtpConfig.secure = true; // true pour SSL
+    smtpConfig.pool = true;
     smtpConfig.maxConnections = 5;
     smtpConfig.maxMessages = 100;
   }
