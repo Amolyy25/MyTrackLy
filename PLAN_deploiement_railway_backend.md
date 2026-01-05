@@ -23,14 +23,16 @@
   - [ ] Configuration testée et validée
   - [ ] Guide de déploiement complet
   - [ ] Instructions Railway claires
+  - [x] Correction erreur "build.builder: Invalid input" (suppression railway.json)
 
 ## 📁 Fichiers impactés
 Liste complète des fichiers créés/modifiés/supprimés :
-- `backend/railway.json` (modifié - passer à Docker avec dockerfilePath)
-- `backend/Dockerfile` (modifié - adapter pour copier depuis racine du repo)
+- `backend/railway.json` (supprimé - causait erreur "build.builder: Invalid input")
+- `backend/Dockerfile` (modifié - adapter pour Root Directory = "backend")
 - `nixpacks.toml` (supprimé - plus nécessaire)
 - `.dockerignore` (créé à la racine - ignore frontend et fichiers inutiles)
 - `GUIDE_RAILWAY_BACKEND.md` (créé - guide complet de déploiement)
+- `GUIDE_RAILWAY_CONFIGURATION_FINALE.md` (créé - solution sans railway.json)
 
 ## 📝 Notes importantes
 - Décisions techniques prises :
