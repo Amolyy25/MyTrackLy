@@ -27,6 +27,7 @@ import Students from "./components/pages/dashboard/coach/Students";
 import Sessions from "./components/pages/dashboard/coach/Sessions";
 import NewTrainingSession from "./components/pages/dashboard/NewTrainingSession";
 import TrainingHistory from "./components/pages/dashboard/TrainingHistory";
+import NotFound from "./components/pages/NotFound";
 
 // Component to redirect to the correct dashboard based on user role
 const DashboardHome = () => {
@@ -118,37 +119,20 @@ function AppRoutes() {
         <Route path="sessions" element={<Sessions />} />
         <Route path="training/new" element={<NewTrainingSession />} />
         <Route path="training/history" element={<TrainingHistory />} />
-        <Route
-          path="measurements"
-          element={
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-gray-900">Mensurations</h2>
-              <p className="mt-2 text-gray-600">À venir...</p>
-            </div>
-          }
-        />
-        <Route
-          path="habits"
-          element={
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-gray-900">Habitudes</h2>
-              <p className="mt-2 text-gray-600">À venir...</p>
-            </div>
-          }
-        />
-        <Route
-          path="statistics"
-          element={
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-gray-900">Statistiques</h2>
-              <p className="mt-2 text-gray-600">À venir...</p>
-            </div>
-          }
-        />
+        {/* Routes non implémentées - affichent la page 404 */}
+        <Route path="measurements" element={<NotFound />} />
+        <Route path="habits" element={<NotFound />} />
+        <Route path="statistics" element={<NotFound />} />
+        <Route path="programs" element={<NotFound />} />
+        <Route path="chat" element={<NotFound />} />
+        <Route path="messagerie" element={<NotFound />} />
+        <Route path="reservations" element={<NotFound />} />
+        {/* 404 pour les routes non définies dans le dashboard */}
+        <Route path="*" element={<NotFound />} />
       </Route>
 
-      {/* 404 */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* 404 - Catch all unmatched routes */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
