@@ -24,6 +24,7 @@
   - [ ] Guide de déploiement complet
   - [ ] Instructions Railway claires
   - [x] Correction erreur "build.builder: Invalid input" (suppression railway.json)
+  - [x] Correction erreur OpenSSL Prisma (suppression Dockerfile, utilisation Nixpacks)
 
 ## 📁 Fichiers impactés
 Liste complète des fichiers créés/modifiés/supprimés :
