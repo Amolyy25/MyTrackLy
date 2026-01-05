@@ -26,6 +26,7 @@ model User {
   measurements          Measurement[]
   invitationCodes       InvitationCode[] // Codes d'invitation créés par le coach
   usedInvitationCodes   InvitationCode[] @relation("UsedInvitationCodes") // Codes utilisés par l'élève
+  passwordResetTokens   PasswordResetToken[] // Tokens de reset de mot de passe
 
   @@map("users")
 }
@@ -121,4 +122,16 @@ model Measurement {
   @@map("measurements")
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique // Token unique pour le reset
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("password_reset_tokens")
+  @@index([userId])
 }

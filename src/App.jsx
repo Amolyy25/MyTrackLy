@@ -16,6 +16,8 @@ import {
   Register,
   EmailConfirmation,
   ConfirmEmail,
+  ForgotPassword,
+  ResetPassword,
 } from "./components/pages/Auth";
 import Plans from "./components/pages/Plans";
 import Payment from "./components/pages/Payment";
@@ -101,6 +103,22 @@ function AppRoutes() {
       />
       <Route path="/email-confirmation" element={<EmailConfirmation />} />
       <Route path="/confirm-email" element={<ConfirmEmail />} />
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicRoute>
+            <ForgotPassword />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          <PublicRoute>
+            <ResetPassword />
+          </PublicRoute>
+        }
+      />
       <Route path="/plans" element={<Plans />} />
       <Route path="/payment" element={<Payment />} />
 
