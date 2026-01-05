@@ -3,6 +3,10 @@ import prisma from "../config/database";
 import { hashPassword, comparePassword } from "../utils/bcrypt";
 import { generateToken } from "../utils/jwt";
 import { sendEmail } from "../email/emailService";
+import {
+  requestPasswordReset,
+  resetPasswordWithToken,
+} from "../services/passwordResetService";
 
 // --- Register ---
 export async function register(req: Request, res: Response) {
@@ -256,6 +260,80 @@ export async function getMe(req: Request, res: Response) {
     console.error("GetMe Error:", error);
     res.status(500).json({
       message: "Une erreur est survenue.",
+    });
+  }
+}
+
+// --- Request Password Reset ---
+export async function requestPasswordResetController(
+  req: Request,
+  res: Response
+) {
+  try {
+    const { email } = req.body;
+
+    // Validation
+    if (!email) {
+      res.status(400).json({ message: "Veuillez saisir votre email." });
+      return;
+    }
+
+    // Déléguer la logique métier au service
+    const message = await requestPasswordReset(email);
+
+    res.json({ message });
+  } catch (error) {
+    console.error("Request Password Reset Error:", error);
+    res.status(500).json({
+      message:
+        "Une erreur est survenue lors de la demande de réinitialisation.",
+    });
+  }
+}
+
+// --- Reset Password ---
+export async function resetPasswordController(req: Request, res: Response) {
+  try {
+    const { token, password } = req.body;
+
+    // Validation des entrées
+    if (!token) {
+      res.status(400).json({ message: "Le token est requis." });
+      return;
+    }
+
+    if (!password) {
+      res.status(400).json({ message: "Le mot de passe est requis." });
+      return;
+    }
+
+    // Déléguer la logique métier au service
+    await resetPasswordWithToken(token, password);
+
+    res.json({
+      message: "Votre mot de passe a été réinitialisé avec succès.",
+    });
+  } catch (error) {
+    // Gérer les erreurs métier (token invalide, mot de passe trop court, etc.)
+    if (error instanceof Error) {
+      const errorMessage = error.message;
+
+      // Erreurs de validation métier (400)
+      if (
+        errorMessage.includes("Token invalide") ||
+        errorMessage.includes("expiré") ||
+        errorMessage.includes("caractères")
+      ) {
+        res.status(400).json({ message: errorMessage });
+        return;
+      }
+    }
+
+    // Erreurs serveur (500)
+    console.error("Reset Password Error:", error);
+    res.status(500).json({
+      message:
+        "Une erreur est survenue lors de la réinitialisation du mot de passe.",
     });
   }
 }

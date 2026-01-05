@@ -2,6 +2,8 @@ export { default as Login } from "./Login";
 export { default as Register } from "./Register";
 export { default as EmailConfirmation } from "./EmailConfirmation";
 export { default as ConfirmEmail } from "./ConfirmEmail";
+export { default as ForgotPassword } from "./ForgotPassword";
+export { default as ResetPassword } from "./ResetPassword";
 
 
 
