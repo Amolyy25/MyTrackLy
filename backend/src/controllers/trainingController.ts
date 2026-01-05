@@ -91,7 +91,7 @@ export async function CreateTrainingSession(req: Request, res: Response) {
       },
     });
 
-    const existingExerciseIds = existingExercises.map((ex) => ex.id);
+    const existingExerciseIds = existingExercises.map((ex: { id: string }) => ex.id);
     const customExercises = exercises.filter(
       (ex: any) =>
         !existingExerciseIds.includes(ex.exerciseId) &&
@@ -702,7 +702,7 @@ export async function getCoachStudentsSessions(req: Request, res: Response) {
       },
     });
 
-    const studentIds = students.map((s) => s.id);
+    const studentIds = students.map((s: { id: string }) => s.id);
 
     if (studentIds.length === 0) {
       return res.json([]);
@@ -822,7 +822,7 @@ export async function createTrainingSessionForStudent(
       },
     });
 
-    const existingExerciseIds = existingExercises.map((ex) => ex.id);
+    const existingExerciseIds = existingExercises.map((ex: { id: string }) => ex.id);
     const customExercises = exercises.filter(
       (ex: any) =>
         !existingExerciseIds.includes(ex.exerciseId) &&

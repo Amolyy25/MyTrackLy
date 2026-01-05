@@ -29,17 +29,19 @@
 ## 📁 Fichiers impactés
 Liste complète des fichiers créés/modifiés/supprimés :
 - `backend/railway.json` (supprimé - causait erreur "build.builder: Invalid input")
-- `backend/Dockerfile` (modifié - adapter pour Root Directory = "backend")
-- `nixpacks.toml` (supprimé - plus nécessaire)
-- `.dockerignore` (créé à la racine - ignore frontend et fichiers inutiles)
+- `backend/Dockerfile` (supprimé - causait erreur OpenSSL Prisma, Railway utilise Nixpacks)
+- `nixpacks.toml` (supprimé - plus nécessaire, Railway détecte automatiquement)
+- `.dockerignore` (créé à la racine - peut être supprimé aussi si pas utilisé)
 - `GUIDE_RAILWAY_BACKEND.md` (créé - guide complet de déploiement)
 - `GUIDE_RAILWAY_CONFIGURATION_FINALE.md` (créé - solution sans railway.json)
+- `GUIDE_RAILWAY_NIXPACKS_SIMPLE.md` (créé - solution finale avec Nixpacks)
 
 ## 📝 Notes importantes
 - Décisions techniques prises :
-  - Utilisation de Docker uniquement (pas de Nixpacks)
-  - Dockerfile adapté pour fonctionner depuis la racine du repo
+  - Utilisation de Nixpacks (pas Docker) - gère automatiquement OpenSSL et dépendances système
+  - Suppression du Dockerfile (causait erreur OpenSSL avec Prisma)
   - Configuration Railway avec Root Directory = `backend`
+  - Railway détecte automatiquement la configuration depuis package.json
 - Hypothèses faites :
   - Railway peut builder depuis la racine avec le Dockerfile dans `backend/`
   - Ou Railway utilise Root Directory = `backend` et trouve automatiquement le Dockerfile
