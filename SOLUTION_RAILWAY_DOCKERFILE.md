@@ -50,6 +50,7 @@ Step 7/10 : RUN pnpm build
 ```
 
 **PAS** de références à :
+
 - ❌ `vite`
 - ❌ `react`
 - ❌ `tailwindcss`
@@ -61,8 +62,9 @@ curl https://mytrackly-production.up.railway.app/
 ```
 
 Devrait retourner :
+
 ```json
-{"message":"API fonctionnel"}
+{ "message": "API fonctionnel" }
 ```
 
 ## ⚠️ Si Railway ne trouve pas le Dockerfile
@@ -109,4 +111,3 @@ carnet-entrainement/
 ```
 
 Le Dockerfile copie **uniquement** les fichiers du dossier `backend/`, donc le frontend est complètement ignoré.
-

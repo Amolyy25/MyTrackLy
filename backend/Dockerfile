@@ -1,6 +1,6 @@
 # Dockerfile pour le backend
-# Ce Dockerfile doit être utilisé avec Root Directory = "backend" dans Railway
-# OU être placé à la racine et utiliser les chemins "backend/..."
+# Ce Dockerfile fonctionne depuis la racine du repo GitHub
+# Railway doit être configuré avec Root Directory = "backend" OU utiliser dockerfilePath = "backend/Dockerfile"
 
 FROM node:20-alpine
 
@@ -10,14 +10,14 @@ RUN npm install -g pnpm@10.23.0
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Copier les fichiers de configuration
-COPY package.json pnpm-lock.yaml* tsconfig.json ./
+# Copier les fichiers de configuration du backend
+COPY backend/package.json backend/pnpm-lock.yaml* backend/tsconfig.json ./
 
 # Copier Prisma
-COPY prisma ./prisma
+COPY backend/prisma ./prisma
 
 # Copier le code source
-COPY src ./src
+COPY backend/src ./src
 
 # Installer les dépendances
 RUN pnpm install --frozen-lockfile
