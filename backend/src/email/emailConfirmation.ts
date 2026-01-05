@@ -83,7 +83,11 @@ export async function sendEmailConfirmation(req: Request, res: Response) {
     });
 
     // Configuration adaptée pour Railway (port 587 TLS) ou local (port 465 SSL)
-    const isProduction = process.env.NODE_ENV === "production" || process.env.RAILWAY_ENVIRONMENT;
+    const isProduction = 
+      process.env.NODE_ENV === "production" || 
+      process.env.RAILWAY_ENVIRONMENT ||
+      process.env.RAILWAY_SERVICE_NAME ||
+      (process.env.PORT && !process.env.NODE_ENV);
     
     const smtpConfig: any = {
       host: "erable.o2switch.net",
@@ -91,9 +95,11 @@ export async function sendEmailConfirmation(req: Request, res: Response) {
         user: process.env.EMAIL_SENDER,
         pass: process.env.EMAIL_PASSWORD,
       },
-      connectionTimeout: isProduction ? 60000 : 30000,
-      greetingTimeout: isProduction ? 60000 : 30000,
-      socketTimeout: isProduction ? 60000 : 30000,
+      connectionTimeout: isProduction ? 90000 : 30000, // 90s en prod
+      greetingTimeout: isProduction ? 90000 : 30000,
+      socketTimeout: isProduction ? 90000 : 30000,
+      debug: false,
+      logger: false,
     };
 
     if (isProduction) {
@@ -101,8 +107,13 @@ export async function sendEmailConfirmation(req: Request, res: Response) {
       smtpConfig.port = 587;
       smtpConfig.secure = false;
       smtpConfig.requireTLS = true;
-      smtpConfig.tls = { rejectUnauthorized: false };
+      smtpConfig.tls = {
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2',
+      };
       smtpConfig.pool = false;
+      smtpConfig.ignoreTLS = false;
+      smtpConfig.opportunisticTLS = true;
     } else {
       // Local : port 465 avec SSL
       smtpConfig.port = 465;

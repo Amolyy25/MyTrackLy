@@ -36,50 +36,56 @@ export function getEmailTemplate(
   return template;
 }
 
-// Créer le transporter nodemailer (singleton)
-let transporter: any = null;
-
+// Créer le transporter nodemailer
+// En production, on crée un nouveau transporter à chaque fois pour éviter les problèmes de connexion persistante
 function getTransporter() {
-  if (!transporter) {
-    // Détecter l'environnement (production = Railway, développement = local)
-    const isProduction = process.env.NODE_ENV === "production" || process.env.RAILWAY_ENVIRONMENT;
-    
-    // Configuration pour Railway : utiliser port 587 (TLS) au lieu de 465 (SSL)
-    // Le port 587 est souvent moins bloqué par les plateformes cloud
-    const smtpConfig: any = {
-      host: "erable.o2switch.net",
-      auth: {
-        user: process.env.EMAIL_SENDER,
-        pass: process.env.EMAIL_PASSWORD,
-      },
-      // Timeouts augmentés pour Railway (connexions plus lentes)
-      connectionTimeout: isProduction ? 60000 : 30000, // 60s en prod, 30s en dev
-      greetingTimeout: isProduction ? 60000 : 30000,
-      socketTimeout: isProduction ? 60000 : 30000,
+  // Détecter l'environnement Railway (plusieurs méthodes pour être sûr)
+  const isProduction = 
+    process.env.NODE_ENV === "production" || 
+    process.env.RAILWAY_ENVIRONMENT ||
+    process.env.RAILWAY_SERVICE_NAME ||
+    (process.env.PORT && !process.env.NODE_ENV); // Railway définit toujours PORT
+  
+  // Configuration pour Railway : utiliser port 587 (TLS) au lieu de 465 (SSL)
+  const smtpConfig: any = {
+    host: "erable.o2switch.net",
+    auth: {
+      user: process.env.EMAIL_SENDER,
+      pass: process.env.EMAIL_PASSWORD,
+    },
+    // Timeouts très augmentés pour Railway
+    connectionTimeout: isProduction ? 90000 : 30000, // 90s en prod
+    greetingTimeout: isProduction ? 90000 : 30000,
+    socketTimeout: isProduction ? 90000 : 30000,
+    // Options supplémentaires pour améliorer la connexion
+    debug: false,
+    logger: false,
+  };
+
+  if (isProduction) {
+    // En production (Railway) : utiliser port 587 avec TLS
+    smtpConfig.port = 587;
+    smtpConfig.secure = false; // false pour TLS
+    smtpConfig.requireTLS = true;
+    smtpConfig.tls = {
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2',
     };
-
-    if (isProduction) {
-      // En production (Railway) : utiliser port 587 avec TLS
-      smtpConfig.port = 587;
-      smtpConfig.secure = false; // false pour TLS
-      smtpConfig.requireTLS = true; // Forcer TLS
-      smtpConfig.tls = {
-        rejectUnauthorized: false, // Accepter les certificats auto-signés si nécessaire
-      };
-      // Pas de pool en production pour éviter les problèmes de connexion persistante
-      smtpConfig.pool = false;
-    } else {
-      // En développement : utiliser port 465 avec SSL (plus rapide)
-      smtpConfig.port = 465;
-      smtpConfig.secure = true; // true pour SSL
-      smtpConfig.pool = true; // Pool OK en local
-      smtpConfig.maxConnections = 5;
-      smtpConfig.maxMessages = 100;
-    }
-
-    transporter = nodemailer.createTransport(smtpConfig);
+    // Pas de pool, créer une nouvelle connexion à chaque fois
+    smtpConfig.pool = false;
+    // Options pour améliorer la connexion
+    smtpConfig.ignoreTLS = false;
+    smtpConfig.opportunisticTLS = true;
+  } else {
+    // En développement : utiliser port 465 avec SSL
+    smtpConfig.port = 465;
+    smtpConfig.secure = true;
+    smtpConfig.pool = true;
+    smtpConfig.maxConnections = 5;
+    smtpConfig.maxMessages = 100;
   }
-  return transporter;
+
+  return nodemailer.createTransport(smtpConfig);
 }
 
 /**
@@ -88,18 +94,30 @@ function getTransporter() {
  */
 /**
  * Envoie un email avec retry automatique en cas d'échec
+ * Crée un nouveau transporter à chaque tentative en production pour éviter les problèmes de connexion persistante
  */
 async function sendEmailWithRetry(
-  mailTransporter: any,
   mailOptions: any,
   maxRetries: number = 3,
-  retryDelay: number = 2000
+  retryDelay: number = 3000
 ): Promise<void> {
+  const isProduction = process.env.NODE_ENV === "production" || process.env.RAILWAY_ENVIRONMENT;
   let lastError: any = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    let mailTransporter: any = null;
     try {
+      // En production, créer un nouveau transporter à chaque tentative
+      // Cela évite les problèmes de connexion persistante qui peuvent rester dans un mauvais état
+      mailTransporter = getTransporter();
+      
       await mailTransporter.sendMail(mailOptions);
+      
+      // Fermer la connexion proprement
+      if (mailTransporter.close) {
+        mailTransporter.close();
+      }
+      
       if (attempt > 1) {
         console.log(`Email envoyé avec succès après ${attempt} tentatives`);
       }
@@ -107,13 +125,26 @@ async function sendEmailWithRetry(
     } catch (error: any) {
       lastError = error;
       
+      // Fermer la connexion en cas d'erreur
+      if (mailTransporter && mailTransporter.close) {
+        try {
+          mailTransporter.close();
+        } catch (closeError) {
+          // Ignorer les erreurs de fermeture
+        }
+      }
+      
       // Si c'est un timeout et qu'il reste des tentatives, réessayer
       if (
-        (error?.code === "ETIMEDOUT" || error?.code === "ECONNRESET") &&
+        (error?.code === "ETIMEDOUT" || 
+         error?.code === "ECONNRESET" || 
+         error?.code === "ETIMEDOUT" ||
+         error?.message?.includes("timeout") ||
+         error?.message?.includes("Connection timeout")) &&
         attempt < maxRetries
       ) {
         console.warn(
-          `Tentative ${attempt}/${maxRetries} échouée (${error?.code}), nouvelle tentative dans ${retryDelay}ms...`
+          `Tentative ${attempt}/${maxRetries} échouée (${error?.code || error?.message}), nouvelle tentative dans ${retryDelay}ms...`
         );
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
         // Augmenter le délai pour la prochaine tentative (backoff exponentiel)
@@ -146,7 +177,6 @@ export async function sendEmail(
     }
 
     const htmlContent = getEmailTemplate(templateName, templateData);
-    const mailTransporter = getTransporter();
 
     const mailOptions = {
       from: `MyTrackLy <${process.env.EMAIL_SENDER}>`,
@@ -155,8 +185,8 @@ export async function sendEmail(
       html: htmlContent,
     };
 
-    // Utiliser retry automatique pour les timeouts
-    await sendEmailWithRetry(mailTransporter, mailOptions);
+    // Utiliser retry automatique pour les timeouts (crée un nouveau transporter à chaque tentative en prod)
+    await sendEmailWithRetry(mailOptions);
 
     console.log(`Email envoyé avec succès à ${to} (template: ${templateName})`);
   } catch (error: any) {
