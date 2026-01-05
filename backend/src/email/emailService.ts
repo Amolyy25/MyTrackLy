@@ -49,6 +49,14 @@ function getTransporter() {
         user: process.env.EMAIL_SENDER,
         pass: process.env.EMAIL_PASSWORD,
       },
+      // Options de timeout pour éviter les erreurs de connexion
+      connectionTimeout: 30000, // 30 secondes pour établir la connexion
+      greetingTimeout: 30000, // 30 secondes pour la réponse du serveur
+      socketTimeout: 30000, // 30 secondes pour les opérations socket
+      // Options de retry
+      pool: true, // Utiliser un pool de connexions
+      maxConnections: 5, // Nombre max de connexions simultanées
+      maxMessages: 100, // Nombre max de messages par connexion
     });
   }
   return transporter;
@@ -65,6 +73,14 @@ export async function sendEmail(
   templateData: Record<string, string>
 ): Promise<void> {
   try {
+    // Vérifier que les variables d'environnement sont configurées
+    if (!process.env.EMAIL_SENDER || !process.env.EMAIL_PASSWORD) {
+      console.error(
+        "Configuration email manquante: EMAIL_SENDER ou EMAIL_PASSWORD non défini"
+      );
+      return;
+    }
+
     const htmlContent = getEmailTemplate(templateName, templateData);
     const mailTransporter = getTransporter();
 
@@ -76,11 +92,23 @@ export async function sendEmail(
     });
 
     console.log(`Email envoyé avec succès à ${to} (template: ${templateName})`);
-  } catch (error) {
-    // Logger l'erreur mais ne pas faire échouer la requête principale
-    console.error(`Erreur lors de l'envoi d'email à ${to}:`, error);
-    // Ne pas throw l'erreur pour ne pas bloquer l'UI
+  } catch (error: any) {
+    // Logger l'erreur avec plus de détails pour le diagnostic
+    const errorDetails = {
+      to,
+      template: templateName,
+      errorCode: error?.code,
+      errorMessage: error?.message,
+      command: error?.command,
+      response: error?.response,
+    };
+
+    console.error(
+      `Erreur lors de l'envoi d'email à ${to}:`,
+      JSON.stringify(errorDetails, null, 2)
+    );
+
+    // Ne pas throw l'erreur pour ne pas bloquer la requête principale
+    // L'erreur est déjà loggée pour diagnostic
   }
 }
-
-
