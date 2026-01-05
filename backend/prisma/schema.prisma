@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash String    @map("password_hash")
+  role          String    @default("personnel") @map("role") // "personnel" | "eleve" | "coach"
+  name          String    
+  goalType      String?   @map("goal_type")
+  coachId       String?   @map("coach_id") // Pour les élèves, ID du coach
+  coach         User?     @relation("CoachStudents", fields: [coachId], references: [id], onDelete: SetNull)
+  students      User[]    @relation("CoachStudents") // Pour les coaches, liste des élèves
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Nouvelles relations
+  trainingSessions      TrainingSession[]
+  customExercises       Exercise[]
+  measurements          Measurement[]
+  invitationCodes       InvitationCode[] // Codes d'invitation créés par le coach
+  usedInvitationCodes   InvitationCode[] @relation("UsedInvitationCodes") // Codes utilisés par l'élève
+
+  @@map("users")
+}
+
+model InvitationCode {
+  id            String    @id @default(uuid())
+  code          String    @unique // Code unique et complexe
+  coachId       String    @map("coach_id")
+  coach         User      @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  used          Boolean   @default(false) // Si le code a été utilisé
+  usedByUserId  String?   @map("used_by_user_id") // ID de l'élève qui a utilisé le code
+  usedBy        User?     @relation("UsedInvitationCodes", fields: [usedByUserId], references: [id], onDelete: SetNull)
+  expiresAt     DateTime? @map("expires_at") // Date d'expiration (optionnelle)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  usedAt        DateTime? @map("used_at") // Date d'utilisation
+
+  @@map("invitation_codes")
+  @@index([coachId])
+  @@index([code])
+}
+
+model TrainingSession {
+  id              String            @id @default(uuid())
+  userId          String            @map("user_id")
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date            DateTime
+  durationMinutes Int?              @map("duration_minutes")
+  notes           String?
+  coachComment    String?           @map("coach_comment") // Commentaire du coach sur la séance
+  exercises       SessionExercise[]
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@map("training_sessions")
+  @@index([userId, date])
+}
+model Exercise {
+  id            String            @id @default(uuid())
+  name          String
+  category      String            // 'strength', 'cardio', 'flexibility', 'other'
+  muscleGroups  Json?             @map("muscle_groups") // ['chest', 'triceps']
+  defaultUnit   String            @map("default_unit") // 'reps', 'time', 'distance', 'weight'
+  isCustom      Boolean           @default(false) @map("is_custom")
+  createdByUserId String?         @map("created_by_user_id")
+  createdBy     User?             @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  sessions      SessionExercise[]
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  @@map("exercises")
+}
+
+model SessionExercise {
+  id            String          @id @default(uuid())
+  sessionId     String          @map("session_id")
+  session       TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId    String          @map("exercise_id")
+  exercise      Exercise        @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  sets          Int
+  repsPerSet    Json?           @map("reps_per_set") // [7, 7, 5, 5, 4]
+  repsUniform   Int?            @map("reps_uniform") // 8 (si toutes les séries sont identiques)
+  weightKg      Float?          @map("weight_kg")
+  durationSeconds Int?          @map("duration_seconds")
+  restSeconds   Int?            @map("rest_seconds")
+  orderIndex    Int             @map("order_index")
+  notes         String?
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  @@map("session_exercises")
+  @@index([sessionId])
+}
+
+model Measurement {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime
+  bodyWeightKg  Float?   @map("body_weight_kg")
+  leftArmCm     Float?   @map("left_arm_cm")
+  rightArmCm    Float?   @map("right_arm_cm")
+  leftCalfCm    Float?   @map("left_calf_cm")
+  rightCalfCm   Float?   @map("right_calf_cm")
+  chestCm       Float?   @map("chest_cm")
+  waistCm       Float?   @map("waist_cm")
+  hipsCm        Float?   @map("hips_cm")
+  leftThighCm   Float?   @map("left_thigh_cm")
+  rightThighCm  Float?   @map("right_thigh_cm")
+  neckCm        Float?   @map("neck_cm")
+  shouldersCm  Float?   @map("shoulders_cm")
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("measurements")
+  @@unique([userId, date])
+  @@index([userId, date])
+}

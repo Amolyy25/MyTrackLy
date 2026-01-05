@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirmation de séance - MyTrackLy</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+        'Helvetica Neue', Arial, sans-serif;
+      background-color: #f9fafb;
+    "
+  >
+    <table role="presentation" style="width: 100%; border-collapse: collapse">
+      <tr>
+        <td align="center" style="padding: 40px 20px">
+          <table
+            role="presentation"
+            style="
+              max-width: 600px;
+              width: 100%;
+              background-color: #ffffff;
+              border-radius: 16px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              border-collapse: collapse;
+            "
+          >
+            <!-- Content -->
+            <tr>
+              <td style="padding: 40px 40px 40px">
+                <h1
+                  style="
+                    margin: 0 0 16px;
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: #111827;
+                    text-align: center;
+                  "
+                >
+                  Séance enregistrée ! 💪
+                </h1>
+                <p
+                  style="
+                    margin: 0 0 24px;
+                    font-size: 16px;
+                    line-height: 24px;
+                    color: #6b7280;
+                    text-align: center;
+                  "
+                >
+                  Bonjour {{userName}},
+                </p>
+                <p
+                  style="
+                    margin: 0 0 32px;
+                    font-size: 16px;
+                    line-height: 24px;
+                    color: #374151;
+                    text-align: center;
+                  "
+                >
+                  Votre séance d'entraînement du {{sessionDate}} a été
+                  enregistrée avec succès.
+                </p>
+
+                <!-- Goal Message (si disponible) -->
+                {{goalMessageHTML}}
+
+                <!-- Stats Grid -->
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 16px;
+                    margin: 0 0 32px;
+                  "
+                >
+                  <div
+                    style="
+                      background-color: #f3f4f6;
+                      border-radius: 8px;
+                      padding: 20px;
+                      text-align: center;
+                    "
+                  >
+                    <p
+                      style="
+                        margin: 0 0 8px;
+                        font-size: 12px;
+                        color: #6b7280;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                      "
+                    >
+                      Séances totales
+                    </p>
+                    <p
+                      style="
+                        margin: 0;
+                        font-size: 32px;
+                        font-weight: 700;
+                        color: #111827;
+                      "
+                    >
+                      {{totalSessions}}
+                    </p>
+                  </div>
+                  <div
+                    style="
+                      background-color: #f3f4f6;
+                      border-radius: 8px;
+                      padding: 20px;
+                      text-align: center;
+                    "
+                  >
+                    <p
+                      style="
+                        margin: 0 0 8px;
+                        font-size: 12px;
+                        color: #6b7280;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                      "
+                    >
+                      Streak
+                    </p>
+                    <p
+                      style="
+                        margin: 0;
+                        font-size: 32px;
+                        font-weight: 700;
+                        color: #111827;
+                      "
+                    >
+                      {{currentStreak}}
+                    </p>
+                  </div>
+                  <div
+                    style="
+                      background-color: #f3f4f6;
+                      border-radius: 8px;
+                      padding: 20px;
+                      text-align: center;
+                    "
+                  >
+                    <p
+                      style="
+                        margin: 0 0 8px;
+                        font-size: 12px;
+                        color: #6b7280;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                      "
+                    >
+                      Fréquence hebdo
+                    </p>
+                    <p
+                      style="
+                        margin: 0;
+                        font-size: 32px;
+                        font-weight: 700;
+                        color: #111827;
+                      "
+                    >
+                      {{weeklyFrequency}}
+                    </p>
+                  </div>
+                  {{weightHTML}}
+                </div>
+
+                <p
+                  style="
+                    margin: 0;
+                    font-size: 14px;
+                    line-height: 20px;
+                    color: #6b7280;
+                    text-align: center;
+                  "
+                >
+                  Continuez vos efforts, vous êtes sur la bonne voie ! 🎯
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="padding: 0 40px 40px">
+                <div style="border-top: 1px solid #e5e7eb; padding-top: 24px">
+                  <p
+                    style="
+                      margin: 0 0 8px;
+                      font-size: 12px;
+                      line-height: 18px;
+                      color: #9ca3af;
+                      text-align: center;
+                    "
+                  >
+                    © 2025 MyTrackLy. Tous droits réservés.
+                  </p>
+                  <p
+                    style="
+                      margin: 0;
+                      font-size: 12px;
+                      line-height: 18px;
+                      color: #9ca3af;
+                      text-align: center;
+                    "
+                  >
+                    Vous recevez cet email car vous avez créé une séance
+                    d'entraînement.
+                  </p>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
