@@ -82,7 +82,7 @@ export async function sendEmailConfirmation(req: Request, res: Response) {
       confirmationUrl: confirmationUrl,
     });
 
-    // Configuration adaptée pour production (port 587 TLS) ou local (port 465 SSL)
+    // Configuration SMTP : utiliser port 465 (SSL) partout
     const isProduction = 
       process.env.NODE_ENV === "production" || 
       process.env.RAILWAY_ENVIRONMENT ||
@@ -97,31 +97,17 @@ export async function sendEmailConfirmation(req: Request, res: Response) {
         user: process.env.EMAIL_SENDER,
         pass: process.env.EMAIL_PASSWORD,
       },
-      connectionTimeout: isProduction ? 90000 : 30000, // 90s en prod
-      greetingTimeout: isProduction ? 90000 : 30000,
-      socketTimeout: isProduction ? 90000 : 30000,
+      connectionTimeout: isProduction ? 30000 : 30000, // 30s suffit pour Render
+      greetingTimeout: isProduction ? 30000 : 30000,
+      socketTimeout: isProduction ? 30000 : 30000,
       debug: false,
       logger: false,
     };
 
-    if (isProduction) {
-      // Railway : port 587 avec TLS
-      smtpConfig.port = 587;
-      smtpConfig.secure = false;
-      smtpConfig.requireTLS = true;
-      smtpConfig.tls = {
-        rejectUnauthorized: false,
-        minVersion: 'TLSv1.2',
-      };
-      smtpConfig.pool = false;
-      smtpConfig.ignoreTLS = false;
-      smtpConfig.opportunisticTLS = true;
-    } else {
-      // Local : port 465 avec SSL
-      smtpConfig.port = 465;
-      smtpConfig.secure = true;
-      smtpConfig.pool = true;
-    }
+    // Utiliser port 465 avec SSL partout (production et développement)
+    smtpConfig.port = 465;
+    smtpConfig.secure = true; // true pour SSL
+    smtpConfig.pool = isProduction ? false : true; // Pas de pool en production
 
     const transporter = nodemailer.createTransport(smtpConfig);
 

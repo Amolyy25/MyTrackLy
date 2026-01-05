@@ -40,49 +40,35 @@ export function getEmailTemplate(
 // En production, on crée un nouveau transporter à chaque fois pour éviter les problèmes de connexion persistante
 function getTransporter() {
   // Détecter l'environnement de production (Railway, Render, etc.)
-  const isProduction = 
-    process.env.NODE_ENV === "production" || 
+  const isProduction =
+    process.env.NODE_ENV === "production" ||
     process.env.RAILWAY_ENVIRONMENT ||
     process.env.RAILWAY_SERVICE_NAME ||
     process.env.RENDER || // Render définit RENDER=true
     process.env.RENDER_SERVICE_NAME ||
     (process.env.PORT && !process.env.NODE_ENV); // Les plateformes cloud définissent toujours PORT
-  
-  // Configuration pour Railway : utiliser port 587 (TLS) au lieu de 465 (SSL)
+
+  // Configuration SMTP : utiliser port 465 (SSL) partout
   const smtpConfig: any = {
-      host: "erable.o2switch.net",
-      auth: {
-        user: process.env.EMAIL_SENDER,
-        pass: process.env.EMAIL_PASSWORD,
-      },
-    // Timeouts très augmentés pour Railway
-    connectionTimeout: isProduction ? 90000 : 30000, // 90s en prod
-    greetingTimeout: isProduction ? 90000 : 30000,
-    socketTimeout: isProduction ? 90000 : 30000,
+    host: "erable.o2switch.net",
+    auth: {
+      user: process.env.EMAIL_SENDER,
+      pass: process.env.EMAIL_PASSWORD,
+    },
+    // Timeouts adaptés pour production (Render ne bloque pas les ports, donc moins de timeout nécessaire)
+    connectionTimeout: isProduction ? 30000 : 30000, // 30s suffit pour Render
+    greetingTimeout: isProduction ? 30000 : 30000,
+    socketTimeout: isProduction ? 30000 : 30000,
     // Options supplémentaires pour améliorer la connexion
     debug: false,
     logger: false,
   };
 
-  if (isProduction) {
-    // En production (Railway, Render, etc.) : utiliser port 587 avec TLS
-    smtpConfig.port = 587;
-    smtpConfig.secure = false; // false pour TLS
-    smtpConfig.requireTLS = true;
-    smtpConfig.tls = {
-      rejectUnauthorized: false,
-      minVersion: 'TLSv1.2',
-    };
-    // Pas de pool, créer une nouvelle connexion à chaque fois
-    smtpConfig.pool = false;
-    // Options pour améliorer la connexion
-    smtpConfig.ignoreTLS = false;
-    smtpConfig.opportunisticTLS = true;
-  } else {
-    // En développement : utiliser port 465 avec SSL
-    smtpConfig.port = 465;
-    smtpConfig.secure = true;
-    smtpConfig.pool = true;
+  // Utiliser port 465 avec SSL partout (production et développement)
+  smtpConfig.port = 465;
+  smtpConfig.secure = true; // true pour SSL
+  smtpConfig.pool = isProduction ? false : true; // Pas de pool en production
+  if (!isProduction) {
     smtpConfig.maxConnections = 5;
     smtpConfig.maxMessages = 100;
   }
@@ -103,7 +89,8 @@ async function sendEmailWithRetry(
   maxRetries: number = 3,
   retryDelay: number = 3000
 ): Promise<void> {
-  const isProduction = process.env.NODE_ENV === "production" || process.env.RAILWAY_ENVIRONMENT;
+  const isProduction =
+    process.env.NODE_ENV === "production" || process.env.RAILWAY_ENVIRONMENT;
   let lastError: any = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -112,21 +99,21 @@ async function sendEmailWithRetry(
       // En production, créer un nouveau transporter à chaque tentative
       // Cela évite les problèmes de connexion persistante qui peuvent rester dans un mauvais état
       mailTransporter = getTransporter();
-      
+
       await mailTransporter.sendMail(mailOptions);
-      
+
       // Fermer la connexion proprement
       if (mailTransporter.close) {
         mailTransporter.close();
       }
-      
+
       if (attempt > 1) {
         console.log(`Email envoyé avec succès après ${attempt} tentatives`);
       }
       return; // Succès, sortir de la fonction
     } catch (error: any) {
       lastError = error;
-      
+
       // Fermer la connexion en cas d'erreur
       if (mailTransporter && mailTransporter.close) {
         try {
@@ -135,25 +122,27 @@ async function sendEmailWithRetry(
           // Ignorer les erreurs de fermeture
         }
       }
-      
+
       // Si c'est un timeout et qu'il reste des tentatives, réessayer
       if (
-        (error?.code === "ETIMEDOUT" || 
-         error?.code === "ECONNRESET" || 
-         error?.code === "ETIMEDOUT" ||
-         error?.message?.includes("timeout") ||
-         error?.message?.includes("Connection timeout")) &&
+        (error?.code === "ETIMEDOUT" ||
+          error?.code === "ECONNRESET" ||
+          error?.code === "ETIMEDOUT" ||
+          error?.message?.includes("timeout") ||
+          error?.message?.includes("Connection timeout")) &&
         attempt < maxRetries
       ) {
         console.warn(
-          `Tentative ${attempt}/${maxRetries} échouée (${error?.code || error?.message}), nouvelle tentative dans ${retryDelay}ms...`
+          `Tentative ${attempt}/${maxRetries} échouée (${
+            error?.code || error?.message
+          }), nouvelle tentative dans ${retryDelay}ms...`
         );
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
         // Augmenter le délai pour la prochaine tentative (backoff exponentiel)
         retryDelay *= 2;
         continue;
       }
-      
+
       // Si ce n'est pas un timeout ou dernière tentative, throw l'erreur
       throw error;
     }
