@@ -15,7 +15,7 @@ const port = process.env.PORT || 3000;
 
 // CORS dynamique selon l'environnement
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(",")
+  ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
   : ["http://localhost:5173"];
 
 app.use(
@@ -27,10 +27,21 @@ app.use(
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
+        console.warn(`CORS: Origin non autorisée: ${origin}`);
         callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+    ],
+    exposedHeaders: ["Authorization"],
+    optionsSuccessStatus: 200, // Pour les anciens navigateurs
   })
 );
 
