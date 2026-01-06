@@ -9,16 +9,11 @@ const nodemailer = require("nodemailer");
 
 dotenv.config();
 
-// Fonction pour lire le template HTML
 function getEmailTemplate(name: string, data: Record<string, string>): string {
-  // Construire le chemin du template de manière fiable
-  // __dirname pointe vers le répertoire du fichier source avec ts-node
   const templatePath = path.resolve(__dirname, "templates", `${name}.html`);
 
-  // Vérifier que le fichier existe, sinon essayer avec process.cwd()
   let finalPath = templatePath;
   if (!fs.existsSync(templatePath)) {
-    // Fallback: utiliser process.cwd() depuis le répertoire backend/
     finalPath = path.resolve(
       process.cwd(),
       "src",
@@ -30,7 +25,6 @@ function getEmailTemplate(name: string, data: Record<string, string>): string {
 
   let template = fs.readFileSync(finalPath, "utf-8");
 
-  // Remplacer les placeholders
   Object.keys(data).forEach((key) => {
     const regex = new RegExp(`{{${key}}}`, "g");
     template = template.replace(regex, data[key]);
@@ -60,7 +54,6 @@ export async function sendEmailConfirmation(req: Request, res: Response) {
       return res.status(404).json({ message: "Utilisateur non trouvé" });
     }
 
-    // Générer un token de confirmation (valide 24h)
     const confirmationToken = jwt.sign(
       {
         userId: user.id,
@@ -72,58 +65,27 @@ export async function sendEmailConfirmation(req: Request, res: Response) {
       }
     );
 
-    // Construire l'URL de confirmation
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     const confirmationUrl = `${frontendUrl}/confirm-email?token=${confirmationToken}`;
 
-    // Charger et remplir le template HTML
     const htmlContent = getEmailTemplate("emailConfirmation", {
       name: user.name,
       confirmationUrl: confirmationUrl,
     });
 
-    // Configuration SMTP : utiliser port 587 (TLS) en production, 465 (SSL) en local
-    const isProduction =
-      process.env.NODE_ENV === "production" ||
-      process.env.RAILWAY_ENVIRONMENT ||
-      process.env.RAILWAY_SERVICE_NAME ||
-      process.env.RENDER ||
-      process.env.RENDER_SERVICE_NAME ||
-      (process.env.PORT && !process.env.NODE_ENV);
-
-    const smtpConfig: any = {
-      host: "erable.o2switch.net",
+    // Configuration SMTP standard
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || "erable.o2switch.net",
+      port: parseInt(process.env.SMTP_PORT || "465"),
+      secure: true, // SSL (465)
       auth: {
         user: process.env.EMAIL_SENDER,
         pass: process.env.EMAIL_PASSWORD,
       },
-      connectionTimeout: isProduction ? 60000 : 30000, // 60s en prod pour Render
-      greetingTimeout: isProduction ? 60000 : 30000,
-      socketTimeout: isProduction ? 60000 : 30000,
-      debug: false,
-      logger: false,
-    };
-
-    if (isProduction) {
-      // En production (Render) : utiliser port 587 avec TLS (plus fiable que 465)
-      smtpConfig.port = 587;
-      smtpConfig.secure = false; // false pour TLS
-      smtpConfig.requireTLS = true;
-      smtpConfig.tls = {
+      tls: {
         rejectUnauthorized: false,
-        minVersion: "TLSv1.2",
-      };
-      smtpConfig.pool = false; // Pas de pool en production
-      smtpConfig.ignoreTLS = false;
-      smtpConfig.opportunisticTLS = true;
-    } else {
-      // En développement : utiliser port 465 avec SSL
-      smtpConfig.port = 465;
-      smtpConfig.secure = true; // true pour SSL
-      smtpConfig.pool = true;
-    }
-
-    const transporter = nodemailer.createTransport(smtpConfig);
+      },
+    });
 
     const info = await transporter.sendMail({
       from: `MyTrackLy <${process.env.EMAIL_SENDER}>`,
@@ -152,7 +114,6 @@ export async function confirmEmail(req: Request, res: Response) {
       return res.status(400).json({ message: "Token de confirmation requis" });
     }
 
-    // Vérifier le token
     let payload;
     try {
       payload = verifyToken(token);
@@ -160,8 +121,6 @@ export async function confirmEmail(req: Request, res: Response) {
       return res.status(400).json({ message: "Token invalide ou expiré" });
     }
 
-    // Mettre à jour l'utilisateur (marquer l'email comme vérifié)
-    // Note: Tu devras ajouter un champ emailVerified dans ton schéma Prisma si tu veux suivre ça
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
     });
@@ -169,9 +128,6 @@ export async function confirmEmail(req: Request, res: Response) {
     if (!user) {
       return res.status(404).json({ message: "Utilisateur non trouvé" });
     }
-
-    // Pour l'instant, on considère que l'email est confirmé si le token est valide
-    // Tu peux ajouter un champ emailVerified dans le schéma plus tard si besoin
 
     res.status(200).json({
       message: "Email confirmé avec succès",
