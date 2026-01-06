@@ -5,11 +5,9 @@ import { verifyToken } from "../utils/jwt";
 import jwt from "jsonwebtoken";
 import fs from "fs";
 import path from "path";
-const nodemailer = require("nodemailer");
+import { Resend } from "resend";
 
 dotenv.config();
-
-// --- Utilitaires internes ---
 
 function getEmailTemplate(name: string, data: Record<string, string>): string {
   const templatePath = path.resolve(__dirname, "templates", `${name}.html`);
@@ -35,86 +33,17 @@ function getEmailTemplate(name: string, data: Record<string, string>): string {
   return template;
 }
 
-function getTransporter() {
-  const host = process.env.SMTP_HOST || "erable.o2switch.net";
-  const port = parseInt(process.env.SMTP_PORT || "465");
-  const secure = port === 465;
+let resendClient: Resend | null = null;
 
-  console.log(`[SMTP] Connexion à ${host}:${port} (SSL: ${secure})`);
-
-  return nodemailer.createTransport({
-    host: host,
-    port: port,
-    secure: secure,
-    auth: {
-      user: process.env.EMAIL_SENDER,
-      pass: process.env.EMAIL_PASSWORD,
-    },
-    tls: {
-      rejectUnauthorized: false,
-      ciphers: "SSLv3",
-    },
-    connectionTimeout: 60000,
-    greetingTimeout: 60000,
-    socketTimeout: 60000,
-    debug: process.env.NODE_ENV === "development",
-    logger: process.env.NODE_ENV === "development",
-  });
-}
-
-// --- Fonctions exportées pour utilisation dans l'app ---
-
-async function sendEmailWithRetry(
-  mailOptions: any,
-  maxRetries: number = 3,
-  retryDelay: number = 2000
-): Promise<void> {
-  let lastError: any = null;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    let transporter: any = null;
-    try {
-      transporter = getTransporter();
-
-      await transporter.sendMail(mailOptions);
-
-      if (transporter.close) {
-        transporter.close();
-      }
-
-      if (attempt > 1) {
-        console.log(`[SMTP] Email envoyé après ${attempt} tentatives`);
-      }
-      return;
-    } catch (error: any) {
-      lastError = error;
-
-      if (transporter && transporter.close) {
-        try {
-          transporter.close();
-        } catch (e) {}
-      }
-
-      const isTimeout =
-        error?.code === "ETIMEDOUT" ||
-        error?.code === "ECONNRESET" ||
-        error?.message?.includes("timeout") ||
-        error?.message?.includes("Connection timeout");
-
-      if (isTimeout && attempt < maxRetries) {
-        console.warn(
-          `[SMTP] Tentative ${attempt}/${maxRetries} échouée (timeout), retry dans ${retryDelay}ms...`
-        );
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
-        retryDelay *= 2;
-        continue;
-      }
-
-      throw error;
+function getResendClient(): Resend {
+  if (!resendClient) {
+    const apiKey = process.env.RESEND_APIKEY;
+    if (!apiKey) {
+      throw new Error("RESEND_APIKEY manquante");
     }
+    resendClient = new Resend(apiKey);
   }
-
-  throw lastError;
+  return resendClient;
 }
 
 export async function sendEmail(
@@ -124,32 +53,34 @@ export async function sendEmail(
   templateData: Record<string, string>
 ): Promise<void> {
   try {
-    if (!process.env.EMAIL_SENDER || !process.env.EMAIL_PASSWORD) {
-      console.error(
-        "[SMTP] Configuration manquante (EMAIL_SENDER ou EMAIL_PASSWORD)"
-      );
+    if (!process.env.RESEND_APIKEY) {
+      console.error("RESEND_APIKEY manquante");
       return;
     }
 
+    const fromEmail = process.env.EMAIL_SENDER || "onboarding@resend.dev";
     const htmlContent = getEmailTemplate(templateName, templateData);
+    const resend = getResendClient();
 
-    await sendEmailWithRetry({
-      from: `MyTrackLy <${process.env.EMAIL_SENDER}>`,
-      to: to,
+    const { data, error } = await resend.emails.send({
+      from: `MyTrackLy <${fromEmail}>`,
+      to: [to],
       subject: subject,
       html: htmlContent,
     });
 
-    console.log(`[SMTP] Email envoyé à ${to} (template: ${templateName})`);
-  } catch (error: any) {
-    console.error(
-      `[SMTP] Erreur envoi email à ${to}:`,
-      error?.code || error?.message || error
+    if (error) {
+      console.error(`Erreur envoi email à ${to}:`, error);
+      return;
+    }
+
+    console.log(
+      `Email envoyé à ${to} (template: ${templateName}, id: ${data?.id})`
     );
+  } catch (error: any) {
+    console.error(`Erreur envoi email à ${to}:`, error?.message || error);
   }
 }
-
-// --- Contrôleurs liés à la confirmation d'email ---
 
 export async function sendEmailConfirmation(req: Request, res: Response) {
   try {
