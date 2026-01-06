@@ -3,6 +3,65 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../../composants/Navbar";
 import Footer from "../../composants/Footer";
 
+// Icônes SVG pour remplacer les emojis
+const IconDumbbell = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <img 
+    src="/icon/haltere.png" 
+    alt="Haltères" 
+    className={`${className} flex-shrink-0`}
+    style={{ 
+      objectFit: "contain",
+      filter: "contrast(3) brightness(0.6) drop-shadow(0 0 0.3px currentColor) drop-shadow(0 0 0.3px currentColor) drop-shadow(0 0 0.3px currentColor) drop-shadow(0 0 0.3px currentColor)",
+      WebkitFilter: "contrast(3) brightness(0.6) drop-shadow(0 0 0.3px currentColor) drop-shadow(0 0 0.3px currentColor) drop-shadow(0 0 0.3px currentColor) drop-shadow(0 0 0.3px currentColor)",
+      width: "1.25rem",
+      height: "1.25rem"
+    }}
+  />
+);
+
+const IconMuscle = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+  </svg>
+);
+
+const IconRunning = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+  </svg>
+);
+
+const IconLock = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+  </svg>
+);
+
+const IconCheck = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+  </svg>
+);
+
+const IconRefresh = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  </svg>
+);
+
+const IconStar = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <img 
+    src="/icon/etoile.png" 
+    alt="Étoile" 
+    className={`${className} flex-shrink-0`}
+    style={{ 
+      objectFit: "contain",
+      width: "1.25rem",
+      height: "1.25rem"
+    }}
+  />
+);
+
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState<{ [key: string]: boolean }>({});
@@ -11,6 +70,16 @@ const LandingPage: React.FC = () => {
 
   const handleCTAClick = () => {
     navigate("/plans");
+  };
+
+  const handlePlanClick = (planId: "personnel" | "coach" | "eleve") => {
+    if (planId === "eleve") {
+      // Pour le plan élève, rediriger vers l'inscription
+      navigate("/register?plan=eleve");
+    } else {
+      // Pour les autres plans, rediriger vers la page de paiement
+      navigate(`/payment?plan=${planId}`);
+    }
   };
 
   useEffect(() => {
@@ -144,24 +213,13 @@ const LandingPage: React.FC = () => {
                   {/* Header */}
                   <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center">
-                        <svg
-                          className="w-6 h-6 text-white"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <div className="h-3 w-28 bg-gray-800 rounded mb-1"></div>
-                        <div className="h-2 w-20 bg-gray-300 rounded"></div>
+                      <img 
+                        src="/logo.svg" 
+                        alt="MyTrackLy" 
+                        className="w-10 h-10"
+                      />
+                      <div className="text-lg font-bold text-gray-900">
+                        MyTrackLy
                       </div>
                     </div>
                     <div className="flex space-x-1.5">
@@ -173,36 +231,36 @@ const LandingPage: React.FC = () => {
 
                   {/* Stats Cards */}
                   <div className="grid grid-cols-3 gap-3 mb-6">
-                    <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-xl p-3 border border-indigo-100">
-                      <div className="text-xs text-indigo-600 font-medium mb-1">
+                    <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-xl p-3.5 border border-indigo-100">
+                      <div className="text-[11px] text-indigo-600 font-semibold mb-1.5 uppercase tracking-wide">
                         Séances
                       </div>
-                      <div className="text-2xl font-bold text-indigo-700">
+                      <div className="text-2xl font-bold text-indigo-700 mb-0.5">
                         127
                       </div>
-                      <div className="text-[10px] text-indigo-500 mt-1">
+                      <div className="text-[10px] text-indigo-500 font-medium">
                         +8 ce mois
                       </div>
                     </div>
-                    <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl p-3 border border-purple-100">
-                      <div className="text-xs text-purple-600 font-medium mb-1">
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl p-3.5 border border-purple-100">
+                      <div className="text-[11px] text-purple-600 font-semibold mb-1.5 uppercase tracking-wide">
                         Progression
                       </div>
-                      <div className="text-2xl font-bold text-purple-700">
+                      <div className="text-2xl font-bold text-purple-700 mb-0.5">
                         +12%
                       </div>
-                      <div className="text-[10px] text-purple-500 mt-1">
+                      <div className="text-[10px] text-purple-500 font-medium">
                         vs mois dernier
                       </div>
                     </div>
-                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl p-3 border border-emerald-100">
-                      <div className="text-xs text-emerald-600 font-medium mb-1">
+                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl p-3.5 border border-emerald-100">
+                      <div className="text-[11px] text-emerald-600 font-semibold mb-1.5 uppercase tracking-wide">
                         Objectifs
                       </div>
-                      <div className="text-2xl font-bold text-emerald-700">
+                      <div className="text-2xl font-bold text-emerald-700 mb-0.5">
                         85%
                       </div>
-                      <div className="text-[10px] text-emerald-500 mt-1">
+                      <div className="text-[10px] text-emerald-500 font-medium">
                         atteints
                       </div>
                     </div>
@@ -210,76 +268,43 @@ const LandingPage: React.FC = () => {
 
                   {/* Graph Section */}
                   <div className="mb-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="h-2.5 w-24 bg-gray-200 rounded"></div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-sm font-semibold text-gray-700">Résumé</div>
                       <div className="flex space-x-2">
-                        <div className="w-6 h-6 bg-indigo-100 rounded"></div>
-                        <div className="w-6 h-6 bg-purple-100 rounded"></div>
+                        <div className="w-5 h-5 bg-indigo-100 rounded flex items-center justify-center">
+                          <div className="w-3 h-3 bg-indigo-500 rounded"></div>
+                        </div>
+                        <div className="w-5 h-5 bg-purple-100 rounded flex items-center justify-center">
+                          <div className="w-3 h-3 bg-purple-500 rounded"></div>
+                        </div>
                       </div>
                     </div>
                     {/* Graph bars */}
-                    <div className="flex items-end justify-between h-24 space-x-1.5">
+                    <div className="flex items-end justify-between h-28 space-x-1.5 mb-2">
                       {[65, 72, 58, 80, 75, 88, 92].map((height, i) => (
                         <div
                           key={i}
                           className="flex-1 flex flex-col items-center"
                         >
                           <div
-                            className="w-full rounded-t bg-gradient-to-t from-indigo-500 to-purple-500 mb-1 transition-all hover:opacity-80"
-                            style={{ height: `${height}%` }}
+                            className="w-full rounded-t bg-gradient-to-t from-indigo-500 to-purple-500 mb-1.5 transition-all hover:opacity-80"
+                            style={{ height: `${height}%`, minHeight: "8px" }}
                           ></div>
-                          <div className="text-[9px] text-gray-400 font-medium">
-                            {["L", "M", "M", "J", "V", "S", "D"][i]}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Days labels */}
+                    <div className="flex items-center justify-between">
+                      {["L", "M", "M", "J", "V", "S", "D"].map((day, i) => (
+                        <div key={i} className="flex-1 text-center">
+                          <div className="text-[10px] text-gray-500 font-medium">
+                            {day}
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Recent Activities */}
-                  <div className="space-y-2">
-                    <div className="h-2.5 w-20 bg-gray-200 rounded mb-3"></div>
-                    {[
-                      {
-                        icon: "🏋️",
-                        text: "Squat - 120kg",
-                        time: "Il y a 2h",
-                        colorClass: "bg-indigo-500",
-                      },
-                      {
-                        icon: "💪",
-                        text: "Développé couché - 90kg",
-                        time: "Il y a 5h",
-                        colorClass: "bg-purple-500",
-                      },
-                      {
-                        icon: "🏃",
-                        text: "Course - 5km",
-                        time: "Hier",
-                        colorClass: "bg-emerald-500",
-                      },
-                    ].map((activity, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="text-lg">{activity.icon}</div>
-                        <div className="flex-1">
-                          <div
-                            className="h-2.5 bg-gray-800 rounded mb-1"
-                            style={{ width: `${70 + i * 10}%` }}
-                          ></div>
-                          <div
-                            className="h-2 bg-gray-300 rounded"
-                            style={{ width: "40%" }}
-                          ></div>
-                        </div>
-                        <div
-                          className={`w-2 h-2 rounded-full ${activity.colorClass}`}
-                        ></div>
-                      </div>
-                    ))}
-                  </div>
                 </div>
 
                 {/* Floating elements */}
@@ -485,11 +510,10 @@ const LandingPage: React.FC = () => {
               Avantages
             </span>
             <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-              Pourquoi nos utilisateurs nous font confiance
+              Des résultats mesurables et concrets
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Une solution pensée pour simplifier votre quotidien et amplifier
-              vos résultats
+              Découvrez comment MyTrackLy transforme réellement votre façon de travailler et fait gagner du temps à des centaines de professionnels
             </p>
           </div>
 
@@ -527,11 +551,12 @@ const LandingPage: React.FC = () => {
 
                 <div className="space-y-3">
                   {[
-                    "Carnets papier difficiles à organiser",
-                    "Progression difficile à visualiser",
-                    "Gestion chronophage des données",
-                    "Communication limitée avec les clients",
-                    "Rapports manuels fastidieux",
+                    "Perte de 2-3h/semaine à recopier les données dans Excel",
+                    "Impossible de comparer les performances sur plusieurs mois",
+                    "Risque d'erreur de 15% lors de la saisie manuelle",
+                    "Suivi de max 10 clients avant de perdre le contrôle",
+                    "Rapports mensuels = 4h de travail par client",
+                    "Données perdues en cas de perte du carnet",
                   ].map((item, index) => (
                     <div key={index} className="flex items-start gap-3">
                       <div className="text-gray-400 text-lg mt-0.5">•</div>
@@ -576,14 +601,17 @@ const LandingPage: React.FC = () => {
 
                   <div className="space-y-3">
                     {[
-                      "Interface intuitive et organisée",
-                      "Visualisation claire de vos progrès",
-                      "Centralisation automatique des données",
-                      "Partage facilité avec vos clients",
-                      "Rapports générés automatiquement",
+                      "Saisie en 30 secondes depuis votre smartphone à la salle",
+                      "Graphiques de progression automatiques sur 6-12 mois",
+                      "Synchronisation instantanée, zéro erreur de saisie",
+                      "Gérez jusqu'à 50+ élèves avec le même temps qu'avant",
+                      "Rapports PDF professionnels générés en 1 clic",
+                      "Sauvegarde automatique cloud, accessible partout",
                     ].map((item, index) => (
                       <div key={index} className="flex items-start gap-3">
-                        <div className="text-indigo-600 text-lg mt-0.5">✓</div>
+                        <div className="text-indigo-600 mt-0.5">
+                          <IconCheck className="w-5 h-5" />
+                        </div>
                         <span className="text-gray-700 font-medium">
                           {item}
                         </span>
@@ -605,21 +633,25 @@ const LandingPage: React.FC = () => {
           >
             {[
               {
-                value: "5h",
-                label: "gagnées/semaine",
-                description: "en moyenne",
+                value: "8h",
+                label: "économisées/semaine",
+                description: "pour les coachs avec 20+ clients",
               },
               {
-                value: "3x",
-                label: "plus efficace",
-                description: "qu'un carnet papier",
+                value: "85%",
+                label: "de réduction",
+                description: "du temps de création de rapports",
               },
               {
-                value: "92%",
+                value: "94%",
                 label: "de satisfaction",
-                description: "clients",
+                description: "coachs et athlètes",
               },
-              { value: "24/7", label: "support", description: "disponible" },
+              { 
+                value: "2min", 
+                label: "pour enregistrer", 
+                description: "une séance complète" 
+              },
             ].map((stat, index) => (
               <div
                 key={index}
@@ -721,13 +753,10 @@ const LandingPage: React.FC = () => {
                   {/* Étoiles */}
                   <div className="flex gap-1 mb-6">
                     {[...Array(5)].map((_, i) => (
-                      <svg
-                        key={i}
-                        className="w-5 h-5 text-yellow-400 fill-current"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
+                      <IconStar 
+                        key={i} 
+                        className="w-5 h-5 text-yellow-400 fill-current" 
+                      />
                     ))}
                   </div>
 
@@ -792,27 +821,29 @@ const LandingPage: React.FC = () => {
                   : "opacity-0 translate-y-20"
               }`}
             >
-              <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 h-full hover:shadow-lg transition-all">
+              <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 h-full hover:shadow-lg hover:border-indigo-300 transition-all flex flex-col">
                 <div className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-2">
                   Individuel
                 </div>
                 <div className="mb-6">
-                  <span className="text-5xl font-bold text-gray-900">9€</span>
+                  <span className="text-5xl font-bold text-gray-900">5€</span>
                   <span className="text-gray-600">/mois</span>
                 </div>
                 <p className="text-gray-600 mb-8">
                   Pour les sportifs qui veulent suivre leurs progrès
                 </p>
-                <ul className="space-y-4 mb-8">
+                <ul className="space-y-4 mb-8 flex-grow">
                   {[
-                    "Suivi personnel illimité",
-                    "Tous les exercices",
-                    "Graphiques de progression",
-                    "Support par email",
+                    "Suivi personnel complet de vos séances",
+        "Statistiques et progression détaillées",
+        "Mensurations et historique",
+        "Habitudes et objectifs personnels",
+        "Historique complet de vos séances",
+        "Support par email",
                   ].map((feature, i) => (
                     <li key={i} className="flex items-center gap-3">
                       <svg
-                        className="w-5 h-5 text-indigo-600"
+                        className="w-5 h-5 text-indigo-600 flex-shrink-0"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -829,10 +860,10 @@ const LandingPage: React.FC = () => {
                   ))}
                 </ul>
                 <button
-                  onClick={handleCTAClick}
-                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 py-4 rounded-xl font-semibold transition-all"
+                  onClick={() => handlePlanClick("personnel")}
+                  className="w-full bg-gray-100 hover:bg-indigo-600 hover:text-white text-gray-900 py-4 rounded-xl font-semibold transition-all"
                 >
-                  Commencer
+                  Commencer l'essai gratuit
                 </button>
               </div>
             </div>
@@ -845,35 +876,39 @@ const LandingPage: React.FC = () => {
                   : "opacity-0 translate-y-20"
               }`}
             >
-              <div className="relative">
+              <div className="relative h-full">
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-lg z-10">
                   Recommandé
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl blur-xl opacity-50"></div>
-                <div className="relative bg-white border-2 border-indigo-600 rounded-2xl p-8 shadow-xl">
+                <div className="relative bg-white border-2 border-indigo-600 rounded-2xl p-8 shadow-xl h-full flex flex-col">
                   <div className="text-sm font-semibold text-indigo-600 uppercase tracking-wider mb-2">
                     Coach
                   </div>
                   <div className="mb-6">
                     <span className="text-5xl font-bold text-gray-900">
-                      29€
+                      50€
                     </span>
                     <span className="text-gray-600">/mois</span>
                   </div>
                   <p className="text-gray-600 mb-8">
                     Pour les coachs qui accompagnent leurs clients
                   </p>
-                  <ul className="space-y-4 mb-8">
+                  <ul className="space-y-4 mb-8 flex-grow">
                     {[
-                      "Clients illimités",
-                      "Rapports personnalisés",
-                      "Analyses avancées",
-                      "Support prioritaire",
-                      "Personnalisation complète",
+                       "Toutes les fonctionnalités du plan Personnel",
+                       "Gestion illimitée de vos élèves",
+                       "Visualisation complète des données de vos élèves",
+                       "Création de séances pour vos élèves",
+                       "Messagerie avec tous vos élèves",
+                       "Programmes d'entraînement personnalisés",
+                       "Rappels et notifications par email",
+                       "Statistiques globales de vos élèves",
+                       "Support prioritaire 24/7",
                     ].map((feature, i) => (
-                      <li key={i} className="flex items-center gap-3">
+                      <li key={i} className="flex items-start gap-3">
                         <svg
-                          className="w-5 h-5 text-indigo-600"
+                          className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -892,7 +927,7 @@ const LandingPage: React.FC = () => {
                     ))}
                   </ul>
                   <button
-                    onClick={handleCTAClick}
+                    onClick={() => handlePlanClick("coach")}
                     className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                   >
                     Commencer l'essai gratuit
@@ -901,7 +936,7 @@ const LandingPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Plan Professionnel */}
+            {/* Plan Élève */}
             <div
               className={`transition-all duration-500 delay-200 ${
                 isVisible["pricing"]
@@ -909,28 +944,30 @@ const LandingPage: React.FC = () => {
                   : "opacity-0 translate-y-20"
               } md:col-span-2 lg:col-span-1`}
             >
-              <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 h-full hover:shadow-lg transition-all">
+              <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 h-full hover:shadow-lg hover:border-indigo-300 transition-all flex flex-col">
                 <div className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-2">
-                  Professionnel
+                  Élève
                 </div>
                 <div className="mb-6">
-                  <span className="text-5xl font-bold text-gray-900">79€</span>
+                  <span className="text-5xl font-bold text-gray-900">0€</span>
                   <span className="text-gray-600">/mois</span>
                 </div>
                 <p className="text-gray-600 mb-8">
-                  Pour les structures et équipes sportives
+                  Votre coach paie pour votre accès
                 </p>
-                <ul className="space-y-4 mb-8">
+                <ul className="space-y-4 mb-8 flex-grow">
                   {[
-                    "Tout du plan Coach",
-                    "Plusieurs coachs",
-                    "API et intégrations",
-                    "Support dédié",
-                    "Formation personnalisée",
+                    "Toutes les fonctionnalités du plan Personnel",
+        "Coach assigné pour vous accompagner",
+        "Réservation de séances avec votre coach",
+        "Discussion et messagerie avec le coach",
+        "Accès aux programmes créés par votre coach",
+        "Suivi personnalisé par votre coach",
+        "Support prioritaire",
                   ].map((feature, i) => (
-                    <li key={i} className="flex items-center gap-3">
+                    <li key={i} className="flex items-start gap-3">
                       <svg
-                        className="w-5 h-5 text-indigo-600"
+                        className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -946,8 +983,11 @@ const LandingPage: React.FC = () => {
                     </li>
                   ))}
                 </ul>
-                <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 py-4 rounded-xl font-semibold transition-all">
-                  Nous contacter
+                <button
+                  onClick={() => handlePlanClick("eleve")}
+                  className="w-full bg-gray-100 hover:bg-indigo-600 hover:text-white text-gray-900 py-4 rounded-xl font-semibold transition-all"
+                >
+                  S'inscrire
                 </button>
               </div>
             </div>
@@ -962,18 +1002,24 @@ const LandingPage: React.FC = () => {
             }`}
           >
             {[
-              { icon: "🔒", text: "Paiement sécurisé" },
-              { icon: "✓", text: "14 jours d'essai gratuit" },
-              { icon: "↻", text: "Annulation à tout moment" },
-            ].map((badge, i) => (
+              { icon: "lock", text: "Paiement sécurisé" },
+              { icon: "check", text: "14 jours d'essai gratuit" },
+              { icon: "refresh", text: "Annulation à tout moment" },
+            ].map((badge, i) => {
+              const IconComponent = 
+                badge.icon === "lock" ? IconLock :
+                badge.icon === "check" ? IconCheck :
+                IconRefresh;
+              return (
               <div
                 key={i}
                 className="flex items-center gap-2 text-gray-600 text-sm"
               >
-                <span>{badge.icon}</span>
+                <IconComponent className="w-5 h-5" />
                 <span>{badge.text}</span>
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
       </section>
@@ -1020,145 +1066,6 @@ const LandingPage: React.FC = () => {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section Cas d'Usage - Use Cases */}
-      <section
-        id="use-cases"
-        ref={setSectionRef("use-cases")}
-        className="relative py-24 px-4 sm:px-6 lg:px-8 bg-gray-50"
-      >
-        <div className="max-w-7xl mx-auto">
-          <div
-            className={`text-center mb-16 transition-all duration-1000 ${
-              isVisible["use-cases"]
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-10"
-            }`}
-          >
-            <span className="text-indigo-600 font-semibold text-sm uppercase tracking-wider mb-3 block">
-              Cas d'usage
-            </span>
-            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-              Adapté à tous les profils
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Découvrez comment MyTrackLy s'adapte à vos besoins spécifiques
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Coach personnel",
-                description:
-                  "Gérez plusieurs clients simultanément avec des programmes personnalisés et un suivi détaillé.",
-                icon: "👨‍🏫",
-                features: [
-                  "Tableaux de bord individuels",
-                  "Rapports automatiques",
-                  "Communication facilitée",
-                ],
-              },
-              {
-                title: "Athlète amateur",
-                description:
-                  "Suivez vos performances, atteignez vos objectifs et visualisez votre progression.",
-                icon: "🏃",
-                features: [
-                  "Suivi personnel complet",
-                  "Graphiques de progression",
-                  "Rappels et objectifs",
-                ],
-              },
-              {
-                title: "Salle de sport",
-                description:
-                  "Proposez un service premium à vos membres avec un suivi professionnel.",
-                icon: "🏋️",
-                features: [
-                  "Multi-coachs",
-                  "Branding personnalisé",
-                  "Rapports clients",
-                ],
-              },
-              {
-                title: "Coach en ligne",
-                description:
-                  "Accompagnez vos clients à distance avec des outils de suivi professionnels.",
-                icon: "💻",
-                features: [
-                  "Suivi à distance",
-                  "Vidéos intégrées",
-                  "Messagerie intégrée",
-                ],
-              },
-              {
-                title: "Équipe sportive",
-                description:
-                  "Coordonnez l'entraînement de votre équipe avec des statistiques collectives.",
-                icon: "👥",
-                features: [
-                  "Gestion d'équipe",
-                  "Statistiques comparatives",
-                  "Planification groupée",
-                ],
-              },
-              {
-                title: "Préparateur physique",
-                description:
-                  "Optimisez les performances avec des analyses avancées et des rapports détaillés.",
-                icon: "📊",
-                features: [
-                  "Analyses approfondies",
-                  "Rapports médicaux",
-                  "Historique complet",
-                ],
-              },
-            ].map((useCase, index) => (
-              <div
-                key={index}
-                className={`bg-white rounded-2xl p-8 border border-gray-200 hover:shadow-xl hover:border-indigo-200 transition-all ${
-                  isVisible["use-cases"]
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-20"
-                }`}
-                style={{ transitionDelay: `${index * 100}ms` }}
-              >
-                <div className="text-5xl mb-4">{useCase.icon}</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
-                  {useCase.title}
-                </h3>
-                <p className="text-gray-600 mb-6 leading-relaxed">
-                  {useCase.description}
-                </p>
-                <ul className="space-y-2">
-                  {useCase.features.map((feature, i) => (
-                    <li
-                      key={i}
-                      className="flex items-center gap-2 text-sm text-gray-600"
-                    >
-                      <svg
-                        className="w-4 h-4 text-indigo-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -1240,101 +1147,6 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Section Comparaison - Pourquoi nous choisir */}
-      <section
-        id="comparison"
-        ref={setSectionRef("comparison")}
-        className="relative py-24 px-4 sm:px-6 lg:px-8 bg-gray-50"
-      >
-        <div className="max-w-7xl mx-auto">
-          <div
-            className={`text-center mb-16 transition-all duration-1000 ${
-              isVisible["comparison"]
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-10"
-            }`}
-          >
-            <span className="text-indigo-600 font-semibold text-sm uppercase tracking-wider mb-3 block">
-              Pourquoi MyTrackLy
-            </span>
-            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-              La différence qui compte
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Découvrez ce qui nous distingue des autres solutions
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Interface intuitive",
-                description:
-                  "Une interface pensée pour être utilisée au quotidien, sans formation nécessaire.",
-                icon: "✨",
-                highlight: "Prise en main en 5 minutes",
-              },
-              {
-                title: "Support réactif",
-                description:
-                  "Une équipe à votre écoute pour répondre à vos questions et vous accompagner.",
-                icon: "💬",
-                highlight: "Réponse sous 24h",
-              },
-              {
-                title: "Évolutif",
-                description:
-                  "Une plateforme qui grandit avec vous, de l'athlète amateur au coach professionnel.",
-                icon: "📈",
-                highlight: "S'adapte à vos besoins",
-              },
-              {
-                title: "Innovation continue",
-                description:
-                  "Des mises à jour régulières avec de nouvelles fonctionnalités basées sur vos retours.",
-                icon: "🚀",
-                highlight: "Nouveautés mensuelles",
-              },
-              {
-                title: "Prix transparent",
-                description:
-                  "Un tarif clair, sans frais cachés, avec la possibilité d'essayer gratuitement.",
-                icon: "💰",
-                highlight: "Sans surprise",
-              },
-              {
-                title: "Communauté active",
-                description:
-                  "Rejoignez une communauté de coachs et d'athlètes qui partagent leurs expériences.",
-                icon: "👥",
-                highlight: "15K+ utilisateurs",
-              },
-            ].map((item, index) => (
-              <div
-                key={index}
-                className={`bg-white rounded-2xl p-8 border border-gray-200 hover:shadow-xl hover:border-indigo-200 transition-all text-center ${
-                  isVisible["comparison"]
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-20"
-                }`}
-                style={{ transitionDelay: `${index * 100}ms` }}
-              >
-                <div className="text-5xl mb-4">{item.icon}</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
-                  {item.title}
-                </h3>
-                <p className="text-gray-600 mb-4 leading-relaxed">
-                  {item.description}
-                </p>
-                <div className="inline-block bg-indigo-50 text-indigo-700 px-4 py-1.5 rounded-full text-sm font-semibold">
-                  {item.highlight}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* CTA Final - Design Premium */}
       <section
         id="cta"
@@ -1378,9 +1190,9 @@ const LandingPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="text-white/80 text-sm">
-              ✓ Essai gratuit de 14 jours · Sans carte bancaire · Assistance
-              incluse
+            <div className="text-white/80 text-sm flex items-center gap-2 justify-center">
+              <IconCheck className="w-4 h-4" />
+              <span>Essai gratuit de 14 jours · Sans carte bancaire · Assistance incluse</span>
             </div>
 
             {/* Social proof final */}
