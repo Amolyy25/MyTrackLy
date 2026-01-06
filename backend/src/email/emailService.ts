@@ -35,27 +35,88 @@ function getEmailTemplate(name: string, data: Record<string, string>): string {
   return template;
 }
 
-// Fonction utilitaire interne pour récupérer le transporter
 function getTransporter() {
+  const host = process.env.SMTP_HOST || "erable.o2switch.net";
+  const port = parseInt(process.env.SMTP_PORT || "465");
+  const secure = port === 465;
+
+  console.log(`[SMTP] Connexion à ${host}:${port} (SSL: ${secure})`);
+
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "erable.o2switch.net",
-    port: parseInt(process.env.SMTP_PORT || "465"),
-    secure: true, // SSL (465)
+    host: host,
+    port: port,
+    secure: secure,
     auth: {
       user: process.env.EMAIL_SENDER,
       pass: process.env.EMAIL_PASSWORD,
     },
     tls: {
       rejectUnauthorized: false,
+      ciphers: "SSLv3",
     },
+    connectionTimeout: 60000,
+    greetingTimeout: 60000,
+    socketTimeout: 60000,
+    debug: process.env.NODE_ENV === "development",
+    logger: process.env.NODE_ENV === "development",
   });
 }
 
 // --- Fonctions exportées pour utilisation dans l'app ---
 
-/**
- * Envoie un email générique (utilisé par les contrôleurs)
- */
+async function sendEmailWithRetry(
+  mailOptions: any,
+  maxRetries: number = 3,
+  retryDelay: number = 2000
+): Promise<void> {
+  let lastError: any = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    let transporter: any = null;
+    try {
+      transporter = getTransporter();
+
+      await transporter.sendMail(mailOptions);
+
+      if (transporter.close) {
+        transporter.close();
+      }
+
+      if (attempt > 1) {
+        console.log(`[SMTP] Email envoyé après ${attempt} tentatives`);
+      }
+      return;
+    } catch (error: any) {
+      lastError = error;
+
+      if (transporter && transporter.close) {
+        try {
+          transporter.close();
+        } catch (e) {}
+      }
+
+      const isTimeout =
+        error?.code === "ETIMEDOUT" ||
+        error?.code === "ECONNRESET" ||
+        error?.message?.includes("timeout") ||
+        error?.message?.includes("Connection timeout");
+
+      if (isTimeout && attempt < maxRetries) {
+        console.warn(
+          `[SMTP] Tentative ${attempt}/${maxRetries} échouée (timeout), retry dans ${retryDelay}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+        retryDelay *= 2;
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw lastError;
+}
+
 export async function sendEmail(
   to: string,
   subject: string,
@@ -65,25 +126,26 @@ export async function sendEmail(
   try {
     if (!process.env.EMAIL_SENDER || !process.env.EMAIL_PASSWORD) {
       console.error(
-        "Configuration email manquante (EMAIL_SENDER ou EMAIL_PASSWORD)"
+        "[SMTP] Configuration manquante (EMAIL_SENDER ou EMAIL_PASSWORD)"
       );
       return;
     }
 
     const htmlContent = getEmailTemplate(templateName, templateData);
-    const transporter = getTransporter();
 
-    await transporter.sendMail({
+    await sendEmailWithRetry({
       from: `MyTrackLy <${process.env.EMAIL_SENDER}>`,
       to: to,
       subject: subject,
       html: htmlContent,
     });
 
-    console.log(`Email envoyé à ${to} (template: ${templateName})`);
+    console.log(`[SMTP] Email envoyé à ${to} (template: ${templateName})`);
   } catch (error: any) {
-    console.error(`Erreur envoi email à ${to}:`, error?.message || error);
-    // On ne throw pas l'erreur ici pour ne pas bloquer le flux principal
+    console.error(
+      `[SMTP] Erreur envoi email à ${to}:`,
+      error?.code || error?.message || error
+    );
   }
 }
 
@@ -124,28 +186,15 @@ export async function sendEmailConfirmation(req: Request, res: Response) {
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     const confirmationUrl = `${frontendUrl}/confirm-email?token=${confirmationToken}`;
 
-    // Utilisation directe de la fonction sendEmail interne pour éviter la duplication
-    // Mais ici on veut gérer la réponse HTTP, donc on garde la logique spécifique si besoin
-    // Pour simplifier, on reconstruit juste le contenu et on envoie.
-
-    const htmlContent = getEmailTemplate("emailConfirmation", {
-      name: user.name,
-      confirmationUrl: confirmationUrl,
-    });
-
-    const transporter = getTransporter();
-
-    const info = await transporter.sendMail({
-      from: `MyTrackLy <${process.env.EMAIL_SENDER}>`,
-      to: email,
-      subject: "Confirmez votre email - MyTrackLy",
-      html: htmlContent,
-    });
-
-    if (info.error) {
-      console.error("Erreur nodemailer:", info.error);
-      return res.status(400).json({ message: "Erreur lors de l'envoi" });
-    }
+    await sendEmail(
+      email,
+      "Confirmez votre email - MyTrackLy",
+      "emailConfirmation",
+      {
+        name: user.name,
+        confirmationUrl: confirmationUrl,
+      }
+    );
 
     res.status(200).json({ message: "Email envoyé avec succès" });
   } catch (error) {
