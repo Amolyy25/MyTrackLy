@@ -29,6 +29,8 @@ import Students from "./components/pages/dashboard/coach/Students";
 import Sessions from "./components/pages/dashboard/coach/Sessions";
 import NewTrainingSession from "./components/pages/dashboard/NewTrainingSession";
 import TrainingHistory from "./components/pages/dashboard/TrainingHistory";
+import Measurements from "./components/pages/dashboard/Measurements";
+import MeasurementsCoach from "./components/pages/dashboard/coach/MeasurementsCoach";
 import NotFound from "./components/pages/NotFound";
 
 // Component to redirect to the correct dashboard based on user role
@@ -42,6 +44,18 @@ const DashboardHome = () => {
     return <CoachHome />;
   } else {
     return <Home />;
+  }
+};
+
+// Component to redirect to the correct measurements page based on user role
+const MeasurementsPage = () => {
+  const { user } = useAuth();
+  const userRole = user?.role || "personnel";
+
+  if (userRole === "coach") {
+    return <MeasurementsCoach />;
+  } else {
+    return <Measurements />;
   }
 };
 
@@ -137,8 +151,8 @@ function AppRoutes() {
         <Route path="sessions" element={<Sessions />} />
         <Route path="training/new" element={<NewTrainingSession />} />
         <Route path="training/history" element={<TrainingHistory />} />
+        <Route path="measurements" element={<MeasurementsPage />} />
         {/* Routes non implémentées - affichent la page 404 */}
-        <Route path="measurements" element={<NotFound />} />
         <Route path="habits" element={<NotFound />} />
         <Route path="statistics" element={<NotFound />} />
         <Route path="programs" element={<NotFound />} />

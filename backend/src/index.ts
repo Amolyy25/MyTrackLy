@@ -7,6 +7,7 @@ import trainingRoutes from "./routes/trainingRoutes";
 import exerciseRoute from "./routes/exerciceRoute";
 import invitationRoutes from "./routes/invitationRoutes";
 import studentRoutes from "./routes/studentRoutes";
+import measurementRoutes from "./routes/measurementRoutes";
 
 dotenv.config();
 
@@ -53,6 +54,7 @@ app.use("/api/email", emailRoutes);
 app.use("/api/exercises", exerciseRoute);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/students", studentRoutes);
+app.use("/api/measurements", measurementRoutes);
 app.get("/", (req, res) => {
   res.json({ message: "API fonctionnel" });
 });
