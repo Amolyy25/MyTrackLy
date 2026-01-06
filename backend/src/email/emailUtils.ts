@@ -190,3 +190,126 @@ export async function calculateSimpleStats(userId: string, prisma: any) {
   };
 }
 
+/**
+ * Formate les détails d'une mensuration en HTML pour les emails
+ */
+export function formatMeasurementDetailsHTML(measurement: {
+  bodyWeightKg?: number | null;
+  leftArmCm?: number | null;
+  rightArmCm?: number | null;
+  leftCalfCm?: number | null;
+  rightCalfCm?: number | null;
+  chestCm?: number | null;
+  waistCm?: number | null;
+  hipsCm?: number | null;
+  leftThighCm?: number | null;
+  rightThighCm?: number | null;
+  neckCm?: number | null;
+  shouldersCm?: number | null;
+}): string {
+  const details: Array<{ label: string; value: string }> = [];
+
+  if (measurement.bodyWeightKg) {
+    details.push({ label: "Poids", value: `${measurement.bodyWeightKg} kg` });
+  }
+  if (measurement.chestCm) {
+    details.push({ label: "Poitrine", value: `${measurement.chestCm} cm` });
+  }
+  if (measurement.waistCm) {
+    details.push({ label: "Taille", value: `${measurement.waistCm} cm` });
+  }
+  if (measurement.hipsCm) {
+    details.push({ label: "Hanches", value: `${measurement.hipsCm} cm` });
+  }
+  if (measurement.leftArmCm) {
+    details.push({
+      label: "Biceps gauche",
+      value: `${measurement.leftArmCm} cm`,
+    });
+  }
+  if (measurement.rightArmCm) {
+    details.push({
+      label: "Biceps droit",
+      value: `${measurement.rightArmCm} cm`,
+    });
+  }
+  if (measurement.leftThighCm) {
+    details.push({
+      label: "Cuisse gauche",
+      value: `${measurement.leftThighCm} cm`,
+    });
+  }
+  if (measurement.rightThighCm) {
+    details.push({
+      label: "Cuisse droite",
+      value: `${measurement.rightThighCm} cm`,
+    });
+  }
+  if (measurement.leftCalfCm) {
+    details.push({
+      label: "Mollet gauche",
+      value: `${measurement.leftCalfCm} cm`,
+    });
+  }
+  if (measurement.rightCalfCm) {
+    details.push({
+      label: "Mollet droit",
+      value: `${measurement.rightCalfCm} cm`,
+    });
+  }
+  if (measurement.neckCm) {
+    details.push({ label: "Cou", value: `${measurement.neckCm} cm` });
+  }
+  if (measurement.shouldersCm) {
+    details.push({
+      label: "Épaules",
+      value: `${measurement.shouldersCm} cm`,
+    });
+  }
+
+  if (details.length === 0) {
+    return `
+      <div style="grid-column: 1 / -1; text-align: center; color: #6b7280;">
+        Aucune mesure détaillée enregistrée
+      </div>
+    `;
+  }
+
+  return details
+    .map(
+      (detail) => `
+    <div
+      style="
+        background-color: #ffffff;
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+      "
+    >
+      <p
+        style="
+          margin: 0 0 4px;
+          font-size: 11px;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        "
+      >
+        ${detail.label}
+      </p>
+      <p
+        style="
+          margin: 0;
+          font-size: 20px;
+          font-weight: 700;
+          color: #111827;
+        "
+      >
+        ${detail.value}
+      </p>
+    </div>
+  `
+    )
+    .join("");
+}
+
