@@ -4,6 +4,8 @@ import { useExercises, useMyExercises } from "../../../hooks/useExercises";
 import { useCreateTrainingSession } from "../../../hooks/useTrainingSessions";
 import { useToast } from "../../../contexts/ToastContext";
 import { useAuth } from "../../../contexts/AuthContext";
+import LoadingSpinner from "../../composants/LoadingSpinner";
+import ErrorDisplay from "../../composants/ErrorDisplay";
 
 interface ExerciseForm {
   exerciseId: string;
@@ -583,16 +585,9 @@ const NewTrainingSession: React.FC = () => {
               /* Exercise Library */
               <div className="space-y-4">
                 {exercisesLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
-                    <p className="text-sm text-gray-600">
-                      Chargement des exercices...
-                    </p>
-                  </div>
+                  <LoadingSpinner message="Chargement des exercices..." fullScreen={false} size="sm" />
                 ) : exercisesError ? (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-red-600">{exercisesError}</p>
-                  </div>
+                  <ErrorDisplay error={exercisesError} fullScreen={false} />
                 ) : predefinedExercises.length === 0 &&
                   customExercises.length === 0 ? (
                   <div className="text-center py-8">

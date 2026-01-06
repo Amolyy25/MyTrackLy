@@ -1,6 +1,8 @@
 import React from "react";
 import { useAuth } from "../../../../contexts/AuthContext";
 import { useTrainingStats } from "../../../../hooks/useTrainingSessions";
+import ErrorDisplay from "../../../composants/ErrorDisplay";
+import LoadingSpinner from "../../../composants/LoadingSpinner";
 
 const StudentHome: React.FC = () => {
   const { user } = useAuth();
@@ -10,19 +12,11 @@ const StudentHome: React.FC = () => {
   const hasCoach = user?.coachId;
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen={false} />;
   }
 
   if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-800">Erreur lors du chargement des données</p>
-      </div>
-    );
+    return <ErrorDisplay error={error} fullScreen={false} />;
   }
 
   return (

@@ -7,6 +7,9 @@ import {
   useAddCoachComment,
 } from "../../../../hooks/useTrainingSessions";
 import { TrainingSession } from "../../../../types";
+import ErrorDisplay from "../../../composants/ErrorDisplay";
+import LoadingSpinner from "../../../composants/LoadingSpinner";
+import { calculateTotalVolume, calculateTotalReps } from "../../../../utils/trainingCalculations";
 
 const Sessions: React.FC = () => {
   const { token } = useAuth();
@@ -85,44 +88,12 @@ const Sessions: React.FC = () => {
     }
   };
 
-  const calculateTotalVolume = (session: TrainingSession): number => {
-    return session.exercises.reduce((total, ex) => {
-      const reps = ex.repsUniform
-        ? ex.sets * ex.repsUniform
-        : ex.repsPerSet
-        ? (ex.repsPerSet as number[]).reduce((sum, r) => sum + r, 0)
-        : 0;
-      return total + reps * (ex.weightKg || 0);
-    }, 0);
-  };
-
-  const calculateTotalReps = (session: TrainingSession): number => {
-    return session.exercises.reduce((total, ex) => {
-      return (
-        total +
-        (ex.repsUniform
-          ? ex.sets * ex.repsUniform
-          : ex.repsPerSet
-          ? (ex.repsPerSet as number[]).reduce((sum, r) => sum + r, 0)
-          : 0)
-      );
-    }, 0);
-  };
-
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Chargement des séances...</div>
-      </div>
-    );
+    return <LoadingSpinner message="Chargement des séances..." fullScreen={false} />;
   }
 
   if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-        {error}
-      </div>
-    );
+    return <ErrorDisplay error={error} onRetry={refetch} fullScreen={false} />;
   }
 
   return (

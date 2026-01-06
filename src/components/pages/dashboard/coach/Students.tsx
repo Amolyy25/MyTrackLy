@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../../../contexts/AuthContext";
 import API_URL from "../../../../config/api";
 import { useToast } from "../../../../contexts/ToastContext";
+import ErrorDisplay from "../../../composants/ErrorDisplay";
 
 interface Student {
   id: string;
@@ -147,11 +148,7 @@ const Students: React.FC = () => {
       </div>
 
       {/* Erreur */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          {error}
-        </div>
-      )}
+      {error && <ErrorDisplay error={error} fullScreen={false} />}
 
       {/* Formulaire de création de code */}
       {showCreateCode && (

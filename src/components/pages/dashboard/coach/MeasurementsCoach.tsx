@@ -4,6 +4,8 @@ import API_URL from "../../../../config/api";
 import { useStudentMeasurements } from "../../../../hooks/useMeasurements";
 import MeasurementsChart from "../MeasurementsChart";
 import { Measurement } from "../../../../types";
+import ErrorDisplay from "../../../composants/ErrorDisplay";
+import LoadingSpinner from "../../../composants/LoadingSpinner";
 
 interface Student {
   id: string;
@@ -122,16 +124,9 @@ const MeasurementsCoach: React.FC = () => {
       {selectedStudent && (
         <>
           {measurementsError ? (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-              {measurementsError}
-            </div>
+            <ErrorDisplay error={measurementsError} fullScreen={false} />
           ) : measurementsLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Chargement des mensurations...</p>
-              </div>
-            </div>
+            <LoadingSpinner message="Chargement des mensurations..." fullScreen={false} />
           ) : (
             <>
               {/* Graphique */}
