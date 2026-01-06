@@ -9,6 +9,8 @@ const nodemailer = require("nodemailer");
 
 dotenv.config();
 
+// --- Utilitaires internes ---
+
 function getEmailTemplate(name: string, data: Record<string, string>): string {
   const templatePath = path.resolve(__dirname, "templates", `${name}.html`);
 
@@ -32,6 +34,60 @@ function getEmailTemplate(name: string, data: Record<string, string>): string {
 
   return template;
 }
+
+// Fonction utilitaire interne pour récupérer le transporter
+function getTransporter() {
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || "erable.o2switch.net",
+    port: parseInt(process.env.SMTP_PORT || "465"),
+    secure: true, // SSL (465)
+    auth: {
+      user: process.env.EMAIL_SENDER,
+      pass: process.env.EMAIL_PASSWORD,
+    },
+    tls: {
+      rejectUnauthorized: false,
+    },
+  });
+}
+
+// --- Fonctions exportées pour utilisation dans l'app ---
+
+/**
+ * Envoie un email générique (utilisé par les contrôleurs)
+ */
+export async function sendEmail(
+  to: string,
+  subject: string,
+  templateName: string,
+  templateData: Record<string, string>
+): Promise<void> {
+  try {
+    if (!process.env.EMAIL_SENDER || !process.env.EMAIL_PASSWORD) {
+      console.error(
+        "Configuration email manquante (EMAIL_SENDER ou EMAIL_PASSWORD)"
+      );
+      return;
+    }
+
+    const htmlContent = getEmailTemplate(templateName, templateData);
+    const transporter = getTransporter();
+
+    await transporter.sendMail({
+      from: `MyTrackLy <${process.env.EMAIL_SENDER}>`,
+      to: to,
+      subject: subject,
+      html: htmlContent,
+    });
+
+    console.log(`Email envoyé à ${to} (template: ${templateName})`);
+  } catch (error: any) {
+    console.error(`Erreur envoi email à ${to}:`, error?.message || error);
+    // On ne throw pas l'erreur ici pour ne pas bloquer le flux principal
+  }
+}
+
+// --- Contrôleurs liés à la confirmation d'email ---
 
 export async function sendEmailConfirmation(req: Request, res: Response) {
   try {
@@ -68,24 +124,16 @@ export async function sendEmailConfirmation(req: Request, res: Response) {
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     const confirmationUrl = `${frontendUrl}/confirm-email?token=${confirmationToken}`;
 
+    // Utilisation directe de la fonction sendEmail interne pour éviter la duplication
+    // Mais ici on veut gérer la réponse HTTP, donc on garde la logique spécifique si besoin
+    // Pour simplifier, on reconstruit juste le contenu et on envoie.
+
     const htmlContent = getEmailTemplate("emailConfirmation", {
       name: user.name,
       confirmationUrl: confirmationUrl,
     });
 
-    // Configuration SMTP standard
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "erable.o2switch.net",
-      port: parseInt(process.env.SMTP_PORT || "465"),
-      secure: true, // SSL (465)
-      auth: {
-        user: process.env.EMAIL_SENDER,
-        pass: process.env.EMAIL_PASSWORD,
-      },
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
+    const transporter = getTransporter();
 
     const info = await transporter.sendMail({
       from: `MyTrackLy <${process.env.EMAIL_SENDER}>`,

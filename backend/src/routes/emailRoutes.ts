@@ -1,8 +1,5 @@
 import { Router } from "express";
-import {
-  sendEmailConfirmation,
-  confirmEmail,
-} from "../email/emailConfirmation";
+import { sendEmailConfirmation, confirmEmail } from "../email/emailService";
 
 const router = Router();
 
