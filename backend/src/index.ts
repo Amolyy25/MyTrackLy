@@ -8,6 +8,8 @@ import exerciseRoute from "./routes/exerciceRoute";
 import invitationRoutes from "./routes/invitationRoutes";
 import studentRoutes from "./routes/studentRoutes";
 import measurementRoutes from "./routes/measurementRoutes";
+import calendarRoutes from "./routes/calendarRoutes";
+import availabilityRoutes from "./routes/availabilityRoutes";
 
 dotenv.config();
 
@@ -24,7 +26,7 @@ app.use(
     origin: (origin, callback) => {
       // Autoriser les requêtes sans origin (mobile apps, Postman, etc.)
       if (!origin) return callback(null, true);
-      
+
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
@@ -55,6 +57,8 @@ app.use("/api/exercises", exerciseRoute);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/measurements", measurementRoutes);
+app.use("/api/calendar", calendarRoutes);
+app.use("/api/availability", availabilityRoutes);
 app.get("/", (req, res) => {
   res.json({ message: "API fonctionnel" });
 });

@@ -14,6 +14,7 @@ interface User {
   role: "personnel" | "eleve" | "coach";
   goalType?: string;
   coachId?: string;
+  googleCalendarId?: string | null;
   coach?: {
     id: string;
     name: string;
