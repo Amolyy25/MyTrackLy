@@ -31,6 +31,9 @@ import NewTrainingSession from "./components/pages/dashboard/NewTrainingSession"
 import TrainingHistory from "./components/pages/dashboard/TrainingHistory";
 import Measurements from "./components/pages/dashboard/Measurements";
 import MeasurementsCoach from "./components/pages/dashboard/coach/MeasurementsCoach";
+import StudentReservations from "./components/pages/dashboard/student/Reservations";
+import CoachReservations from "./components/pages/dashboard/coach/Reservations";
+import CoachAvailabilities from "./components/pages/dashboard/coach/Availabilities";
 import NotFound from "./components/pages/NotFound";
 
 // Component to redirect to the correct dashboard based on user role
@@ -57,6 +60,22 @@ const MeasurementsPage = () => {
   } else {
     return <Measurements />;
   }
+};
+
+// Component to redirect to the correct reservations page based on user role
+const ReservationsPage = () => {
+  const { user } = useAuth();
+  const userRole = user?.role || "personnel";
+
+  if (userRole === "coach") {
+    return <CoachReservations />;
+  }
+
+  if (userRole === "eleve") {
+    return <StudentReservations />;
+  }
+
+  return <NotFound />;
 };
 
 // Protected Route Component
@@ -152,13 +171,14 @@ function AppRoutes() {
         <Route path="training/new" element={<NewTrainingSession />} />
         <Route path="training/history" element={<TrainingHistory />} />
         <Route path="measurements" element={<MeasurementsPage />} />
+        <Route path="reservations" element={<ReservationsPage />} />
+        <Route path="availabilities" element={<CoachAvailabilities />} />
         {/* Routes non implémentées - affichent la page 404 */}
         <Route path="habits" element={<NotFound />} />
         <Route path="statistics" element={<NotFound />} />
         <Route path="programs" element={<NotFound />} />
         <Route path="chat" element={<NotFound />} />
         <Route path="messagerie" element={<NotFound />} />
-        <Route path="reservations" element={<NotFound />} />
         {/* 404 pour les routes non définies dans le dashboard */}
         <Route path="*" element={<NotFound />} />
       </Route>

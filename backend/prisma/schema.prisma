@@ -8,25 +8,40 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  passwordHash String    @map("password_hash")
-  role          String    @default("personnel") @map("role") // "personnel" | "eleve" | "coach"
-  name          String    
-  goalType      String?   @map("goal_type")
-  coachId       String?   @map("coach_id") // Pour les élèves, ID du coach
-  coach         User?     @relation("CoachStudents", fields: [coachId], references: [id], onDelete: SetNull)
-  students      User[]    @relation("CoachStudents") // Pour les coaches, liste des élèves
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id                   String               @id @default(uuid())
+  email                String               @unique
+  passwordHash         String               @map("password_hash")
+  role                 String               @default("personnel") @map("role") // "personnel" | "eleve" | "coach"
+  name                 String
+  goalType             String?              @map("goal_type")
+  coachId              String?              @map("coach_id") // Pour les élèves, ID du coach
+  coach                User?                @relation("CoachStudents", fields: [coachId], references: [id], onDelete: SetNull)
+  students             User[]               @relation("CoachStudents") // Pour les coaches, liste des élèves
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
 
-  // Nouvelles relations
-  trainingSessions      TrainingSession[]
-  customExercises       Exercise[]
-  measurements          Measurement[]
-  invitationCodes       InvitationCode[] // Codes d'invitation créés par le coach
-  usedInvitationCodes   InvitationCode[] @relation("UsedInvitationCodes") // Codes utilisés par l'élève
-  passwordResetTokens   PasswordResetToken[] // Tokens de reset de mot de passe
+  // Relations existantes
+  trainingSessions     TrainingSession[]
+  customExercises      Exercise[]
+  measurements         Measurement[]
+  invitationCodes      InvitationCode[]     // Codes d'invitation créés par le coach
+  usedInvitationCodes  InvitationCode[]     @relation("UsedInvitationCodes") // Codes utilisés par l'élève
+  passwordResetTokens  PasswordResetToken[] // Tokens de reset de mot de passe
+
+  // Intégration Google Calendar (pour les coaches)
+  googleCalendarAccessToken  String?  @map("google_calendar_access_token")
+  googleCalendarRefreshToken String?  @map("google_calendar_refresh_token")
+  googleCalendarExpiry       DateTime? @map("google_calendar_expiry")
+  googleCalendarId           String?  @map("google_calendar_id") // ID du calendrier utilisé (primary ou dédié)
+  
+  // Configuration Coach
+  slotDuration               Int      @default(60) @map("slot_duration") // Durée des créneaux en minutes
+  myTrackLyCalendarId        String?  @map("mytrackly_calendar_id") // ID du calendrier dédié "Séances MyTrackLy"
+
+  // Réservations (en tant que coach / élève)
+  coachReservations   Reservation[] @relation("CoachReservations")
+  studentReservations Reservation[] @relation("StudentReservations")
+  availabilities      CoachAvailability[]
 
   @@map("users")
 }
@@ -135,3 +150,61 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
   @@index([userId])
 }
+
+// Réservations de séances (liées au calendrier du coach)
+model Reservation {
+  id          String   @id @default(uuid())
+
+  // Coach qui reçoit la réservation
+  coachId     String   @map("coach_id")
+  coach       User     @relation("CoachReservations", fields: [coachId], references: [id], onDelete: Cascade)
+
+  // Élève qui réserve la séance
+  studentId   String   @map("student_id")
+  student     User     @relation("StudentReservations", fields: [studentId], references: [id], onDelete: Cascade)
+
+  startDateTime DateTime @map("start_datetime")
+  endDateTime   DateTime @map("end_datetime")
+
+  // Type de séance : muscu, yoga, cardio, autre...
+  sessionType String    @map("session_type")
+  notes       String?
+
+  status      String    @default("pending") // "pending" | "confirmed" | "cancelled" | "refused"
+
+  // Lien avec Google Calendar
+  googleEventId String? @map("google_event_id")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("reservations")
+  @@index([coachId])
+  @@index([studentId])
+  @@index([startDateTime, endDateTime])
+}
+
+model CoachAvailability {
+  id        String   @id @default(uuid())
+  coachId   String   @map("coach_id")
+  coach     User     @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  // Jour de la semaine (0 = Dimanche, 1 = Lundi, ..., 6 = Samedi)
+  dayOfWeek Int      @map("day_of_week")
+
+  // Heure de début (format HH:mm, ex: "09:00")
+  startTime String   @map("start_time")
+
+  // Heure de fin (format HH:mm, ex: "12:00")
+  endTime   String   @map("end_time")
+
+  // Si le créneau est actif ou non (pour désactiver temporairement sans supprimer)
+  isActive  Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("coach_availabilities")
+  @@index([coachId])
+}
+

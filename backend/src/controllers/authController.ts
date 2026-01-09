@@ -240,6 +240,7 @@ export async function getMe(req: Request, res: Response) {
         coachId: true,
         createdAt: true,
         updatedAt: true,
+        googleCalendarId: true,
         coach: {
           select: {
             id: true,

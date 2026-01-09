@@ -25,8 +25,22 @@ function getEmailTemplate(name: string, data: Record<string, string>): string {
 
   let template = fs.readFileSync(finalPath, "utf-8");
 
+  // Gérer les conditionnels {{#if key}}...{{/if}}
+  // Supprimer les blocs si la valeur est vide/null/undefined
+  template = template.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, key, content) => {
+    const value = data[key];
+    if (value && value.trim() !== "") {
+      // La valeur existe, garder le contenu et remplacer les variables à l'intérieur
+      return content;
+    }
+    // La valeur est vide, supprimer le bloc
+    return "";
+  });
+
+  // Remplacer les variables simples {{key}} (y compris avec espaces autour)
   Object.keys(data).forEach((key) => {
-    const regex = new RegExp(`{{${key}}}`, "g");
+    // Gérer les espaces optionnels autour de la clé
+    const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, "g");
     template = template.replace(regex, data[key]);
   });
 
