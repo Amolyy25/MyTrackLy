@@ -70,7 +70,7 @@ const MeasurementsCoach: React.FC = () => {
 
   if (students.length === 0) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 px-4 lg:px-8 py-6 max-w-[1600px] mx-auto">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
             Mensurations des élèves
