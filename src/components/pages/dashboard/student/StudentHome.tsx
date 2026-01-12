@@ -1,269 +1,193 @@
 import React from "react";
 import { useAuth } from "../../../../contexts/AuthContext";
-import { useTrainingStats } from "../../../../hooks/useTrainingSessions";
-import ErrorDisplay from "../../../composants/ErrorDisplay";
+import {
+  useTrainingStats,
+  useTrainingSessions,
+} from "../../../../hooks/useTrainingSessions";
+import { useMeasurements } from "../../../../hooks/useMeasurements";
 import LoadingSpinner from "../../../composants/LoadingSpinner";
+import ErrorDisplay from "../../../composants/ErrorDisplay";
+
+// New Dashboard Components
+import { HeroSection } from "../../dashboard-new/hero-section";
+import { StatsCards } from "../../dashboard-new/stats-cards";
+import {
+  RecentActivity,
+  ActivitySession,
+} from "../../dashboard-new/recent-activity";
+import {
+  Measurements,
+  WeightPoint,
+  MeasurementItem,
+} from "../../dashboard-new/measurements";
+import { Ruler } from "lucide-react";
 
 const StudentHome: React.FC = () => {
   const { user } = useAuth();
-  const { stats, isLoading, error } = useTrainingStats();
+  const {
+    stats,
+    isLoading: isLoadingStats,
+    error: errorStats,
+  } = useTrainingStats();
+  const {
+    sessions,
+    isLoading: isLoadingSessions,
+    error: errorSessions,
+  } = useTrainingSessions({});
+  const {
+    measurements: measurementsData,
+    isLoading: isLoadingMeasurements,
+    error: errorMeasurements,
+  } = useMeasurements();
 
-  // Vérifier que l'utilisateur a un coach
-  const hasCoach = user?.coachId;
-
-  if (isLoading) {
-    return <LoadingSpinner fullScreen={false} />;
+  // Loading state
+  if (isLoadingStats || isLoadingSessions || isLoadingMeasurements) {
+    return <LoadingSpinner />;
   }
 
-  if (error) {
-    return <ErrorDisplay error={error} fullScreen={false} />;
+  // Error state
+  if (errorStats || errorSessions || errorMeasurements) {
+    return (
+      <ErrorDisplay
+        error={
+          errorStats ||
+          errorSessions ||
+          errorMeasurements ||
+          "Une erreur est survenue"
+        }
+      />
+    );
+  }
+
+  // --- Data Transformation ---
+
+  // 1. Stats Cards Data
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+
+  const sessionsThisMonth = sessions.filter((s) => {
+    const d = new Date(s.date);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  }).length;
+
+  const totalVolumeStr = stats?.totalVolume
+    ? stats.totalVolume > 1000
+      ? `${(stats.totalVolume / 1000).toFixed(1)}T`
+      : `${stats.totalVolume.toFixed(0)}kg`
+    : "0kg";
+
+  // Calculer l'activité de la semaine
+  const today = new Date();
+  const weekActivity = Array(7).fill(false);
+
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (6 - i));
+    const dateStr = date.toISOString().split("T")[0];
+
+    weekActivity[i] = sessions.some((s) => {
+      const sessionDate = new Date(s.date).toISOString().split("T")[0];
+      return sessionDate === dateStr;
+    });
+  }
+
+  const statsData = {
+    sessionsThisMonth,
+    totalVolume: totalVolumeStr,
+    streakDays: stats?.currentStreak || 0,
+    weekActivity,
+  };
+
+  // 2. Recent Activity Data
+  const recentSessionsData: ActivitySession[] = sessions
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5)
+    .map((session) => {
+      let sessionVolume = 0;
+      session.exercises.forEach((ex) => {
+        const weight = ex.weightKg || 0;
+        const sets = ex.sets || 0;
+        const reps =
+          ex.repsUniform ||
+          (ex.repsPerSet && sets > 0
+            ? ex.repsPerSet.reduce((a, b) => a + b, 0) / sets
+            : 0);
+        sessionVolume += weight * sets * reps;
+      });
+
+      return {
+        id: session.id,
+        date: new Date(session.date).toLocaleString("fr-FR", {
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        name: session.notes || "Séance d'entraînement",
+        exercises: session.exercises.length,
+        duration: session.durationMinutes
+          ? `${session.durationMinutes} min`
+          : "-",
+        volume: `${sessionVolume.toFixed(0)} kg`,
+        status: "completed" as const,
+        type: "training" as const,
+      };
+    });
+
+  // 3. Measurements Data
+  const sortedMeasurements = [...measurementsData].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
+  const weightDataPoints: WeightPoint[] = sortedMeasurements
+    .filter((m) => m.bodyWeightKg)
+    .slice(0, 7)
+    .reverse()
+    .map((m) => ({
+      day: new Date(m.date).toLocaleDateString("fr-FR", { day: "numeric" }),
+      weight: m.bodyWeightKg || 0,
+    }));
+
+  const latestMeasurement = sortedMeasurements[0];
+  const currentWeight = latestMeasurement?.bodyWeightKg || 0;
+  const previousWeight = sortedMeasurements[1]?.bodyWeightKg || currentWeight;
+  const weightChange = parseFloat((currentWeight - previousWeight).toFixed(1));
+
+  const measurementItems: MeasurementItem[] = [];
+  if (latestMeasurement) {
+    if (latestMeasurement.waistCm) {
+      measurementItems.push({
+        label: "Tour de taille",
+        value: `${latestMeasurement.waistCm} cm`,
+        change: "0 cm",
+        positive: true,
+        icon: Ruler,
+      });
+    }
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">
-          Bienvenue, {user?.name} !
-        </h1>
-        <p className="mt-2 text-gray-600">
-          Tableau de bord élève - Suivi avec votre coach
-        </p>
-      </div>
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <HeroSection
+        userName={user?.name || "Élève"}
+        sessionsThisMonth={sessionsThisMonth}
+        role="eleve"
+      />
 
-      {/* Message si pas de coach */}
-      {!hasCoach && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <div className="flex items-start">
-            <svg
-              className="w-6 h-6 text-yellow-600 mt-0.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            <div className="ml-3">
-              <h3 className="text-lg font-semibold text-yellow-800">
-                Aucun coach assigné
-              </h3>
-              <p className="mt-1 text-sm text-yellow-700">
-                Vous devez être lié à un coach pour accéder à toutes les
-                fonctionnalités. Contactez votre coach pour obtenir un code
-                d'invitation.
-              </p>
-            </div>
-          </div>
+      <StatsCards stats={statsData} role="eleve" />
+
+      <div className="grid gap-6 lg:grid-cols-3 px-4 lg:px-8">
+        <div className="lg:col-span-2">
+          <RecentActivity sessions={recentSessionsData} role="eleve" />
         </div>
-      )}
-
-      {/* Informations du coach */}
-      {hasCoach && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Mon coach
-          </h2>
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
-              <span className="text-indigo-600 font-semibold text-xl">
-                {user?.coach?.name?.charAt(0).toUpperCase() || "C"}
-              </span>
-            </div>
-            <div>
-              <p className="text-lg font-medium text-gray-900">
-                {user?.coach?.name || "Coach"}
-              </p>
-              <p className="text-sm text-gray-600">
-                {user?.coach?.email || "Email non disponible"}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Statistiques */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Séances totales
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {stats.totalSessions}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-indigo-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Série actuelle
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {stats.currentStreak}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-green-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Fréquence hebdo
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {stats.weeklyFrequency}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-purple-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Volume total
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {(stats.totalVolume / 1000).toFixed(1)}T
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-orange-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Dernière séance */}
-      {stats?.lastSession && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Dernière séance
-          </h2>
-          <div className="space-y-2">
-            <p className="text-gray-600">
-              <span className="font-medium">Date :</span>{" "}
-              {new Date(stats.lastSession.date).toLocaleDateString("fr-FR", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </p>
-            <p className="text-gray-600">
-              <span className="font-medium">Exercices :</span>{" "}
-              {stats.lastSession.exercises.length}
-            </p>
-            {stats.lastSession.durationMinutes && (
-              <p className="text-gray-600">
-                <span className="font-medium">Durée :</span>{" "}
-                {stats.lastSession.durationMinutes} minutes
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Autres sections à venir */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Discussion
-          </h2>
-          <p className="text-gray-600 text-sm">
-            Échangez avec votre coach
-          </p>
-          <p className="text-gray-400 text-xs mt-2">À venir...</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Programmes
-          </h2>
-          <p className="text-gray-600 text-sm">
-            Accédez aux programmes créés par votre coach
-          </p>
-          <p className="text-gray-400 text-xs mt-2">À venir...</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Mes séances
-          </h2>
-          <p className="text-gray-600 text-sm">
-            Consultez toutes vos séances
-          </p>
-          <p className="text-gray-400 text-xs mt-2">À venir...</p>
+        <div>
+          <Measurements
+            weightData={weightDataPoints}
+            measurements={measurementItems}
+            currentWeight={currentWeight}
+            weightChange={weightChange}
+            role="eleve"
+          />
         </div>
       </div>
     </div>
@@ -271,7 +195,3 @@ const StudentHome: React.FC = () => {
 };
 
 export default StudentHome;
-
-
-
-

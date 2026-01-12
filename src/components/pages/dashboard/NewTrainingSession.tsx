@@ -1,11 +1,32 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useExercises, useMyExercises } from "../../../hooks/useExercises";
+import { useExercises } from "../../../hooks/useExercises";
 import { useCreateTrainingSession } from "../../../hooks/useTrainingSessions";
 import { useToast } from "../../../contexts/ToastContext";
 import { useAuth } from "../../../contexts/AuthContext";
 import LoadingSpinner from "../../composants/LoadingSpinner";
 import ErrorDisplay from "../../composants/ErrorDisplay";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
+import {
+  Plus,
+  X,
+  Trash2,
+  Calendar,
+  Clock,
+  MessageSquare,
+  Dumbbell,
+  Weight,
+  Timer,
+  Hash,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  Library,
+  Save,
+  BarChart3,
+  Target,
+} from "lucide-react";
 
 interface ExerciseForm {
   exerciseId: string;
@@ -17,6 +38,7 @@ interface ExerciseForm {
   weightKg: number;
   restSeconds: number;
   notes: string;
+  isExpanded: boolean;
 }
 
 const NewTrainingSession: React.FC = () => {
@@ -30,27 +52,30 @@ const NewTrainingSession: React.FC = () => {
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [customExerciseName, setCustomExerciseName] = useState("");
   const [showCustomForm, setShowCustomForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Récupérer les exercices depuis l'API
   const {
     exercises: exerciseLibrary,
     isLoading: exercisesLoading,
     error: exercisesError,
   } = useExercises();
-  const {
-    exercises: myExercises,
-    isLoading: myExercisesLoading,
-    error: myExercisesError,
-  } = useMyExercises();
+
   const {
     createSession,
     isLoading,
     error: createError,
   } = useCreateTrainingSession();
 
-  // Séparer les exercices prédéfinis et les exercices custom
   const predefinedExercises = exerciseLibrary.filter((ex) => !ex.isCustom);
   const customExercises = exerciseLibrary.filter((ex) => ex.isCustom);
+
+  // Filtrer les exercices par recherche
+  const filteredPredefined = predefinedExercises.filter((ex) =>
+    ex.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const filteredCustom = customExercises.filter((ex) =>
+    ex.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const addExercise = (exercise: { id: string; name: string }) => {
     const newExercise: ExerciseForm = {
@@ -58,31 +83,32 @@ const NewTrainingSession: React.FC = () => {
       exerciseName: exercise.name,
       sets: 3,
       repsType: "uniform",
-      repsUniform: 8,
-      repsPerSet: [8, 8, 8],
+      repsUniform: 10,
+      repsPerSet: [10, 10, 10],
       weightKg: 0,
       restSeconds: 90,
       notes: "",
+      isExpanded: true,
     };
     setExercises([...exercises, newExercise]);
     setShowExerciseSelector(false);
+    setSearchTerm("");
   };
 
   const addCustomExercise = () => {
-    if (!customExerciseName.trim()) {
-      return;
-    }
+    if (!customExerciseName.trim()) return;
 
     const newExercise: ExerciseForm = {
-      exerciseId: `custom-${Date.now()}`, // ID temporaire pour les exercices custom
+      exerciseId: `custom-${Date.now()}`,
       exerciseName: customExerciseName.trim(),
       sets: 3,
       repsType: "uniform",
-      repsUniform: 8,
-      repsPerSet: [8, 8, 8],
+      repsUniform: 10,
+      repsPerSet: [10, 10, 10],
       weightKg: 0,
       restSeconds: 90,
       notes: "",
+      isExpanded: true,
     };
     setExercises([...exercises, newExercise]);
     setCustomExerciseName("");
@@ -94,13 +120,18 @@ const NewTrainingSession: React.FC = () => {
     setExercises(exercises.filter((_, i) => i !== index));
   };
 
+  const toggleExerciseExpanded = (index: number) => {
+    const updated = [...exercises];
+    updated[index].isExpanded = !updated[index].isExpanded;
+    setExercises(updated);
+  };
+
   const updateExercise = (index: number, field: string, value: any) => {
     const updatedExercises = [...exercises];
     const exercise = { ...updatedExercises[index] };
 
     if (field === "sets") {
       exercise.sets = parseInt(value) || 0;
-      // Ajuster repsPerSet si mode variable
       if (exercise.repsType === "variable") {
         const newLength = exercise.sets;
         const currentLength = exercise.repsPerSet.length;
@@ -154,8 +185,7 @@ const NewTrainingSession: React.FC = () => {
   };
 
   const calculateVolume = (exercise: ExerciseForm): number => {
-    const totalReps = calculateTotalReps(exercise);
-    return totalReps * exercise.weightKg;
+    return calculateTotalReps(exercise) * exercise.weightKg;
   };
 
   const calculateTotalVolume = (): number => {
@@ -172,11 +202,10 @@ const NewTrainingSession: React.FC = () => {
         notes,
         exercises: exercises.map((ex, index) => ({
           exerciseId: ex.exerciseId,
-          // Pour les exercices custom, envoyer les informations nécessaires
           ...(ex.exerciseId?.startsWith("custom-") && {
             exerciseName: ex.exerciseName,
-            exerciseCategory: "other", // Par défaut, peut être amélioré plus tard
-            exerciseDefaultUnit: "reps", // Par défaut, peut être amélioré plus tard
+            exerciseCategory: "other",
+            exerciseDefaultUnit: "reps",
           }),
           sets: ex.sets,
           repsUniform: ex.repsType === "uniform" ? ex.repsUniform : undefined,
@@ -189,19 +218,7 @@ const NewTrainingSession: React.FC = () => {
       };
 
       await createSession(sessionData);
-      
-      // Afficher notification selon le rôle
-      const roleMessages = {
-        personnel: "Séance d'entraînement enregistrée avec succès !",
-        eleve: "Séance d'entraînement enregistrée avec succès !",
-        coach: "Séance d'entraînement enregistrée avec succès !",
-      };
-      showToast(
-        roleMessages[user?.role as keyof typeof roleMessages] || "Séance enregistrée avec succès !",
-        "success"
-      );
-      
-      // Rediriger vers le dashboard
+      showToast("Séance enregistrée avec succès ! 💪", "success");
       navigate("/dashboard");
     } catch (error) {
       console.error("Error creating session:", error);
@@ -210,359 +227,396 @@ const NewTrainingSession: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto px-4 lg:px-8 py-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Nouvelle séance d'entraînement
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10">
+              <Dumbbell className="h-6 w-6 text-primary" />
+            </div>
+            Nouvelle séance
           </h1>
-          <p className="mt-1 text-gray-600">
-            Ajoutez vos exercices et enregistrez votre séance
+          <p className="mt-2 text-muted-foreground">
+            Créez votre séance d'entraînement personnalisée
           </p>
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => navigate("/dashboard")}
-          className="text-gray-600 hover:text-gray-900"
+          className="text-muted-foreground hover:text-foreground"
         >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
+          <X className="h-5 w-5" />
+        </Button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Session Info Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Informations générales
-          </h2>
+        <Card className="border-border bg-card">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              Informations générales
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Date
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    max={new Date().toISOString().split("T")[0]}
+                    className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground transition-colors"
+                    required
+                  />
+                </div>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date
-              </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                required
-              />
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Durée estimée
+                </label>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="number"
+                    value={durationMinutes}
+                    onChange={(e) =>
+                      setDurationMinutes(parseInt(e.target.value))
+                    }
+                    className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground transition-colors"
+                    min="1"
+                    required
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    min
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Durée (minutes)
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Notes (optionnel)
               </label>
-              <input
-                type="number"
-                value={durationMinutes}
-                onChange={(e) => setDurationMinutes(parseInt(e.target.value))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                min="1"
-                required
-              />
+              <div className="relative">
+                <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground transition-colors resize-none"
+                  rows={2}
+                  placeholder="Objectif de la séance, sensations..."
+                />
+              </div>
             </div>
-          </div>
-
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes (optionnel)
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              rows={3}
-              placeholder="Commentaires sur la séance..."
-            />
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Exercises List */}
         <div className="space-y-4">
           {exercises.map((exercise, index) => (
-            <div
+            <Card
               key={index}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+              className="border-border bg-card overflow-hidden"
+              style={{ animationDelay: `${index * 50}ms` }}
             >
               {/* Exercise Header */}
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {exercise.exerciseName}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => removeExercise(index)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+              <div
+                className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors"
+                onClick={() => toggleExerciseExpanded(index)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                    {index + 1}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">
+                      {exercise.exerciseName}
+                    </h3>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                      <span>{exercise.sets} séries</span>
+                      <span>•</span>
+                      <span>
+                        {exercise.repsType === "uniform"
+                          ? `${exercise.repsUniform} reps`
+                          : "Reps variables"}
+                      </span>
+                      {exercise.weightKg > 0 && (
+                        <>
+                          <span>•</span>
+                          <span className="text-chart-2 font-medium">
+                            {exercise.weightKg} kg
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeExercise(index);
+                    }}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Exercise Details */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nombre de séries
-                  </label>
-                  <input
-                    type="number"
-                    value={exercise.sets}
-                    onChange={(e) =>
-                      updateExercise(index, "sets", e.target.value)
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    min="1"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Poids (kg)
-                  </label>
-                  <input
-                    type="number"
-                    value={exercise.weightKg}
-                    onChange={(e) =>
-                      updateExercise(index, "weightKg", e.target.value)
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    min="0"
-                    step="0.5"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Repos (secondes)
-                  </label>
-                  <input
-                    type="number"
-                    value={exercise.restSeconds}
-                    onChange={(e) =>
-                      updateExercise(index, "restSeconds", e.target.value)
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    min="0"
-                    step="15"
-                  />
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                  {exercise.isExpanded ? (
+                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  )}
                 </div>
               </div>
 
-              {/* Reps Type Selection */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Type de répétitions
-                </label>
-                <div className="flex gap-4">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name={`repsType-${index}`}
-                      value="uniform"
-                      checked={exercise.repsType === "uniform"}
-                      onChange={(e) =>
-                        updateExercise(index, "repsType", e.target.value)
-                      }
-                      className="mr-2 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Uniformes (toutes les séries identiques)
-                    </span>
-                  </label>
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name={`repsType-${index}`}
-                      value="variable"
-                      checked={exercise.repsType === "variable"}
-                      onChange={(e) =>
-                        updateExercise(index, "repsType", e.target.value)
-                      }
-                      className="mr-2 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Variables (chaque série différente)
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Reps Input */}
-              {exercise.repsType === "uniform" ? (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Répétitions par série
-                  </label>
-                  <input
-                    type="number"
-                    value={exercise.repsUniform}
-                    onChange={(e) =>
-                      updateExercise(index, "repsUniform", e.target.value)
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    min="1"
-                  />
-                </div>
-              ) : (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Répétitions par série
-                  </label>
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-                    {exercise.repsPerSet.map((reps, setIndex) => (
-                      <div key={setIndex}>
-                        <label className="block text-xs text-gray-600 mb-1">
-                          Série {setIndex + 1}
-                        </label>
+              {/* Exercise Details (Expandable) */}
+              {exercise.isExpanded && (
+                <CardContent className="border-t border-border pt-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                  {/* Main inputs */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                        Séries
+                      </label>
+                      <div className="relative">
+                        <Hash className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                         <input
                           type="number"
-                          value={reps}
+                          value={exercise.sets}
                           onChange={(e) =>
-                            updateRepsPerSet(index, setIndex, e.target.value)
+                            updateExercise(index, "sets", e.target.value)
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          className="w-full pl-8 pr-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground text-sm"
                           min="1"
                         />
                       </div>
-                    ))}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                        Poids
+                      </label>
+                      <div className="relative">
+                        <Weight className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <input
+                          type="number"
+                          value={exercise.weightKg}
+                          onChange={(e) =>
+                            updateExercise(index, "weightKg", e.target.value)
+                          }
+                          className="w-full pl-8 pr-8 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground text-sm"
+                          min="0"
+                          step="0.5"
+                        />
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                          kg
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                        Repos
+                      </label>
+                      <div className="relative">
+                        <Timer className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <input
+                          type="number"
+                          value={exercise.restSeconds}
+                          onChange={(e) =>
+                            updateExercise(index, "restSeconds", e.target.value)
+                          }
+                          className="w-full pl-8 pr-6 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground text-sm"
+                          min="0"
+                          step="15"
+                        />
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                          s
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+
+                  {/* Reps Type Toggle */}
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-2">
+                      Répétitions
+                    </label>
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateExercise(index, "repsType", "uniform")
+                        }
+                        className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                          exercise.repsType === "uniform"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        }`}
+                      >
+                        Uniformes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateExercise(index, "repsType", "variable")
+                        }
+                        className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                          exercise.repsType === "variable"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        }`}
+                      >
+                        Variables
+                      </button>
+                    </div>
+
+                    {exercise.repsType === "uniform" ? (
+                      <input
+                        type="number"
+                        value={exercise.repsUniform}
+                        onChange={(e) =>
+                          updateExercise(index, "repsUniform", e.target.value)
+                        }
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground text-sm"
+                        min="1"
+                        placeholder="Répétitions par série"
+                      />
+                    ) : (
+                      <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                        {exercise.repsPerSet.map((reps, setIndex) => (
+                          <div key={setIndex}>
+                            <label className="block text-[10px] text-muted-foreground mb-1 text-center">
+                              S{setIndex + 1}
+                            </label>
+                            <input
+                              type="number"
+                              value={reps}
+                              onChange={(e) =>
+                                updateRepsPerSet(index, setIndex, e.target.value)
+                              }
+                              className="w-full px-2 py-1.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground text-sm text-center"
+                              min="1"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Exercise Notes */}
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                      Notes (optionnel)
+                    </label>
+                    <input
+                      type="text"
+                      value={exercise.notes}
+                      onChange={(e) =>
+                        updateExercise(index, "notes", e.target.value)
+                      }
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground text-sm"
+                      placeholder="Sensations, difficultés..."
+                    />
+                  </div>
+
+                  {/* Exercise Summary */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50 border border-border">
+                    <div className="flex items-center gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Reps: </span>
+                        <span className="font-semibold text-foreground">
+                          {calculateTotalReps(exercise)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Volume: </span>
+                        <span className="font-semibold text-chart-2">
+                          {calculateVolume(exercise).toFixed(0)} kg
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
               )}
-
-              {/* Exercise Notes */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes (optionnel)
-                </label>
-                <input
-                  type="text"
-                  value={exercise.notes}
-                  onChange={(e) =>
-                    updateExercise(index, "notes", e.target.value)
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Ex: Sensation de force, difficultés..."
-                />
-              </div>
-
-              {/* Exercise Summary */}
-              <div className="bg-indigo-50 rounded-lg p-4">
-                <div className="flex items-center justify-between text-sm">
-                  <div>
-                    <span className="text-gray-600">Reps totales :</span>
-                    <span className="ml-2 font-semibold text-gray-900">
-                      {calculateTotalReps(exercise)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Volume :</span>
-                    <span className="ml-2 font-semibold text-indigo-600">
-                      {calculateVolume(exercise).toFixed(0)} kg
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            </Card>
           ))}
         </div>
 
-        {/* Add Exercise Button */}
+        {/* Add Exercise Section */}
         {showExerciseSelector ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Ajouter un exercice
-              </h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowExerciseSelector(false);
-                  setShowCustomForm(false);
-                  setCustomExerciseName("");
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+          <Card className="border-border bg-card animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Plus className="h-5 w-5 text-primary" />
+                  Ajouter un exercice
+                </CardTitle>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setShowExerciseSelector(false);
+                    setShowCustomForm(false);
+                    setCustomExerciseName("");
+                    setSearchTerm("");
+                  }}
+                  className="h-8 w-8 text-muted-foreground"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Tabs */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCustomForm(false)}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
+                    !showCustomForm
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  <Library className="h-4 w-4" />
+                  Bibliothèque
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCustomForm(true)}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
+                    showCustomForm
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Personnalisé
+                </button>
+              </div>
 
-            {/* Toggle between list and custom form */}
-            <div className="flex gap-2 mb-4">
-              <button
-                type="button"
-                onClick={() => setShowCustomForm(false)}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  !showCustomForm
-                    ? "bg-indigo-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Bibliothèque
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCustomForm(true)}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  showCustomForm
-                    ? "bg-indigo-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Créer un exercice
-              </button>
-            </div>
-
-            {showCustomForm ? (
-              /* Custom Exercise Form */
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nom de l'exercice personnalisé
-                  </label>
+              {showCustomForm ? (
+                <div className="space-y-3">
                   <input
                     type="text"
                     value={customExerciseName}
                     onChange={(e) => setCustomExerciseName(e.target.value)}
-                    placeholder="Ex: Squat bulgare, Curl marteau..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Nom de l'exercice..."
+                    className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground"
                     autoFocus
                     onKeyPress={(e) => {
                       if (e.key === "Enter") {
@@ -571,192 +625,189 @@ const NewTrainingSession: React.FC = () => {
                       }
                     }}
                   />
+                  <Button
+                    type="button"
+                    onClick={addCustomExercise}
+                    disabled={!customExerciseName.trim()}
+                    className="w-full gap-2 bg-gradient-to-r from-primary to-primary/80"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Ajouter
+                  </Button>
                 </div>
-                <button
-                  type="button"
-                  onClick={addCustomExercise}
-                  disabled={!customExerciseName.trim()}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Ajouter l'exercice
-                </button>
-              </div>
-            ) : (
-              /* Exercise Library */
-              <div className="space-y-4">
-                {exercisesLoading ? (
-                  <LoadingSpinner message="Chargement des exercices..." fullScreen={false} size="sm" />
-                ) : exercisesError ? (
-                  <ErrorDisplay error={exercisesError} fullScreen={false} />
-                ) : predefinedExercises.length === 0 &&
-                  customExercises.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-gray-600">
-                      Aucun exercice disponible. Créez-en un personnalisé !
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Bibliothèque (exercices prédéfinis) */}
-                    {predefinedExercises.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                          Bibliothèque
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-                          {predefinedExercises.map((ex) => (
-                            <button
-                              key={ex.id}
-                              type="button"
-                              onClick={() =>
-                                addExercise({ id: ex.id, name: ex.name })
-                              }
-                              className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-left transition-colors"
-                            >
-                              <span className="font-medium text-gray-900">
-                                {ex.name}
-                              </span>
-                              <svg
-                                className="w-5 h-5 text-indigo-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M12 4v16m8-8H4"
-                                />
-                              </svg>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+              ) : (
+                <div className="space-y-4">
+                  {/* Search */}
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Rechercher un exercice..."
+                    className="w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground"
+                  />
 
-                    {/* Ma bibliothèque (exercices custom) */}
-                    {customExercises.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-semibold text-indigo-700 mb-2">
-                          Ma bibliothèque
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-                          {customExercises.map((ex) => (
-                            <button
-                              key={ex.id}
-                              type="button"
-                              onClick={() =>
-                                addExercise({ id: ex.id, name: ex.name })
-                              }
-                              className="flex items-center justify-between p-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg text-left transition-colors"
-                            >
-                              <span className="font-medium text-gray-900">
-                                {ex.name}
-                              </span>
-                              <svg
-                                className="w-5 h-5 text-indigo-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                  {exercisesLoading ? (
+                    <LoadingSpinner
+                      message="Chargement..."
+                      fullScreen={false}
+                      size="sm"
+                    />
+                  ) : exercisesError ? (
+                    <ErrorDisplay error={exercisesError} fullScreen={false} />
+                  ) : filteredPredefined.length === 0 &&
+                    filteredCustom.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Aucun exercice trouvé
+                    </div>
+                  ) : (
+                    <div className="space-y-4 max-h-64 overflow-y-auto">
+                      {filteredCustom.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">
+                            Mes exercices
+                          </h4>
+                          <div className="grid grid-cols-1 gap-1.5">
+                            {filteredCustom.map((ex) => (
+                              <button
+                                key={ex.id}
+                                type="button"
+                                onClick={() =>
+                                  addExercise({ id: ex.id, name: ex.name })
+                                }
+                                className="flex items-center justify-between p-3 bg-primary/5 hover:bg-primary/10 border border-primary/20 rounded-lg text-left transition-colors group"
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M12 4v16m8-8H4"
-                                />
-                              </svg>
-                            </button>
-                          ))}
+                                <span className="font-medium text-foreground">
+                                  {ex.name}
+                                </span>
+                                <Plus className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+                      )}
+
+                      {filteredPredefined.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                            Bibliothèque
+                          </h4>
+                          <div className="grid grid-cols-1 gap-1.5">
+                            {filteredPredefined.map((ex) => (
+                              <button
+                                key={ex.id}
+                                type="button"
+                                onClick={() =>
+                                  addExercise({ id: ex.id, name: ex.name })
+                                }
+                                className="flex items-center justify-between p-3 bg-muted/50 hover:bg-muted rounded-lg text-left transition-colors group"
+                              >
+                                <span className="font-medium text-foreground">
+                                  {ex.name}
+                                </span>
+                                <Plus className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         ) : (
           <button
             type="button"
             onClick={() => setShowExerciseSelector(true)}
-            className="w-full bg-white border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-indigo-500 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2 text-gray-600 hover:text-indigo-600"
+            className="w-full border-2 border-dashed border-border rounded-xl p-6 hover:border-primary/50 hover:bg-primary/5 transition-all flex items-center justify-center gap-2 text-muted-foreground hover:text-primary group"
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
+            <Plus className="h-5 w-5 transition-transform group-hover:rotate-90" />
             <span className="font-medium">Ajouter un exercice</span>
           </button>
         )}
 
         {/* Session Summary */}
         {exercises.length > 0 && (
-          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
-            <h3 className="text-lg font-semibold mb-4">Résumé de la séance</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-indigo-100 text-sm">Exercices</p>
-                <p className="text-2xl font-bold">{exercises.length}</p>
+          <Card className="border-0 bg-gradient-to-br from-primary to-primary/80 text-primary-foreground overflow-hidden">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Résumé de la séance
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white/10 rounded-xl p-3">
+                  <p className="text-primary-foreground/70 text-xs mb-1">
+                    Exercices
+                  </p>
+                  <p className="text-2xl font-bold">{exercises.length}</p>
+                </div>
+                <div className="bg-white/10 rounded-xl p-3">
+                  <p className="text-primary-foreground/70 text-xs mb-1">
+                    Séries
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {exercises.reduce((sum, ex) => sum + ex.sets, 0)}
+                  </p>
+                </div>
+                <div className="bg-white/10 rounded-xl p-3">
+                  <p className="text-primary-foreground/70 text-xs mb-1">
+                    Répétitions
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {exercises.reduce(
+                      (sum, ex) => sum + calculateTotalReps(ex),
+                      0
+                    )}
+                  </p>
+                </div>
+                <div className="bg-white/10 rounded-xl p-3">
+                  <p className="text-primary-foreground/70 text-xs mb-1">
+                    Volume
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {calculateTotalVolume().toFixed(0)} kg
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-indigo-100 text-sm">Séries totales</p>
-                <p className="text-2xl font-bold">
-                  {exercises.reduce((sum, ex) => sum + ex.sets, 0)}
-                </p>
-              </div>
-              <div>
-                <p className="text-indigo-100 text-sm">Reps totales</p>
-                <p className="text-2xl font-bold">
-                  {exercises.reduce(
-                    (sum, ex) => sum + calculateTotalReps(ex),
-                    0
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="text-indigo-100 text-sm">Volume total</p>
-                <p className="text-2xl font-bold">
-                  {calculateTotalVolume().toFixed(0)} kg
-                </p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Error Message */}
         {createError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-xl">
             {createError}
           </div>
         )}
 
         {/* Submit Buttons */}
-        <div className="flex gap-4">
-          <button
+        <div className="flex gap-3 sticky bottom-4">
+          <Button
             type="button"
+            variant="outline"
             onClick={() => navigate("/dashboard")}
-            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-xl transition-colors"
+            className="flex-1 h-12 border-border bg-card hover:bg-muted"
           >
             Annuler
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             disabled={exercises.length === 0 || isLoading}
-            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 h-12 gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20"
           >
-            {isLoading ? "Enregistrement..." : "Enregistrer la séance"}
-          </button>
+            {isLoading ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Enregistrement...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Enregistrer
+              </>
+            )}
+          </Button>
         </div>
       </form>
     </div>
