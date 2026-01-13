@@ -37,6 +37,7 @@ import SettingsPage from "./components/pages/dashboard/SettingsPage";
 import StudentReservations from "./components/pages/dashboard/student/Reservations";
 import CoachReservations from "./components/pages/dashboard/coach/Reservations";
 import CoachAvailabilities from "./components/pages/dashboard/coach/Availabilities";
+import Statistics from "./components/pages/dashboard/statistics";
 import NotFound from "./components/pages/NotFound";
 
 // Component to redirect to the correct dashboard based on user role
@@ -122,7 +123,9 @@ const SoonPage = ({ title }) => {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
           </span>
-          <span className="text-sm font-medium text-primary">En développement</span>
+          <span className="text-sm font-medium text-primary">
+            En développement
+          </span>
         </div>
       </div>
     </div>
@@ -222,6 +225,7 @@ function AppRoutes() {
         <Route path="training/new" element={<NewTrainingSession />} />
         <Route path="training/history" element={<TrainingHistory />} />
         <Route path="measurements" element={<MeasurementsPage />} />
+        <Route path="my-measurements" element={<Measurements />} />
         <Route path="reservations" element={<ReservationsPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="availabilities" element={<CoachAvailabilities />} />
@@ -229,7 +233,7 @@ function AppRoutes() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="habits" element={<SoonPage title="Habitudes" />} />
-        <Route path="statistics" element={<SoonPage title="Statistiques" />} />
+        <Route path="statistics" element={<Statistics />} />
         <Route path="programs" element={<SoonPage title="Programmes" />} />
         <Route path="chat" element={<SoonPage title="Discussion" />} />
         <Route path="messagerie" element={<SoonPage title="Messagerie" />} />

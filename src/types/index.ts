@@ -129,3 +129,122 @@ export interface NewTrainingSessionForm {
     notes: string;
   }[];
 }
+
+// Statistics types
+export type DateRange = "7d" | "30d" | "90d" | "1y" | "all";
+
+export interface StatsPreferences {
+  userId: string;
+  visibleCards: string[];
+  cardOrder: string[];
+  defaultDateRange: DateRange;
+  favoriteStats: string[];
+}
+
+export interface SessionsStats {
+  totalSessions: number;
+  totalVolume: number;
+  totalExercises: number;
+  totalDuration: number;
+  avgSessionsPerWeek: number;
+  avgDuration: number;
+  sessionsByWeek: Array<{ week: string; count: number }>;
+  volumeByDate: Array<{ date: string; volume: number }>;
+  topExercises: Array<{ name: string; count: number }>;
+  muscleGroupsDistribution: Array<{ group: string; count: number }>;
+  personalRecords: Array<{
+    exerciseName: string;
+    exerciseId: string;
+    maxWeight: number;
+    maxReps: number;
+    date: string;
+  }>;
+  dateRange: { from: string; to: string };
+}
+
+export interface MeasurementsStats {
+  totalMeasurements: number;
+  weightEvolution: Array<{ date: string; weight: number }>;
+  bodyMeasurements: {
+    waist: Array<{ date: string; value: number }>;
+    chest: Array<{ date: string; value: number }>;
+    arms: Array<{ date: string; value: number }>;
+    thighs: Array<{ date: string; value: number }>;
+  };
+  latest: {
+    date: string;
+    bodyWeightKg: number | null;
+    waistCm: number | null;
+    chestCm: number | null;
+    leftArmCm: number | null;
+    rightArmCm: number | null;
+    leftThighCm: number | null;
+    rightThighCm: number | null;
+  } | null;
+  weightChange: number | null;
+  dateRange: { from: string; to: string };
+}
+
+export interface OverviewStats {
+  totalSessions: number;
+  totalVolume: number;
+  currentStreak: number;
+  latestWeight: number | null;
+  coachStats: {
+    sessionsWithComments: number;
+    totalSessions: number;
+  } | null;
+  dateRange: { from: string; to: string };
+}
+
+export interface StudentStats {
+  student: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  totalSessions: number;
+  totalVolume: number;
+  sessionsWithComments: number;
+  weightEvolution: Array<{ date: string; weight: number }>;
+  dateRange: { from: string; to: string };
+}
+
+export interface CoachOverviewStats {
+  totalStudents: number;
+  totalSessions: number;
+  avgSessionsPerStudent: number;
+  studentStats: Array<{
+    studentId: string;
+    studentName: string;
+    totalSessions: number;
+    totalVolume: number;
+    lastActivity: string | null;
+    daysSinceLastActivity: number | null;
+  }>;
+  mostActiveStudents: Array<{
+    studentId: string;
+    studentName: string;
+    totalSessions: number;
+    totalVolume: number;
+    lastActivity: string | null;
+    daysSinceLastActivity: number | null;
+  }>;
+  leastActiveStudents: Array<{
+    studentId: string;
+    studentName: string;
+    totalSessions: number;
+    totalVolume: number;
+    lastActivity: string | null;
+    daysSinceLastActivity: number | null;
+  }>;
+  studentsNeedingAttention: Array<{
+    studentId: string;
+    studentName: string;
+    totalSessions: number;
+    totalVolume: number;
+    lastActivity: string | null;
+    daysSinceLastActivity: number | null;
+  }>;
+  dateRange: { from: string; to: string };
+}

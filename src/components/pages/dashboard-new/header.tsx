@@ -29,6 +29,8 @@ interface NavItem {
   name: string;
   href: string;
   icon?: React.ReactNode;
+  isDropdown?: boolean;
+  children?: { name: string; href: string }[];
 }
 
 interface HeaderProps {
@@ -91,22 +93,54 @@ export function Header({ navItems }: HeaderProps) {
 
         {/* Navigation Desktop */}
         <nav className="hidden items-center gap-1 lg:flex">
-          {navItems.map((item) => (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={`relative rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                isActive(item.href)
-                  ? "text-foreground bg-muted"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-              }`}
-            >
-              {item.name}
-              {isActive(item.href) && (
-                <span className="absolute bottom-0 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full bg-primary" />
-              )}
-            </Link>
-          ))}
+          {navItems.map((item) => 
+            item.isDropdown && item.children ? (
+              <DropdownMenu key={item.name}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={`relative rounded-lg px-4 py-2 text-sm font-medium transition-all flex items-center gap-1 ${
+                      item.children.some(child => isActive(child.href))
+                        ? "text-foreground bg-muted"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    {item.name}
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 border-border bg-card">
+                  {item.children.map((child) => (
+                    <DropdownMenuItem
+                      key={child.name}
+                      className={`cursor-pointer ${
+                        isActive(child.href)
+                          ? "text-primary bg-primary/5"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                      onClick={() => navigate(child.href)}
+                    >
+                      {child.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={`relative rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                  isActive(item.href)
+                    ? "text-foreground bg-muted"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+              >
+                {item.name}
+                {isActive(item.href) && (
+                  <span className="absolute bottom-0 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full bg-primary" />
+                )}
+              </Link>
+            )
+          )}
         </nav>
 
         {/* Actions */}
@@ -215,20 +249,42 @@ export function Header({ navItems }: HeaderProps) {
       {mobileMenuOpen && (
         <div className="lg:hidden absolute top-16 left-0 right-0 border-b border-border bg-background/95 backdrop-blur-md animate-in fade-in slide-in-from-bottom-4">
           <nav className="flex flex-col p-4 space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`rounded-lg px-4 py-3 text-sm font-medium transition-all ${
-                  isActive(item.href)
-                    ? "text-foreground bg-muted"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
+            {navItems.map((item) => 
+              item.isDropdown && item.children ? (
+                <div key={item.name} className="space-y-1">
+                  <p className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {item.name}
+                  </p>
+                  {item.children.map((child) => (
+                    <Link
+                      key={child.name}
+                      to={child.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`rounded-lg px-4 py-3 pl-8 text-sm font-medium transition-all block ${
+                        isActive(child.href)
+                          ? "text-foreground bg-muted"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      {child.name}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`rounded-lg px-4 py-3 text-sm font-medium transition-all ${
+                    isActive(item.href)
+                      ? "text-foreground bg-muted"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              )
+            )}
             <div className="border-t border-border pt-3 mt-2">
               <div className="flex items-center gap-3 px-4 py-2">
                 <Avatar className="h-8 w-8 border-2 border-primary/30">

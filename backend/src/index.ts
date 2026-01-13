@@ -10,6 +10,7 @@ import studentRoutes from "./routes/studentRoutes";
 import measurementRoutes from "./routes/measurementRoutes";
 import calendarRoutes from "./routes/calendarRoutes";
 import availabilityRoutes from "./routes/availabilityRoutes";
+import statsRoutes from "./routes/statsRoutes";
 
 dotenv.config();
 
@@ -59,6 +60,7 @@ app.use("/api/students", studentRoutes);
 app.use("/api/measurements", measurementRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/availability", availabilityRoutes);
+app.use("/api/stats", statsRoutes);
 app.get("/", (req, res) => {
   res.json({ message: "API fonctionnel" });
 });
