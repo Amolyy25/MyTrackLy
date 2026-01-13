@@ -141,11 +141,11 @@ const Login: React.FC = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-xl border ${
+                className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 ${
                   errors.email
                     ? "border-red-300 focus:border-red-500 focus:ring-red-500"
                     : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                } focus:outline-none focus:ring-2 transition-colors`}
+                } focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400`}
                 placeholder="votre@email.com"
                 autoComplete="email"
               />
@@ -168,11 +168,11 @@ const Login: React.FC = () => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-xl border ${
+                className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 ${
                   errors.password
                     ? "border-red-300 focus:border-red-500 focus:ring-red-500"
                     : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                } focus:outline-none focus:ring-2 transition-colors`}
+                } focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400`}
                 placeholder="••••••••"
                 autoComplete="current-password"
               />

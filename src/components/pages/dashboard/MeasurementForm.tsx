@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Measurement } from "../../../types";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import {
   Calendar,
@@ -12,6 +11,45 @@ import {
   X,
   ChevronDown,
 } from "lucide-react";
+
+// Composant CompactInput défini EN DEHORS du composant principal pour éviter les re-renders
+interface CompactInputProps {
+  name: string;
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  icon?: React.ElementType;
+}
+
+const CompactInput: React.FC<CompactInputProps> = ({ name, label, placeholder, value, onChange, icon: Icon }) => (
+  <div className="space-y-1.5">
+    <Label htmlFor={name} className="text-xs font-medium text-muted-foreground">
+      {label}
+    </Label>
+    <div className="relative">
+      {Icon && (
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+          <Icon className="h-4 w-4" />
+        </div>
+      )}
+      <input
+        type="text"
+        inputMode="decimal"
+        id={name}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        autoComplete="off"
+        className={`w-full h-10 bg-muted/30 border border-border/50 text-foreground placeholder:text-muted-foreground/50 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none transition-all ${Icon ? "pl-10" : "pl-3"} pr-10`}
+      />
+      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+        {name === "bodyWeightKg" ? "kg" : "cm"}
+      </span>
+    </div>
+  </div>
+);
 
 interface MeasurementFormProps {
   measurement?: Measurement | null;
@@ -49,47 +87,23 @@ const MeasurementForm: React.FC<MeasurementFormProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Autoriser les chiffres, le point et la virgule pour les décimales
+    if (name !== "date" && name !== "notes") {
+      // Remplacer virgule par point et ne garder que les caractères valides
+      const sanitizedValue = value.replace(",", ".").replace(/[^0-9.]/g, "");
+      // Éviter plusieurs points
+      const parts = sanitizedValue.split(".");
+      const finalValue = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitizedValue;
+      setFormData((prev) => ({ ...prev, [name]: finalValue }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await onSubmit(formData);
   };
-
-  const CompactInput = ({ name, label, placeholder, icon: Icon }: {
-    name: string;
-    label: string;
-    placeholder: string;
-    icon?: React.ElementType;
-  }) => (
-    <div className="space-y-1.5">
-      <Label htmlFor={name} className="text-xs font-medium text-muted-foreground">
-        {label}
-      </Label>
-      <div className="relative">
-        {Icon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-            <Icon className="h-4 w-4" />
-          </div>
-        )}
-        <Input
-          type="number"
-          id={name}
-          name={name}
-          value={formData[name as keyof typeof formData]}
-          onChange={handleChange}
-          step="0.1"
-          min="0"
-          placeholder={placeholder}
-          className={`h-10 bg-muted/30 border-border/50 text-foreground placeholder:text-muted-foreground/50 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary ${Icon ? "pl-10" : ""} pr-10`}
-        />
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-          {name === "bodyWeightKg" ? "kg" : "cm"}
-        </span>
-      </div>
-    </div>
-  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -100,21 +114,21 @@ const MeasurementForm: React.FC<MeasurementFormProps> = ({
             Date <span className="text-destructive">*</span>
           </Label>
           <div className="relative">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
               <Calendar className="h-4 w-4" />
             </div>
-            <Input
+            <input
               type="date"
               id="date"
               name="date"
               value={formData.date}
               onChange={handleChange}
               required
-              className="h-10 bg-muted/30 border-border/50 text-foreground pl-10 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              className="w-full h-10 bg-muted/30 border border-border/50 text-foreground pl-10 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none transition-all"
             />
           </div>
         </div>
-        <CompactInput name="bodyWeightKg" label="Poids" placeholder="75.5" icon={Scale} />
+        <CompactInput name="bodyWeightKg" label="Poids" placeholder="75.5" value={formData.bodyWeightKg} onChange={handleChange} icon={Scale} />
       </div>
 
       {/* Main Measurements - 2x2 Grid */}
@@ -124,10 +138,10 @@ const MeasurementForm: React.FC<MeasurementFormProps> = ({
           <span className="text-sm font-medium text-foreground">Mesures principales</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-muted/20 border border-border/30">
-          <CompactInput name="chestCm" label="Poitrine" placeholder="100" />
-          <CompactInput name="waistCm" label="Taille" placeholder="80" />
-          <CompactInput name="hipsCm" label="Hanches" placeholder="95" />
-          <CompactInput name="shouldersCm" label="Épaules" placeholder="120" />
+          <CompactInput name="chestCm" label="Poitrine" placeholder="100" value={formData.chestCm} onChange={handleChange} />
+          <CompactInput name="waistCm" label="Taille" placeholder="80" value={formData.waistCm} onChange={handleChange} />
+          <CompactInput name="hipsCm" label="Hanches" placeholder="95" value={formData.hipsCm} onChange={handleChange} />
+          <CompactInput name="shouldersCm" label="Épaules" placeholder="120" value={formData.shouldersCm} onChange={handleChange} />
         </div>
       </div>
 
@@ -148,8 +162,8 @@ const MeasurementForm: React.FC<MeasurementFormProps> = ({
           <div className="space-y-3">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Bras</span>
             <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-muted/20 border border-border/30">
-              <CompactInput name="leftArmCm" label="Biceps gauche" placeholder="35" />
-              <CompactInput name="rightArmCm" label="Biceps droit" placeholder="35" />
+              <CompactInput name="leftArmCm" label="Biceps gauche" placeholder="35" value={formData.leftArmCm} onChange={handleChange} />
+              <CompactInput name="rightArmCm" label="Biceps droit" placeholder="35" value={formData.rightArmCm} onChange={handleChange} />
             </div>
           </div>
 
@@ -157,10 +171,10 @@ const MeasurementForm: React.FC<MeasurementFormProps> = ({
           <div className="space-y-3">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Jambes</span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-muted/20 border border-border/30">
-              <CompactInput name="leftThighCm" label="Cuisse G" placeholder="60" />
-              <CompactInput name="rightThighCm" label="Cuisse D" placeholder="60" />
-              <CompactInput name="leftCalfCm" label="Mollet G" placeholder="38" />
-              <CompactInput name="rightCalfCm" label="Mollet D" placeholder="38" />
+              <CompactInput name="leftThighCm" label="Cuisse G" placeholder="60" value={formData.leftThighCm} onChange={handleChange} />
+              <CompactInput name="rightThighCm" label="Cuisse D" placeholder="60" value={formData.rightThighCm} onChange={handleChange} />
+              <CompactInput name="leftCalfCm" label="Mollet G" placeholder="38" value={formData.leftCalfCm} onChange={handleChange} />
+              <CompactInput name="rightCalfCm" label="Mollet D" placeholder="38" value={formData.rightCalfCm} onChange={handleChange} />
             </div>
           </div>
 
@@ -168,7 +182,7 @@ const MeasurementForm: React.FC<MeasurementFormProps> = ({
           <div className="space-y-3">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Autre</span>
             <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-muted/20 border border-border/30">
-              <CompactInput name="neckCm" label="Cou" placeholder="40" />
+              <CompactInput name="neckCm" label="Cou" placeholder="40" value={formData.neckCm} onChange={handleChange} />
             </div>
           </div>
         </div>

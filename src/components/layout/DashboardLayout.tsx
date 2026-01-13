@@ -13,6 +13,7 @@ const DashboardLayout: React.FC = () => {
     { name: "Accueil", href: "/dashboard" },
     { name: "Séances", href: "/dashboard/training/history" },
     { name: "Mensurations", href: "/dashboard/measurements" },
+    { name: "Statistiques", href: "/dashboard/statistics" },
   ];
 
   // Navigation pour le rôle Élève
@@ -21,6 +22,7 @@ const DashboardLayout: React.FC = () => {
     { name: "Séances", href: "/dashboard/training/history" },
     { name: "Réservations", href: "/dashboard/reservations" },
     { name: "Mensurations", href: "/dashboard/measurements" },
+    { name: "Statistiques", href: "/dashboard/statistics" },
   ];
 
   // Navigation pour le rôle Coach
@@ -30,6 +32,16 @@ const DashboardLayout: React.FC = () => {
     { name: "Séances", href: "/dashboard/sessions" },
     { name: "Calendrier", href: "/dashboard/calendar" },
     { name: "Disponibilités", href: "/dashboard/availabilities" },
+    { name: "Statistiques", href: "/dashboard/statistics" },
+    {
+      name: "Mon espace",
+      href: "#",
+      isDropdown: true,
+      children: [
+        { name: "Mes séances", href: "/dashboard/training/history" },
+        { name: "Mes mensurations", href: "/dashboard/my-measurements" },
+      ],
+    },
   ];
 
   // Sélectionner la navigation selon le rôle

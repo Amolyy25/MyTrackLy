@@ -295,11 +295,11 @@ const Register: React.FC = () => {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-xl border ${
+                className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 ${
                   errors.name
                     ? "border-red-300 focus:border-red-500 focus:ring-red-500"
                     : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                } focus:outline-none focus:ring-2 transition-colors`}
+                } focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400`}
                 placeholder="Jean Dupont"
                 autoComplete="name"
               />
@@ -322,11 +322,11 @@ const Register: React.FC = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-xl border ${
+                className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 ${
                   errors.email
                     ? "border-red-300 focus:border-red-500 focus:ring-red-500"
                     : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                } focus:outline-none focus:ring-2 transition-colors`}
+                } focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400`}
                 placeholder="votre@email.com"
                 autoComplete="email"
               />
@@ -349,11 +349,11 @@ const Register: React.FC = () => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-xl border ${
+                className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 ${
                   errors.password
                     ? "border-red-300 focus:border-red-500 focus:ring-red-500"
                     : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                } focus:outline-none focus:ring-2 transition-colors`}
+                } focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400`}
                 placeholder="••••••••"
                 autoComplete="new-password"
               />
@@ -379,11 +379,11 @@ const Register: React.FC = () => {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-xl border ${
+                className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 ${
                   errors.confirmPassword
                     ? "border-red-300 focus:border-red-500 focus:ring-red-500"
                     : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                } focus:outline-none focus:ring-2 transition-colors`}
+                } focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400`}
                 placeholder="••••••••"
                 autoComplete="new-password"
               />
@@ -410,13 +410,13 @@ const Register: React.FC = () => {
                   value={formData.coachCode || ""}
                   onChange={handleChange}
                   placeholder="Entrez le code unique fourni par votre coach"
-                  className={`w-full px-4 py-3 rounded-xl border ${
+                  className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 ${
                     errors.coachCode
                       ? "border-red-300 focus:border-red-500 focus:ring-red-500"
                       : coachInfo
                       ? "border-green-300 focus:border-green-500 focus:ring-green-500"
                       : "border-purple-300 focus:border-purple-500 focus:ring-purple-500"
-                  } focus:outline-none focus:ring-2 transition-colors bg-white`}
+                  } focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400`}
                   disabled={validatingCode}
                 />
                 {validatingCode && (
@@ -476,11 +476,11 @@ const Register: React.FC = () => {
                 name="goalType"
                 value={formData.goalType}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-xl border ${
+                className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 ${
                   errors.goalType
                     ? "border-red-300 focus:border-red-500 focus:ring-red-500"
                     : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                } focus:outline-none focus:ring-2 transition-colors bg-white`}
+                } focus:outline-none focus:ring-2 transition-colors`}
               >
                 <option value="">Sélectionnez un objectif</option>
                 {goalOptions.map((option) => (
