@@ -5,6 +5,7 @@ import {
   useTrainingSessions,
 } from "../../../../hooks/useTrainingSessions";
 import { useMeasurements } from "../../../../hooks/useMeasurements";
+import { calculateTotalVolume } from "../../../../utils/trainingCalculations";
 import LoadingSpinner from "../../../composants/LoadingSpinner";
 import ErrorDisplay from "../../../composants/ErrorDisplay";
 
@@ -20,6 +21,7 @@ import {
   WeightPoint,
   MeasurementItem,
 } from "../../dashboard-new/measurements";
+import { StatisticsCard } from "../../dashboard-new/statistics-card";
 import { Ruler } from "lucide-react";
 
 const StudentHome: React.FC = () => {
@@ -102,37 +104,23 @@ const StudentHome: React.FC = () => {
   const recentSessionsData: ActivitySession[] = sessions
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5)
-    .map((session) => {
-      let sessionVolume = 0;
-      session.exercises.forEach((ex) => {
-        const weight = ex.weightKg || 0;
-        const sets = ex.sets || 0;
-        const reps =
-          ex.repsUniform ||
-          (ex.repsPerSet && sets > 0
-            ? ex.repsPerSet.reduce((a, b) => a + b, 0) / sets
-            : 0);
-        sessionVolume += weight * sets * reps;
-      });
-
-      return {
-        id: session.id,
-        date: new Date(session.date).toLocaleString("fr-FR", {
-          day: "numeric",
-          month: "short",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        name: session.notes || "Séance d'entraînement",
-        exercises: session.exercises.length,
-        duration: session.durationMinutes
-          ? `${session.durationMinutes} min`
-          : "-",
-        volume: `${sessionVolume.toFixed(0)} kg`,
-        status: "completed" as const,
-        type: "training" as const,
-      };
-    });
+    .map((session) => ({
+      id: session.id,
+      date: new Date(session.date).toLocaleString("fr-FR", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      name: session.notes || "Séance d'entraînement",
+      exercises: session.exercises.length,
+      duration: session.durationMinutes
+        ? `${session.durationMinutes} min`
+        : "-",
+      volume: `${Math.round(calculateTotalVolume(session))} kg`,
+      status: "completed" as const,
+      type: "training" as const,
+    }));
 
   // 3. Measurements Data
   const sortedMeasurements = [...measurementsData].sort(
@@ -175,6 +163,14 @@ const StudentHome: React.FC = () => {
       />
 
       <StatsCards stats={statsData} role="eleve" />
+
+      <div className="px-4 lg:px-8">
+        <StatisticsCard
+          sessions={sessions}
+          measurements={measurementsData}
+          role="eleve"
+        />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3 px-4 lg:px-8">
         <div className="lg:col-span-2">
