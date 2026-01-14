@@ -3,6 +3,7 @@ import { useAuth } from "../../../../contexts/AuthContext";
 import { useCoachStudentsSessions } from "../../../../hooks/useTrainingSessions";
 import { useMyReservations } from "../../../../hooks/useCalendarReservations";
 import { useStudentMeasurements } from "../../../../hooks/useMeasurements";
+import { calculateTotalVolume } from "../../../../utils/trainingCalculations";
 import LoadingSpinner from "../../../composants/LoadingSpinner";
 import ErrorDisplay from "../../../composants/ErrorDisplay";
 import API_URL from "../../../../config/api";
@@ -20,6 +21,7 @@ import {
   WeightPoint,
   MeasurementItem,
 } from "../../dashboard-new/measurements";
+import { StatisticsCard } from "../../dashboard-new/statistics-card";
 
 interface Student {
   id: string;
@@ -114,19 +116,10 @@ const CoachHome: React.FC = () => {
   }).length;
 
   // Calculer le volume total des séances élèves
-  let totalVolume = 0;
-  studentSessions.forEach((session) => {
-    session.exercises.forEach((ex) => {
-      const weight = ex.weightKg || 0;
-      const sets = ex.sets || 0;
-      const reps =
-        ex.repsUniform ||
-        (ex.repsPerSet && sets > 0
-          ? ex.repsPerSet.reduce((a, b) => a + b, 0) / sets
-          : 0);
-      totalVolume += weight * sets * reps;
-    });
-  });
+  const totalVolume = studentSessions.reduce(
+    (acc, session) => acc + calculateTotalVolume(session),
+    0
+  );
 
   const totalVolumeStr =
     totalVolume > 1000
@@ -150,18 +143,6 @@ const CoachHome: React.FC = () => {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 3)
     .forEach((session) => {
-      let sessionVolume = 0;
-      session.exercises.forEach((ex) => {
-        const weight = ex.weightKg || 0;
-        const sets = ex.sets || 0;
-        const reps =
-          ex.repsUniform ||
-          (ex.repsPerSet && sets > 0
-            ? ex.repsPerSet.reduce((a, b) => a + b, 0) / sets
-            : 0);
-        sessionVolume += weight * sets * reps;
-      });
-
       const sessionDate = new Date(session.date);
       recentActivities.push({
         id: session.id,
@@ -176,7 +157,7 @@ const CoachHome: React.FC = () => {
         duration: session.durationMinutes
           ? `${session.durationMinutes} min`
           : "-",
-        volume: `${sessionVolume.toFixed(0)} kg`,
+        volume: `${Math.round(calculateTotalVolume(session))} kg`,
         status: "completed",
         studentName: session.user?.name || "Élève",
         type: "training",
@@ -269,6 +250,14 @@ const CoachHome: React.FC = () => {
       />
 
       <StatsCards stats={statsData} role="coach" />
+
+      <div className="px-4 lg:px-8">
+        <StatisticsCard
+          sessions={studentSessions}
+          measurements={studentMeasurements}
+          role="coach"
+        />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3 px-4 lg:px-8">
         <div className="lg:col-span-2">
