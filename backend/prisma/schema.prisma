@@ -24,6 +24,7 @@ model User {
   trainingSessions     TrainingSession[]
   customExercises      Exercise[]
   measurements         Measurement[]
+  habits               Habit[]              // Habitudes de l'utilisateur
   invitationCodes      InvitationCode[]     // Codes d'invitation créés par le coach
   usedInvitationCodes  InvitationCode[]     @relation("UsedInvitationCodes") // Codes utilisés par l'élève
   passwordResetTokens  PasswordResetToken[] // Tokens de reset de mot de passe
@@ -208,3 +209,45 @@ model CoachAvailability {
   @@index([coachId])
 }
 
+enum Frequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+model Habit {
+  id                String     @id @default(uuid())
+  userId            String     @map("user_id")
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  category          String     // 'hydration' | 'sleep' | 'nutrition' | 'exercise' | 'wellness'
+  targetFrequency   Frequency  @default(DAILY) @map("target_frequency") // 'DAILY' | 'WEEKLY' | 'MONTHLY'
+  targetCount       Float?     @map("target_count") // Quantité optionnelle (ex: 1.5L)
+  currentStreak     Int        @default(0) @map("current_streak")
+  longestStreak     Int        @default(0) @map("longest_streak")
+  lastLogDate       DateTime?  @map("last_log_date")
+  reminderTime      String?    @map("reminder_time") // Format HH:mm (ex: "19:00")
+  reminderEnabled   Boolean    @default(true) @map("reminder_enabled")
+  startDate         DateTime   @default(now()) @map("start_date")
+  logs              HabitLog[]
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  @@map("habits")
+  @@index([userId])
+  @@index([userId, startDate])
+}
+
+model HabitLog {
+  id            String   @id @default(uuid())
+  habitId       String   @map("habit_id")
+  habit         Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  completedAt   DateTime @map("completed_at") // Date/heure de complétion
+  value         Float?   // Valeur si quantifiable (litres, heures, etc.)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("habit_logs")
+  @@unique([habitId, completedAt])
+  @@index([habitId, completedAt])
+  @@index([completedAt])
+}

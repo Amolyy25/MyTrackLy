@@ -12,6 +12,11 @@ import "./App.css";
 
 // Pages
 import LandingPage from "./components/pages/landingpage/main";
+import { TrackingPage } from "./components/pages/landingpage/TrackingPage";
+import { MeasurementsPage } from "./components/pages/landingpage/MeasurementsPage";
+import { HabitsPage } from "./components/pages/landingpage/HabitsPage";
+import SciencePage from "./components/pages/landingpage/SciencePage";
+import { CoachingPage } from "./components/pages/landingpage/CoachingPage";
 import {
   Login,
   Register,
@@ -32,6 +37,7 @@ import NewTrainingSession from "./components/pages/dashboard/NewTrainingSession"
 import TrainingHistory from "./components/pages/dashboard/TrainingHistory";
 import Measurements from "./components/pages/dashboard/Measurements";
 import MeasurementsCoach from "./components/pages/dashboard/coach/MeasurementsCoach";
+import Habits from "./components/pages/dashboard/Habits";
 import ProfilePage from "./components/pages/dashboard/ProfilePage";
 import SettingsPage from "./components/pages/dashboard/SettingsPage";
 import StudentReservations from "./components/pages/dashboard/student/Reservations";
@@ -55,7 +61,7 @@ const DashboardHome = () => {
 };
 
 // Component to redirect to the correct measurements page based on user role
-const MeasurementsPage = () => {
+const MeasurementsDispatcher = () => {
   const { user } = useAuth();
   const userRole = user?.role || "personnel";
 
@@ -173,6 +179,12 @@ function AppRoutes() {
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/features/tracking" element={<TrackingPage />} />
+      <Route path="/features/measurements" element={<MeasurementsPage />} />
+      <Route path="/features/habits" element={<HabitsPage />} />
+      <Route path="/features/science" element={<SciencePage />} />
+      <Route path="/features/coaching" element={<CoachingPage />} />
+      <Route path="/features/pricing" element={<Plans />} />
       <Route
         path="/login"
         element={
@@ -224,15 +236,15 @@ function AppRoutes() {
         <Route path="sessions" element={<Sessions />} />
         <Route path="training/new" element={<NewTrainingSession />} />
         <Route path="training/history" element={<TrainingHistory />} />
-        <Route path="measurements" element={<MeasurementsPage />} />
+        <Route path="measurements" element={<MeasurementsDispatcher />} />
         <Route path="my-measurements" element={<Measurements />} />
+        <Route path="habits" element={<Habits />} />
         <Route path="reservations" element={<ReservationsPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="availabilities" element={<CoachAvailabilities />} />
         {/* Profile & Settings */}
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
-        <Route path="habits" element={<SoonPage title="Habitudes" />} />
         <Route path="statistics" element={<Statistics />} />
         <Route path="programs" element={<SoonPage title="Programmes" />} />
         <Route path="chat" element={<SoonPage title="Discussion" />} />

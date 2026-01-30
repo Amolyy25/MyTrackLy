@@ -22,6 +22,7 @@ import {
   MeasurementItem,
 } from "../dashboard-new/measurements";
 import { StatisticsCard } from "../dashboard-new/statistics-card";
+import { TodayHabitsCard } from "../../habits/TodayHabitsCard";
 import { Ruler } from "lucide-react";
 
 const Home: React.FC = () => {
@@ -184,6 +185,12 @@ const Home: React.FC = () => {
             weightChange={weightChange}
             role="personnel"
           />
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3 px-4 lg:px-8">
+        <div className="lg:col-span-2">
+          <TodayHabitsCard role="personnel" maxHabits={4} />
         </div>
       </div>
     </div>

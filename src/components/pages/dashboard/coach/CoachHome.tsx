@@ -22,6 +22,7 @@ import {
   MeasurementItem,
 } from "../../dashboard-new/measurements";
 import { StatisticsCard } from "../../dashboard-new/statistics-card";
+import { TodayHabitsCard } from "../../../habits/TodayHabitsCard";
 
 interface Student {
   id: string;
@@ -285,6 +286,10 @@ const CoachHome: React.FC = () => {
             />
           )}
         </div>
+      </div>
+
+      <div className="px-4 lg:px-8">
+        <TodayHabitsCard role="coach" maxHabits={5} />
       </div>
     </div>
   );

@@ -8,9 +8,12 @@ import exerciseRoute from "./routes/exerciceRoute";
 import invitationRoutes from "./routes/invitationRoutes";
 import studentRoutes from "./routes/studentRoutes";
 import measurementRoutes from "./routes/measurementRoutes";
+import habitRoutes from "./routes/habitRoutes";
 import calendarRoutes from "./routes/calendarRoutes";
 import availabilityRoutes from "./routes/availabilityRoutes";
 import statsRoutes from "./routes/statsRoutes";
+import { initStreakCron } from "./cron/streakJob";
+import { initReminderCron } from "./cron/reminderJob";
 
 dotenv.config();
 
@@ -58,6 +61,7 @@ app.use("/api/exercises", exerciseRoute);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/measurements", measurementRoutes);
+app.use("/api/habits", habitRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/availability", availabilityRoutes);
 app.use("/api/stats", statsRoutes);
@@ -67,4 +71,8 @@ app.get("/", (req, res) => {
 
 app.listen(port, () => {
   console.log(`Serveur lancé sur le port ${port}`);
+  
+  // Initialisation des tâches CRON
+  initStreakCron();
+  initReminderCron();
 });
