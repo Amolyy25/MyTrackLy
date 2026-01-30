@@ -244,9 +244,7 @@ model HabitLog {
   habit         Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
   completedAt   DateTime @map("completed_at") // Date/heure de complétion
   value         Float?   // Valeur si quantifiable (litres, heures, etc.)
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  @@map("habit_logs")
+  createdAt     DateTime @default(now()) @map("created_at")  @@map("habit_logs")
   @@unique([habitId, completedAt])
   @@index([habitId, completedAt])
   @@index([completedAt])
