@@ -13,6 +13,7 @@ const DashboardLayout: React.FC = () => {
     { name: "Accueil", href: "/dashboard" },
     { name: "Séances", href: "/dashboard/training/history" },
     { name: "Mensurations", href: "/dashboard/measurements" },
+    { name: "Habitudes", href: "/dashboard/habits" },
     { name: "Statistiques", href: "/dashboard/statistics" },
   ];
 
@@ -22,6 +23,7 @@ const DashboardLayout: React.FC = () => {
     { name: "Séances", href: "/dashboard/training/history" },
     { name: "Réservations", href: "/dashboard/reservations" },
     { name: "Mensurations", href: "/dashboard/measurements" },
+    { name: "Habitudes", href: "/dashboard/habits" },
     { name: "Statistiques", href: "/dashboard/statistics" },
   ];
 
@@ -40,6 +42,7 @@ const DashboardLayout: React.FC = () => {
       children: [
         { name: "Mes séances", href: "/dashboard/training/history" },
         { name: "Mes mensurations", href: "/dashboard/my-measurements" },
+        { name: "Mes habitudes", href: "/dashboard/habits" },
       ],
     },
   ];

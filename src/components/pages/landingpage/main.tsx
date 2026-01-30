@@ -1,1224 +1,688 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import Navbar from "../../composants/Navbar";
-import Footer from "../../composants/Footer";
+import React, { useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion, useScroll, useTransform, useInView } from "framer-motion";
+import {
+  ChevronRight,
+  TrendingUp,
+  BarChart3,
+  Brain,
+  Smartphone,
+  CheckCircle2,
+  Calendar,
+  Zap,
+  Users,
+  Target,
+  Plus,
+  Dumbbell,
+  Activity,
+  ChevronDown,
+  ArrowRight
+} from "lucide-react";
+import { useTheme } from "../../../contexts/ThemeContext";
+import { Navbar, primaryButtonClass, secondaryButtonClass } from "../../landing/Navbar";
+import { Footer as FooterComponent } from "../../landing/Footer";
 
-// Icônes SVG pour remplacer les emojis
-const IconDumbbell = ({ className = "w-5 h-5" }: { className?: string }) => (
-  <img 
-    src="/icon/haltere.png" 
-    alt="Haltères" 
-    className={`${className} flex-shrink-0`}
-    style={{ 
-      objectFit: "contain",
-      filter: "contrast(3) brightness(0.6) drop-shadow(0 0 0.3px currentColor) drop-shadow(0 0 0.3px currentColor) drop-shadow(0 0 0.3px currentColor) drop-shadow(0 0 0.3px currentColor)",
-      WebkitFilter: "contrast(3) brightness(0.6) drop-shadow(0 0 0.3px currentColor) drop-shadow(0 0 0.3px currentColor) drop-shadow(0 0 0.3px currentColor) drop-shadow(0 0 0.3px currentColor)",
-      width: "1.25rem",
-      height: "1.25rem"
-    }}
-  />
-);
+type Feature = {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  color: string;
+};
 
-const IconMuscle = ({ className = "w-5 h-5" }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-  </svg>
-);
-
-const IconRunning = ({ className = "w-5 h-5" }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-  </svg>
-);
-
-const IconLock = ({ className = "w-5 h-5" }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-  </svg>
-);
-
-const IconCheck = ({ className = "w-5 h-5" }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-  </svg>
-);
-
-const IconRefresh = ({ className = "w-5 h-5" }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-  </svg>
-);
-
-const IconStar = ({ className = "w-5 h-5" }: { className?: string }) => (
-  <img 
-    src="/icon/etoile.png" 
-    alt="Étoile" 
-    className={`${className} flex-shrink-0`}
-    style={{ 
-      objectFit: "contain",
-      width: "1.25rem",
-      height: "1.25rem"
-    }}
-  />
-);
+type PricingPlan = {
+  name: string;
+  price: string;
+  period?: string;
+  description: string;
+  features: string[];
+  cta: string;
+  popular?: boolean;
+  highlight?: boolean;
+};
 
 const LandingPage: React.FC = () => {
-  const navigate = useNavigate();
-  const [isVisible, setIsVisible] = useState<{ [key: string]: boolean }>({});
-  const [scrollY, setScrollY] = useState(0);
-  const sectionsRef = useRef<{ [key: string]: HTMLDivElement | null }>({});
-
-  const handleCTAClick = () => {
-    navigate("/plans");
-  };
-
-  const handlePlanClick = (planId: "personnel" | "coach" | "eleve") => {
-    if (planId === "eleve") {
-      // Pour le plan élève, rediriger vers l'inscription
-      navigate("/register?plan=eleve");
-    } else {
-      // Pour les autres plans, rediriger vers la page de paiement
-      navigate(`/payment?plan=${planId}`);
-    }
-  };
-
-  useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setIsVisible((prev) => ({
-              ...prev,
-              [entry.target.id]: true,
-            }));
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: "0px 0px -100px 0px" }
-    );
-
-    const timeoutId = setTimeout(() => {
-      Object.values(sectionsRef.current).forEach((section) => {
-        if (section) observer.observe(section);
-      });
-    }, 100);
-
-    return () => {
-      clearTimeout(timeoutId);
-      observer.disconnect();
-    };
-  }, []);
-
-  const setSectionRef = (id: string) => (el: HTMLDivElement | null) => {
-    sectionsRef.current[id] = el;
-  };
+  const { theme } = useTheme();
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 overflow-x-hidden">
+    <div className={`min-h-screen transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} overflow-x-hidden selection:bg-indigo-500/30`}>
       <Navbar />
 
-      {/* Hero Section - Design Premium */}
-      <section
-        id="hero"
-        ref={setSectionRef("hero")}
-        className="relative min-h-screen flex items-center overflow-hidden pt-20"
-      >
-        {/* Fond élégant */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-50"></div>
+      <main>
+        {/* Hero Section */}
+        <HeroSection theme={theme} />
 
-        {/* Formes subtiles */}
-        <div className="absolute top-20 right-0 w-[600px] h-[600px] bg-gradient-to-br from-blue-100/40 to-indigo-100/40 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-gradient-to-tr from-indigo-100/30 to-purple-100/30 rounded-full blur-3xl"></div>
+        {/* Features Grid */}
+        <FeaturesSection theme={theme} />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full py-20">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Contenu gauche */}
-            <div
-              className={`transition-all duration-1000 delay-200 ${
-                isVisible["hero"]
-                  ? "opacity-100 translate-x-0"
-                  : "opacity-0 -translate-x-20"
-              }`}
-            >
-              <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-full text-sm font-medium mb-8">
-                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse"></div>
-                Solution professionnelle de coaching
-              </div>
+        {/* Science/Benefits Section */}
+        <ScienceSection theme={theme} />
 
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-                <span className="block text-gray-900">Transformez votre</span>
-                <span className="block bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                  pratique sportive
-                </span>
-              </h1>
+        {/* Coaching Section */}
+        <CoachingSection theme={theme} />
 
-              <p className="text-xl text-gray-600 mb-10 leading-relaxed">
-                Une plateforme intuitive et complète pour suivre vos
-                performances, atteindre vos objectifs et accompagner vos clients
-                avec professionnalisme.
-              </p>
+        {/* Pricing Section */}
+        <PricingSection theme={theme} />
+      </main>
 
-              <div className="flex flex-col sm:flex-row gap-4 mb-12">
-                <button
-                  onClick={handleCTAClick}
-                  className="group bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all shadow-lg shadow-indigo-600/30 hover:shadow-xl hover:shadow-indigo-600/40 hover:-translate-y-0.5"
-                >
-                  Commencer gratuitement
-                </button>
-                <button
-                  onClick={handleCTAClick}
-                  className="border-2 border-gray-300 hover:border-indigo-600 text-gray-700 hover:text-indigo-600 px-8 py-4 rounded-xl font-semibold text-lg transition-all hover:bg-gray-50"
-                >
-                  Voir la démo
-                </button>
-              </div>
-
-              {/* Stats élégantes */}
-              <div className="grid grid-cols-3 gap-8 pt-8 border-t border-gray-200">
-                {[
-                  { number: "15K+", label: "Utilisateurs actifs" },
-                  { number: "500K+", label: "Séances enregistrées" },
-                  { number: "4.8/5", label: "Note moyenne" },
-                ].map((stat, index) => (
-                  <div key={index}>
-                    <div className="text-3xl font-bold text-gray-900 mb-1">
-                      {stat.number}
-                    </div>
-                    <div className="text-sm text-gray-500">{stat.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Contenu droit - Dashboard Premium */}
-            <div
-              className={`relative transition-all duration-1000 delay-400 ${
-                isVisible["hero"]
-                  ? "opacity-100 translate-x-0"
-                  : "opacity-0 translate-x-20"
-              }`}
-            >
-              <div className="relative">
-                {/* Glow effect */}
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-100 via-purple-100 to-indigo-100 rounded-3xl blur-3xl opacity-50"></div>
-
-                {/* Dashboard Card */}
-                <div className="relative bg-white border border-gray-200 rounded-3xl p-6 shadow-2xl overflow-hidden">
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
-                    <div className="flex items-center space-x-3">
-                      <img 
-                        src="/logo.svg" 
-                        alt="MyTrackLy" 
-                        className="w-10 h-10"
-                      />
-                      <div className="text-lg font-bold text-gray-900">
-                        MyTrackLy
-                      </div>
-                    </div>
-                    <div className="flex space-x-1.5">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                    </div>
-                  </div>
-
-                  {/* Stats Cards */}
-                  <div className="grid grid-cols-3 gap-3 mb-6">
-                    <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-xl p-3.5 border border-indigo-100">
-                      <div className="text-[11px] text-indigo-600 font-semibold mb-1.5 uppercase tracking-wide">
-                        Séances
-                      </div>
-                      <div className="text-2xl font-bold text-indigo-700 mb-0.5">
-                        127
-                      </div>
-                      <div className="text-[10px] text-indigo-500 font-medium">
-                        +8 ce mois
-                      </div>
-                    </div>
-                    <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl p-3.5 border border-purple-100">
-                      <div className="text-[11px] text-purple-600 font-semibold mb-1.5 uppercase tracking-wide">
-                        Progression
-                      </div>
-                      <div className="text-2xl font-bold text-purple-700 mb-0.5">
-                        +12%
-                      </div>
-                      <div className="text-[10px] text-purple-500 font-medium">
-                        vs mois dernier
-                      </div>
-                    </div>
-                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl p-3.5 border border-emerald-100">
-                      <div className="text-[11px] text-emerald-600 font-semibold mb-1.5 uppercase tracking-wide">
-                        Objectifs
-                      </div>
-                      <div className="text-2xl font-bold text-emerald-700 mb-0.5">
-                        85%
-                      </div>
-                      <div className="text-[10px] text-emerald-500 font-medium">
-                        atteints
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Graph Section */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-sm font-semibold text-gray-700">Résumé</div>
-                      <div className="flex space-x-2">
-                        <div className="w-5 h-5 bg-indigo-100 rounded flex items-center justify-center">
-                          <div className="w-3 h-3 bg-indigo-500 rounded"></div>
-                        </div>
-                        <div className="w-5 h-5 bg-purple-100 rounded flex items-center justify-center">
-                          <div className="w-3 h-3 bg-purple-500 rounded"></div>
-                        </div>
-                      </div>
-                    </div>
-                    {/* Graph bars */}
-                    <div className="flex items-end justify-between h-28 space-x-1.5 mb-2">
-                      {[65, 72, 58, 80, 75, 88, 92].map((height, i) => (
-                        <div
-                          key={i}
-                          className="flex-1 flex flex-col items-center"
-                        >
-                          <div
-                            className="w-full rounded-t bg-gradient-to-t from-indigo-500 to-purple-500 mb-1.5 transition-all hover:opacity-80"
-                            style={{ height: `${height}%`, minHeight: "8px" }}
-                          ></div>
-                        </div>
-                      ))}
-                    </div>
-                    {/* Days labels */}
-                    <div className="flex items-center justify-between">
-                      {["L", "M", "M", "J", "V", "S", "D"].map((day, i) => (
-                        <div key={i} className="flex-1 text-center">
-                          <div className="text-[10px] text-gray-500 font-medium">
-                            {day}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Floating elements */}
-                <div className="absolute -top-4 -right-4 w-20 h-20 bg-gradient-to-br from-indigo-200/60 to-purple-200/60 rounded-2xl transform rotate-12 blur-xl"></div>
-                <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-gradient-to-br from-purple-200/60 to-indigo-200/60 rounded-full blur-xl"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section Fonctionnalités - Design Premium */}
-      <section
-        id="features"
-        ref={setSectionRef("features")}
-        className="relative py-24 px-4 sm:px-6 lg:px-8 bg-gray-50"
-      >
-        <div className="max-w-7xl mx-auto">
-          <div
-            className={`text-center mb-16 transition-all duration-1000 ${
-              isVisible["features"]
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-10"
-            }`}
-          >
-            <span className="text-indigo-600 font-semibold text-sm uppercase tracking-wider mb-3 block">
-              Fonctionnalités
-            </span>
-            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-              Tout ce dont vous avez besoin
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Une suite d'outils complète pensée pour les coachs et les athlètes
-              exigeants
-            </p>
-          </div>
-
-          {/* Grid de features élégant */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                icon: (
-                  <svg
-                    className="w-8 h-8"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                    />
-                  </svg>
-                ),
-                title: "Suivi de performances",
-                description:
-                  "Enregistrez et analysez chaque séance avec précision. Visualisez votre progression en temps réel.",
-              },
-              {
-                icon: (
-                  <svg
-                    className="w-8 h-8"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                    />
-                  </svg>
-                ),
-                title: "Analyses avancées",
-                description:
-                  "Des graphiques clairs et des statistiques pertinentes pour prendre les bonnes décisions.",
-              },
-              {
-                icon: (
-                  <svg
-                    className="w-8 h-8"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                ),
-                title: "Objectifs personnalisés",
-                description:
-                  "Définissez vos objectifs et suivez votre progression étape par étape avec clarté.",
-              },
-              {
-                icon: (
-                  <svg
-                    className="w-8 h-8"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                    />
-                  </svg>
-                ),
-                title: "Gestion de clients",
-                description:
-                  "Accompagnez plusieurs clients avec des programmes individualisés et un suivi professionnel.",
-              },
-              {
-                icon: (
-                  <svg
-                    className="w-8 h-8"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-                    />
-                  </svg>
-                ),
-                title: "Application mobile",
-                description:
-                  "Emportez votre carnet partout avec vous. Interface fluide et mode hors ligne disponible.",
-              },
-              {
-                icon: (
-                  <svg
-                    className="w-8 h-8"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                ),
-                title: "Rapports détaillés",
-                description:
-                  "Générez des rapports professionnels pour partager avec vos clients ou votre coach.",
-              },
-            ].map((feature, index) => (
-              <div
-                key={index}
-                className={`group transition-all duration-500 ${
-                  isVisible["features"]
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-20"
-                }`}
-                style={{ transitionDelay: `${index * 100}ms` }}
-              >
-                <div className="bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-xl hover:border-indigo-200 transition-all duration-300 h-full">
-                  <div className="w-14 h-14 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mb-6 text-white group-hover:scale-110 transition-transform">
-                    {feature.icon}
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">
-                    {feature.title}
-                  </h3>
-                  <p className="text-gray-600 leading-relaxed">
-                    {feature.description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Section Avantages - Design Premium */}
-      <section
-        id="benefits"
-        ref={setSectionRef("benefits")}
-        className="relative py-24 px-4 sm:px-6 lg:px-8 bg-white"
-      >
-        <div className="max-w-7xl mx-auto">
-          <div
-            className={`text-center mb-16 transition-all duration-1000 ${
-              isVisible["benefits"]
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-10"
-            }`}
-          >
-            <span className="text-indigo-600 font-semibold text-sm uppercase tracking-wider mb-3 block">
-              Avantages
-            </span>
-            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-              Des résultats mesurables et concrets
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Découvrez comment MyTrackLy transforme réellement votre façon de travailler et fait gagner du temps à des centaines de professionnels
-            </p>
-          </div>
-
-          {/* Grid Avant/Après élégant */}
-          <div className="grid lg:grid-cols-2 gap-12 mb-16">
-            {/* SANS */}
-            <div
-              className={`transition-all duration-1000 ${
-                isVisible["benefits"]
-                  ? "opacity-100 -translate-x-0"
-                  : "opacity-0 -translate-x-20"
-              }`}
-            >
-              <div className="bg-gray-50 border-2 border-gray-200 rounded-2xl p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                    <svg
-                      className="w-6 h-6 text-gray-500"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="text-2xl font-bold text-gray-700">
-                    Méthodes traditionnelles
-                  </h3>
-                </div>
-
-                <div className="space-y-3">
-                  {[
-                    "Perte de 2-3h/semaine à recopier les données dans Excel",
-                    "Impossible de comparer les performances sur plusieurs mois",
-                    "Risque d'erreur de 15% lors de la saisie manuelle",
-                    "Suivi de max 10 clients avant de perdre le contrôle",
-                    "Rapports mensuels = 4h de travail par client",
-                    "Données perdues en cas de perte du carnet",
-                  ].map((item, index) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <div className="text-gray-400 text-lg mt-0.5">•</div>
-                      <span className="text-gray-600">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* AVEC */}
-            <div
-              className={`transition-all duration-1000 delay-200 ${
-                isVisible["benefits"]
-                  ? "opacity-100 translate-x-0"
-                  : "opacity-0 translate-x-20"
-              }`}
-            >
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl blur-xl opacity-50"></div>
-                <div className="relative bg-white border-2 border-indigo-200 rounded-2xl p-8">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full flex items-center justify-center">
-                      <svg
-                        className="w-6 h-6 text-white"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </div>
-                    <h3 className="text-2xl font-bold text-gray-900">
-                      Avec MyTrackLy
-                    </h3>
-                  </div>
-
-                  <div className="space-y-3">
-                    {[
-                      "Saisie en 30 secondes depuis votre smartphone à la salle",
-                      "Graphiques de progression automatiques sur 6-12 mois",
-                      "Synchronisation instantanée, zéro erreur de saisie",
-                      "Gérez jusqu'à 50+ élèves avec le même temps qu'avant",
-                      "Rapports PDF professionnels générés en 1 clic",
-                      "Sauvegarde automatique cloud, accessible partout",
-                    ].map((item, index) => (
-                      <div key={index} className="flex items-start gap-3">
-                        <div className="text-indigo-600 mt-0.5">
-                          <IconCheck className="w-5 h-5" />
-                        </div>
-                        <span className="text-gray-700 font-medium">
-                          {item}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats élégantes */}
-          <div
-            className={`grid grid-cols-2 md:grid-cols-4 gap-6 transition-all duration-1000 delay-400 ${
-              isVisible["benefits"]
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-20"
-            }`}
-          >
-            {[
-              {
-                value: "8h",
-                label: "économisées/semaine",
-                description: "pour les coachs avec 20+ clients",
-              },
-              {
-                value: "85%",
-                label: "de réduction",
-                description: "du temps de création de rapports",
-              },
-              {
-                value: "94%",
-                label: "de satisfaction",
-                description: "coachs et athlètes",
-              },
-              { 
-                value: "2min", 
-                label: "pour enregistrer", 
-                description: "une séance complète" 
-              },
-            ].map((stat, index) => (
-              <div
-                key={index}
-                className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-xl p-6 text-center hover:border-indigo-300 hover:shadow-lg transition-all"
-              >
-                <div className="text-4xl font-bold text-indigo-600 mb-1">
-                  {stat.value}
-                </div>
-                <div className="text-sm font-semibold text-gray-900 mb-1">
-                  {stat.label}
-                </div>
-                <div className="text-xs text-gray-500">{stat.description}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Section Témoignages - Design Premium */}
-      <section
-        id="testimonials"
-        ref={setSectionRef("testimonials")}
-        className="relative py-24 px-4 sm:px-6 lg:px-8 bg-gray-50"
-      >
-        <div className="max-w-7xl mx-auto">
-          <div
-            className={`text-center mb-16 transition-all duration-1000 ${
-              isVisible["testimonials"]
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-10"
-            }`}
-          >
-            <span className="text-indigo-600 font-semibold text-sm uppercase tracking-wider mb-3 block">
-              Témoignages
-            </span>
-            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-              Ce qu'en disent nos utilisateurs
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Découvrez comment MyTrackLy aide coachs et athlètes au quotidien
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                name: "Sophie Laurent",
-                role: "Coach sportive",
-                initials: "SL",
-                content:
-                  "Cette application a vraiment changé ma façon de travailler. Je peux maintenant suivre l'évolution de mes clients de manière précise et leur donner des conseils personnalisés basés sur des données concrètes.",
-              },
-              {
-                name: "Marc Dubois",
-                role: "Athlète amateur",
-                initials: "MD",
-                content:
-                  "Enfin un outil qui me permet de voir ma progression clairement. Les graphiques sont lisibles et l'application est facile à utiliser, même à la salle de sport.",
-              },
-              {
-                name: "Emma Martin",
-                role: "Coach nutrition",
-                initials: "EM",
-                content:
-                  "Mes clients apprécient particulièrement les rapports détaillés que je peux leur envoyer. Cela renforce la confiance et montre la valeur de mon accompagnement.",
-              },
-              {
-                name: "Thomas Bernard",
-                role: "Préparateur physique",
-                initials: "TB",
-                content:
-                  "L'interface est intuitive et professionnelle. J'ai pu intégrer l'outil rapidement dans ma pratique sans avoir besoin de formation complexe.",
-              },
-              {
-                name: "Julie Petit",
-                role: "Pratiquante régulière",
-                initials: "JP",
-                content:
-                  "Je suis mes objectifs semaine après semaine. L'application m'aide à rester motivée et à voir le chemin parcouru. C'est vraiment encourageant.",
-              },
-              {
-                name: "Alexandre Chen",
-                role: "Coach en ligne",
-                initials: "AC",
-                content:
-                  "Parfait pour le coaching à distance. Je peux suivre mes clients où qu'ils soient et ils apprécient cette flexibilité et ce suivi professionnel.",
-              },
-            ].map((testimonial, index) => (
-              <div
-                key={index}
-                className={`transition-all duration-500 ${
-                  isVisible["testimonials"]
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-20"
-                }`}
-                style={{ transitionDelay: `${index * 100}ms` }}
-              >
-                <div className="bg-white border border-gray-200 rounded-2xl p-8 h-full hover:shadow-xl hover:border-indigo-200 transition-all">
-                  {/* Étoiles */}
-                  <div className="flex gap-1 mb-6">
-                    {[...Array(5)].map((_, i) => (
-                      <IconStar 
-                        key={i} 
-                        className="w-5 h-5 text-yellow-400 fill-current" 
-                      />
-                    ))}
-                  </div>
-
-                  {/* Contenu */}
-                  <p className="text-gray-700 mb-6 leading-relaxed">
-                    "{testimonial.content}"
-                  </p>
-
-                  {/* Profil */}
-                  <div className="flex items-center gap-3 pt-6 border-t border-gray-100">
-                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                      {testimonial.initials}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-900">
-                        {testimonial.name}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {testimonial.role}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Section Pricing - Design Premium */}
-      <section
-        id="pricing"
-        ref={setSectionRef("pricing")}
-        className="relative py-24 px-4 sm:px-6 lg:px-8 bg-white"
-      >
-        <div className="max-w-7xl mx-auto">
-          <div
-            className={`text-center mb-16 transition-all duration-1000 ${
-              isVisible["pricing"]
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-10"
-            }`}
-          >
-            <span className="text-indigo-600 font-semibold text-sm uppercase tracking-wider mb-3 block">
-              Tarifs
-            </span>
-            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-              Un tarif adapté à vos besoins
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Essai gratuit de 14 jours · Sans engagement · Annulation à tout
-              moment
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {/* Plan Individuel */}
-            <div
-              className={`transition-all duration-500 ${
-                isVisible["pricing"]
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-20"
-              }`}
-            >
-              <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 h-full hover:shadow-lg hover:border-indigo-300 transition-all flex flex-col">
-                <div className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-2">
-                  Individuel
-                </div>
-                <div className="mb-6">
-                  <span className="text-5xl font-bold text-gray-900">5€</span>
-                  <span className="text-gray-600">/mois</span>
-                </div>
-                <p className="text-gray-600 mb-8">
-                  Pour les sportifs qui veulent suivre leurs progrès
-                </p>
-                <ul className="space-y-4 mb-8 flex-grow">
-                  {[
-                    "Suivi personnel complet de vos séances",
-        "Statistiques et progression détaillées",
-        "Mensurations et historique",
-        "Habitudes et objectifs personnels",
-        "Historique complet de vos séances",
-        "Support par email",
-                  ].map((feature, i) => (
-                    <li key={i} className="flex items-center gap-3">
-                      <svg
-                        className="w-5 h-5 text-indigo-600 flex-shrink-0"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <span className="text-gray-700">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  onClick={() => handlePlanClick("personnel")}
-                  className="w-full bg-gray-100 hover:bg-indigo-600 hover:text-white text-gray-900 py-4 rounded-xl font-semibold transition-all"
-                >
-                  Commencer l'essai gratuit
-                </button>
-              </div>
-            </div>
-
-            {/* Plan Coach - Populaire */}
-            <div
-              className={`transition-all duration-500 delay-100 ${
-                isVisible["pricing"]
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-20"
-              }`}
-            >
-              <div className="relative h-full">
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-lg z-10">
-                  Recommandé
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl blur-xl opacity-50"></div>
-                <div className="relative bg-white border-2 border-indigo-600 rounded-2xl p-8 shadow-xl h-full flex flex-col">
-                  <div className="text-sm font-semibold text-indigo-600 uppercase tracking-wider mb-2">
-                    Coach
-                  </div>
-                  <div className="mb-6">
-                    <span className="text-5xl font-bold text-gray-900">
-                      50€
-                    </span>
-                    <span className="text-gray-600">/mois</span>
-                  </div>
-                  <p className="text-gray-600 mb-8">
-                    Pour les coachs qui accompagnent leurs clients
-                  </p>
-                  <ul className="space-y-4 mb-8 flex-grow">
-                    {[
-                       "Toutes les fonctionnalités du plan Personnel",
-                       "Gestion illimitée de vos élèves",
-                       "Visualisation complète des données de vos élèves",
-                       "Création de séances pour vos élèves",
-                       "Messagerie avec tous vos élèves",
-                       "Programmes d'entraînement personnalisés",
-                       "Rappels et notifications par email",
-                       "Statistiques globales de vos élèves",
-                       "Support prioritaire 24/7",
-                    ].map((feature, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <svg
-                          className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                        <span className="text-gray-700 font-medium">
-                          {feature}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    onClick={() => handlePlanClick("coach")}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-                  >
-                    Commencer l'essai gratuit
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Plan Élève */}
-            <div
-              className={`transition-all duration-500 delay-200 ${
-                isVisible["pricing"]
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-20"
-              } md:col-span-2 lg:col-span-1`}
-            >
-              <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 h-full hover:shadow-lg hover:border-indigo-300 transition-all flex flex-col">
-                <div className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-2">
-                  Élève
-                </div>
-                <div className="mb-6">
-                  <span className="text-5xl font-bold text-gray-900">0€</span>
-                  <span className="text-gray-600">/mois</span>
-                </div>
-                <p className="text-gray-600 mb-8">
-                  Votre coach paie pour votre accès
-                </p>
-                <ul className="space-y-4 mb-8 flex-grow">
-                  {[
-                    "Toutes les fonctionnalités du plan Personnel",
-        "Coach assigné pour vous accompagner",
-        "Réservation de séances avec votre coach",
-        "Discussion et messagerie avec le coach",
-        "Accès aux programmes créés par votre coach",
-        "Suivi personnalisé par votre coach",
-        "Support prioritaire",
-                  ].map((feature, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <svg
-                        className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <span className="text-gray-700">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  onClick={() => handlePlanClick("eleve")}
-                  className="w-full bg-gray-100 hover:bg-indigo-600 hover:text-white text-gray-900 py-4 rounded-xl font-semibold transition-all"
-                >
-                  S'inscrire
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Trust badges */}
-          <div
-            className={`mt-12 flex flex-wrap justify-center items-center gap-8 transition-all duration-1000 ${
-              isVisible["pricing"]
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-10"
-            }`}
-          >
-            {[
-              { icon: "lock", text: "Paiement sécurisé" },
-              { icon: "check", text: "14 jours d'essai gratuit" },
-              { icon: "refresh", text: "Annulation à tout moment" },
-            ].map((badge, i) => {
-              const IconComponent = 
-                badge.icon === "lock" ? IconLock :
-                badge.icon === "check" ? IconCheck :
-                IconRefresh;
-              return (
-              <div
-                key={i}
-                className="flex items-center gap-2 text-gray-600 text-sm"
-              >
-                <IconComponent className="w-5 h-5" />
-                <span>{badge.text}</span>
-              </div>
-            );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Section Logos Clients - Social Proof */}
-      <section
-        id="clients"
-        ref={setSectionRef("clients")}
-        className="relative py-16 px-4 sm:px-6 lg:px-8 bg-white border-y border-gray-100"
-      >
-        <div className="max-w-7xl mx-auto">
-          <div
-            className={`text-center mb-12 transition-all duration-1000 ${
-              isVisible["clients"]
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-10"
-            }`}
-          >
-            <p className="text-sm text-gray-500 uppercase tracking-wider mb-8">
-              Ils nous font confiance
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 items-center opacity-60 hover:opacity-100 transition-opacity">
-              {[
-                "Fitness Pro",
-                "Sport Academy",
-                "Elite Coaching",
-                "Performance Plus",
-                "Athlete Hub",
-                "Trainer Pro",
-              ].map((client, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all"
-                >
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg mx-auto mb-2 flex items-center justify-center text-white font-bold text-sm">
-                      {client.split(" ")[0][0]}
-                      {client.split(" ")[1]?.[0]}
-                    </div>
-                    <div className="text-xs text-gray-600 font-medium">
-                      {client}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section FAQ - Répondre aux objections */}
-      <section
-        id="faq"
-        ref={setSectionRef("faq")}
-        className="relative py-24 px-4 sm:px-6 lg:px-8 bg-white"
-      >
-        <div className="max-w-4xl mx-auto">
-          <div
-            className={`text-center mb-16 transition-all duration-1000 ${
-              isVisible["faq"]
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-10"
-            }`}
-          >
-            <span className="text-indigo-600 font-semibold text-sm uppercase tracking-wider mb-3 block">
-              Questions fréquentes
-            </span>
-            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-              Tout ce que vous devez savoir
-            </h2>
-            <p className="text-xl text-gray-600">
-              Des réponses claires à vos questions les plus courantes
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            {[
-              {
-                question: "Puis-je essayer MyTrackLy gratuitement ?",
-                answer:
-                  "Oui, nous offrons un essai gratuit de 14 jours sans carte bancaire. Vous avez accès à toutes les fonctionnalités pendant cette période pour tester la plateforme en conditions réelles.",
-              },
-              {
-                question: "Mes données sont-elles sécurisées ?",
-                answer:
-                  "Absolument. Nous utilisons un chiffrement de niveau entreprise et respectons le RGPD. Vos données sont stockées de manière sécurisée et nous effectuons des sauvegardes régulières.",
-              },
-              {
-                question: "Puis-je annuler mon abonnement à tout moment ?",
-                answer:
-                  "Oui, vous pouvez annuler votre abonnement à tout moment depuis votre compte. Aucun engagement, aucune pénalité. Vous gardez l'accès jusqu'à la fin de votre période de facturation.",
-              },
-              {
-                question: "MyTrackLy fonctionne-t-il sur mobile ?",
-                answer:
-                  "Oui, MyTrackLy est entièrement responsive et fonctionne parfaitement sur smartphone et tablette. Une application mobile native est également disponible sur iOS et Android.",
-              },
-              {
-                question: "Puis-je importer mes données existantes ?",
-                answer:
-                  "Oui, nous proposons des outils d'import pour les données Excel, CSV et d'autres formats. Notre équipe peut également vous aider à migrer vos données si nécessaire.",
-              },
-              {
-                question: "Quel support est disponible ?",
-                answer:
-                  "Nous offrons un support par email pour tous les plans, et un support prioritaire 24/7 pour les plans Coach et Professionnel. Nous répondons généralement sous 24h.",
-              },
-            ].map((faq, index) => (
-              <div
-                key={index}
-                className={`bg-gray-50 rounded-xl p-6 border border-gray-200 hover:border-indigo-200 transition-all ${
-                  isVisible["faq"]
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-10"
-                }`}
-                style={{ transitionDelay: `${index * 50}ms` }}
-              >
-                <h3 className="text-lg font-bold text-gray-900 mb-3">
-                  {faq.question}
-                </h3>
-                <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Final - Design Premium */}
-      <section
-        id="cta"
-        ref={setSectionRef("cta")}
-        className="relative py-24 px-4 sm:px-6 lg:px-8 overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700"
-      >
-        {/* Formes subtiles */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-
-        <div className="max-w-4xl mx-auto relative z-10 text-center">
-          <div
-            className={`transition-all duration-1000 ${
-              isVisible["cta"] ? "opacity-100 scale-100" : "opacity-0 scale-95"
-            }`}
-          >
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 text-white leading-tight">
-              Prêt à transformer votre pratique sportive ?
-            </h2>
-
-            <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto">
-              Rejoignez des milliers d'athlètes et de coachs qui font déjà
-              confiance à MyTrackLy
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <button
-                onClick={handleCTAClick}
-                className="group bg-white hover:bg-gray-50 text-indigo-600 px-8 py-4 rounded-xl font-semibold text-lg transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5"
-              >
-                Commencer gratuitement
-                <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">
-                  →
-                </span>
-              </button>
-              <button
-                onClick={handleCTAClick}
-                className="border-2 border-white/30 hover:border-white/50 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all hover:bg-white/10"
-              >
-                Réserver une démo
-              </button>
-            </div>
-
-            <div className="text-white/80 text-sm flex items-center gap-2 justify-center">
-              <IconCheck className="w-4 h-4" />
-              <span>Essai gratuit de 14 jours · Sans carte bancaire · Assistance incluse</span>
-            </div>
-
-            {/* Social proof final */}
-            <div className="flex flex-wrap justify-center gap-12 mt-16 pt-12 border-t border-white/20">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-white mb-1">15K+</div>
-                <div className="text-sm text-white/70">Utilisateurs actifs</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-white mb-1">4.8/5</div>
-                <div className="text-sm text-white/70">Note moyenne</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-white mb-1">500K+</div>
-                <div className="text-sm text-white/70">
-                  Séances enregistrées
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <Footer />
+      <FooterComponent />
     </div>
   );
 };
+
+// --- SECTIONS ---
+
+const HeroSection = ({ theme }: { theme: string }) => {
+  const { scrollY } = useScroll();
+  const y1 = useTransform(scrollY, [0, 500], [0, 150]);
+  const yText = useTransform(scrollY, [0, 300], [0, 50]);
+  const opacityText = useTransform(scrollY, [0, 300], [1, 0]);
+  const scalePreview = useTransform(scrollY, [0, 1000], [1, 1.1]);
+
+  return (
+    <section className="relative min-h-[100vh] flex flex-col items-center justify-center pt-24 md:pt-32 pb-20 overflow-hidden">
+      {/* Background Elements */}
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-500/10 via-slate-950/0 to-slate-950/0 opacity-60 dark:opacity-40" />
+      <div className={`absolute inset-0 -z-20 ${theme === 'dark' ? 'bg-slate-950' : 'bg-slate-50'}`} />
+      
+      {/* Grid Pattern */}
+       <div className={`absolute inset-0 -z-10 [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_70%)] pointer-events-none opacity-[0.03] ${theme === 'dark' ? 'bg-[url("https://grainy-gradients.vercel.app/noise.svg")]' : ''}`}
+            style={{
+                backgroundImage: `linear-gradient(${theme === 'dark' ? '#334155' : '#cbd5e1'} 1px, transparent 1px), linear-gradient(90deg, ${theme === 'dark' ? '#334155' : '#cbd5e1'} 1px, transparent 1px)`,
+                backgroundSize: '40px 40px'
+            }}
+       />
+
+      <div className="relative z-10 max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
+        <motion.div
+           style={{ y: yText, opacity: opacityText }}
+           className="flex flex-col items-center"
+        >
+            <motion.div
+               initial={{ opacity: 0, scale: 0.9 }}
+               animate={{ opacity: 1, scale: 1 }}
+               transition={{ duration: 0.5 }}
+               className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/5 text-indigo-500 dark:text-indigo-400 text-sm font-bold tracking-wide mb-10 backdrop-blur-sm"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+              </span>
+              MYTRACKLY 2.0
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className={`text-5xl md:text-8xl lg:text-9xl font-black tracking-tighter mb-8 leading-[0.9] ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}
+            >
+              Dominez <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-b from-indigo-400 to-indigo-600">
+                votre potentiel.
+              </span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className={`text-lg md:text-3xl max-w-3xl mx-auto mb-12 font-medium leading-normal ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}
+            >
+              L'algorithme qui transforme vos efforts en résultats mesurables. 
+              <span className="opacity-50 block md:inline"> Plus de guesswork. Juste de la science.</span>
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="flex flex-col sm:flex-row gap-5 w-full sm:w-auto items-center justify-center mb-20"
+            >
+              <Link
+                to="/register"
+                className="w-full sm:w-auto px-8 py-4 rounded-full bg-indigo-600 text-white font-bold text-lg hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20 hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+              >
+                Commencer Gratuitement <ChevronRight size={20} />
+              </Link>
+              <Link
+                to="/features/pricing"
+                className={`w-full sm:w-auto px-8 py-4 rounded-full font-bold text-lg border transition-all hover:scale-105 active:scale-95 flex items-center justify-center ${theme === 'dark' ? 'border-slate-800 text-white hover:bg-slate-800' : 'border-slate-200 text-slate-900 hover:bg-slate-100'}`}
+              >
+                Voir la démo
+              </Link>
+            </motion.div>
+        </motion.div>
+
+        {/* Dashboard Preview / Parallax Element */}
+        <motion.div
+          style={{ y: y1, scale: scalePreview }}
+          className="relative w-full max-w-6xl mx-auto rounded-2xl border border-slate-200/20 dark:border-slate-700/50 shadow-2xl shadow-indigo-500/10 overflow-hidden bg-white dark:bg-slate-950 backdrop-blur-sm group select-none pointer-events-none"
+        >
+             <DashboardMockup theme={theme} />
+             {/* Glass Reflection overlay */}
+             <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-50 pointer-events-none" />
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
+const DashboardMockup = ({ theme }: { theme: string }) => {
+    const isDark = theme === 'dark';
+    
+    return (
+        <div className={`w-full h-full flex flex-col font-sans ${isDark ? 'bg-slate-950' : 'bg-[#F8F9FC]'}`}>
+            {/* Top Navigation Mockup */}
+            <div className={`h-14 border-b flex items-center justify-between px-4 md:px-6 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/60'}`}>
+                <div className="flex items-center gap-2">
+                    <img src="/logo.svg" alt="MyTrackLy Logo" className="w-8 h-8" />
+                    <span className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>MyTrackLy</span>
+                    <span className="hidden md:inline-block px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold uppercase tracking-wider ml-2">Élève</span>
+                </div>
+                <div className="hidden md:flex items-center gap-6">
+                     {["Accueil", "Séances", "Réservations", "Mensurations"].map((item, i) => (
+                         <div key={item} className={`text-sm font-medium ${i === 0 ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-1 rounded-full' : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
+                             {item}
+                         </div>
+                     ))}
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>T</div>
+                    <span className={`hidden md:inline text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Thomas Pesquet</span>
+                </div>
+            </div>
+
+            {/* Main Dashboard Content */}
+            <div className="flex-1 p-4 md:p-8 overflow-hidden flex flex-col gap-8">
+                {/* Header Section */}
+                <div className="flex flex-col md:block text-center md:text-left">
+                     <div className={`text-sm mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Vendredi 30 Janvier 2026</div>
+                     <h2 className={`text-3xl md:text-4xl font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        Bon après-midi, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500">Thomas Pesquet</span>
+                     </h2>
+                     <p className={`text-base md:text-lg mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Continuez sur cette lancée, votre régularité paie !</p>
+                     
+                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 text-sm font-medium mb-6 mx-auto md:mx-0">
+                        <TrendingUp size={14} /> 7 séances ce mois
+                     </div>
+
+                     <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+                        <button className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 text-sm">
+                            <Plus size={18} /> Nouvelle séance
+                        </button>
+                        <button className={`px-6 py-3 rounded-xl font-bold border flex items-center justify-center gap-2 text-sm ${isDark ? 'border-slate-800 text-white bg-slate-900' : 'border-slate-200 bg-white text-slate-900'}`}>
+                             Voir l'historique
+                        </button>
+                     </div>
+                </div>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                    <StatBox 
+                        title="SÉANCES" 
+                        value="7" 
+                        sub="Ce mois-ci" 
+                        theme={theme} 
+                        rightElement={<div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600"><Activity size={20}/></div>}
+                    />
+                    <StatBox 
+                        title="VOLUME TOTAL" 
+                        value="3.0T" 
+                        sub="Total soulevé" 
+                        theme={theme} 
+                        rightElement={<div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600"><BarChart3 size={20}/></div>}
+                    />
+                    <StatBox 
+                        title="STREAK ACTUEL" 
+                        value="3" 
+                        unit="jours"
+                        sub="Série actuelle" 
+                        theme={theme} 
+                        rightElement={<div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600"><Zap size={20}/></div>}
+                        footer={
+                            <div className="flex gap-1.5 mt-3">
+                                {[true, true, true, false, false, false, false].map((active, i) => (
+                                    <div key={i} className={`h-2.5 flex-1 rounded-full ${active ? 'bg-amber-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                                ))}
+                            </div>
+                        }
+                    />
+                    <StatBox 
+                        title="OBJECTIF MENSUEL" 
+                        value="60%" 
+                        sub="Volume: 5 Tonnes" 
+                        theme={theme} 
+                        rightElement={<div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600"><Target size={20}/></div>}
+                        footer={
+                            <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full mt-3 overflow-hidden">
+                                <div className="bg-blue-500 h-full rounded-full" style={{ width: '60%' }} />
+                            </div>
+                        }
+                    />
+                </div>
+
+                {/* Bottom Chart Mock */}
+                <div className={`flex-1 rounded-2xl border p-6 flex flex-col justify-between overflow-hidden relative ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                     <div className="flex justify-between items-start relative z-10">
+                        <div>
+                            <h3 className={`font-bold mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>Statistiques détaillées</h3>
+                            <p className="text-xs text-slate-500">Nombre de séances par semaine</p>
+                        </div>
+                        <div className={`px-3 py-1 rounded-lg border text-xs font-medium cursor-pointer flex items-center gap-1 ${isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-600'}`}>
+                            Séances par semaine <ChevronDown size={14} />
+                        </div>
+                     </div>
+                     
+                     {/* Corrected Chart Container to strictly contain the SVG */}
+                     <div className="absolute bottom-0 left-0 right-0 h-40 w-full">
+                         <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 1000 200">
+                              <defs>
+                                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0.3"/>
+                                  <stop offset="100%" stopColor="#6366f1" stopOpacity="0"/>
+                                </linearGradient>
+                              </defs>
+                             <path d="M0,200 L0,150 Q250,50 500,100 T1000,80 L1000,200 Z" fill="url(#chartGradient)" />
+                         </svg>
+                     </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+const StatBox = ({ title, value, unit, sub, theme, rightElement, footer, opacity = 1 }: any) => (
+    <div className={`p-5 rounded-2xl border flex flex-col justify-between transition-all hover:-translate-y-1 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'} shadow-sm`} style={{ opacity }}>
+        <div className="flex justify-between items-start mb-4">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-1">{title}</span>
+            {rightElement}
+        </div>
+        <div>
+            <div className="flex items-baseline gap-1">
+                <span className={`text-3xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{value}</span>
+                {unit && <span className="text-sm font-medium text-slate-500">{unit}</span>}
+            </div>
+            <p className="text-xs text-slate-500 mt-1 font-medium">{sub}</p>
+            {footer}
+        </div>
+    </div>
+)
+
+const FeaturesSection = ({ theme }: { theme: string }) => {
+  const features: Feature[] = [
+    {
+      icon: TrendingUp,
+      title: "Volume Automatique",
+      description: "Focus sur la perf. On s'occupe de calculer ton tonnage et tes stats.",
+      color: "text-indigo-500",
+    },
+    {
+      icon: BarChart3,
+      title: "Suivi des PRs",
+      description: "Tes records, tes graphiques d'évolution, tes 1RM. Tout est là.",
+      color: "text-purple-500",
+    },
+    {
+      icon: Zap,
+      title: "Muscle Map",
+      description: "Visualisation 3D des groupes musculaires travaillés. Équilibre ton physique.",
+      color: "text-amber-500",
+    },
+    {
+      icon: Brain,
+      title: "Insights IA",
+      description: "Des conseils personnalisés basés sur tes données pour exploser tes plateaux.",
+      color: "text-emerald-500",
+    },
+    {
+      icon: Calendar,
+      title: "Planification",
+      description: "L'outil le plus fluide pour créer tes semaines d'entraînement.",
+      color: "text-blue-500",
+    },
+    {
+      icon: Smartphone,
+      title: "100% Mobile",
+      description: "Pensé pour l'utilisation à une main, entre deux séries.",
+      color: "text-rose-500",
+    },
+  ];
+
+  return (
+    <section id="features" className={`py-32 relative ${theme === 'dark' ? 'bg-slate-950' : 'bg-white'}`}>
+       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+         <div className="text-center mb-20">
+           <h2 className={`text-3xl md:text-5xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+             Technologie <span className="text-indigo-500">Avancée</span>
+           </h2>
+           <p className={`text-xl max-w-2xl mx-auto ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+             Exploite toutes les datas de tes entraînements.
+           </p>
+         </div>
+
+         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, idx) => (
+              <FeatureCard key={idx} feature={feature} theme={theme} index={idx} />
+            ))}
+         </div>
+       </div>
+    </section>
+  );
+};
+
+const FeatureCard = ({ feature, theme, index }: { feature: Feature, theme: string, index: number }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
+  
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+      transition={{ delay: index * 0.1, duration: 0.5 }}
+      whileHover={{ y: -5 }}
+      className={`p-8 rounded-2xl border transition-all duration-300 group ${
+         theme === 'dark' 
+           ? 'bg-slate-900/50 border-slate-800 hover:border-indigo-500/50 hover:bg-slate-900' 
+           : 'bg-slate-50 border-slate-200 hover:border-indigo-500/50 hover:bg-white shadow-sm hover:shadow-xl'
+      }`}
+    >
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 bg-slate-100 dark:bg-slate-800 group-hover:scale-110 transition-transform duration-300 ${feature.color.replace('text-', 'bg-').replace('500', '500/10')}`}>
+        <feature.icon className={`w-6 h-6 ${feature.color}`} />
+      </div>
+      <h3 className={`text-xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+        {feature.title}
+      </h3>
+      <p className={`leading-relaxed ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+        {feature.description}
+      </p>
+    </motion.div>
+  );
+};
+
+const CoachingSection = ({ theme }: { theme: string }) => {
+  return (
+    <section id="coaching" className={`py-32 overflow-hidden ${theme === 'dark' ? 'bg-slate-900 relative' : 'bg-slate-50 relative'}`}>
+       <div className="absolute top-1/2 left-0 -translate-y-1/2 w-96 h-96 bg-purple-500/20 rounded-full blur-[100px] pointer-events-none" />
+
+       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-16 items-center">
+         <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-purple-500/20 bg-purple-500/10 text-purple-600 dark:text-purple-400 text-sm font-medium mb-6">
+               <Users size={16} />
+               Espace Coach
+            </div>
+            <h2 className={`text-3xl md:text-5xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+              Coaching 3.0
+            </h2>
+            <p className={`text-lg mb-8 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+              Digitalise ton activité de coaching. Gagne du temps, scale ton business.
+            </p>
+
+            <ul className="space-y-4 mb-10">
+              {[
+                "Création de programmes en quelques clics",
+                "Bibliothèque de 500+ exercices",
+                "Sync Google Calendar & Réservations",
+                "Paiements automatisés par Stripe",
+                "CRM Clients complet"
+              ].map((item, i) => (
+                <motion.li 
+                  key={i}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="flex items-center gap-3"
+                >
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <span className={theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}>{item}</span>
+                </motion.li>
+              ))}
+            </ul>
+
+            <Link
+              to="/features/coaching"
+              className="inline-flex items-center justify-center px-8 py-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-all shadow-lg shadow-purple-600/25"
+            >
+              Je suis Coach
+            </Link>
+         </div>
+
+         <div className="relative">
+             <div className={`relative z-10 rounded-2xl p-6 border shadow-2xl ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                 <div className="flex items-center justify-between mb-8">
+                    <div>
+                       <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Agenda Collaboratif</h3>
+                       <p className="text-sm text-slate-500">Mardi 24 Janvier</p>
+                    </div>
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                       <Calendar className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                 </div>
+                 
+                 <div className="space-y-4">
+                   {[
+                     { time: "09:00", name: "Séance Épaules - Thomas", type: "Coaching 1:1" },
+                     { time: "11:30", name: "Bilan Mensuel - Sarah", type: "Visio" },
+                     { time: "14:00", name: "Séance Jambes - Alex", type: "Coaching 1:1" },
+                   ].map((slot, i) => (
+                      <div key={i} className={`flex items-center gap-4 p-3 rounded-lg border-l-4 border-purple-500 ${theme === 'dark' ? 'bg-slate-900' : 'bg-slate-50'}`}>
+                          <span className="text-sm font-bold text-slate-500">{slot.time}</span>
+                          <div>
+                             <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{slot.name}</p>
+                             <p className="text-xs text-purple-600">{slot.type}</p>
+                          </div>
+                      </div>
+                   ))}
+                 </div>
+             </div>
+             <div className="absolute -top-10 -right-10 w-full h-full border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl z-0" />
+         </div>
+       </div>
+    </section>
+  );
+};
+
+const PricingSection = ({ theme }: { theme: string }) => {
+  const plans: PricingPlan[] = [
+    {
+      name: "Personnel",
+      price: "5€",
+      period: "/mois",
+      description: "L'essentiel pour progresser seul.",
+      features: [
+        "Carnet d'entraînement illimité",
+        "Calcul du volume & PRs",
+        "Suivi des mensurations",
+        "Sans engagement"
+      ],
+      cta: "Essai gratuit 14j",
+      highlight: false
+    },
+    {
+      name: "Coach Pro",
+      price: "50€",
+      period: "/mois",
+      description: "Pour les coachs qui veulent scaler.",
+      features: [
+        "Tout du plan Personnel",
+        "Jusqu'à 50 élèves",
+        "Programmes illimités",
+        "Sync Calendrier & Paiements",
+        "Support 24/7"
+      ],
+      cta: "Essai gratuit 14j",
+      popular: true,
+      highlight: true
+    },
+    {
+      name: "Élève (Coaching)",
+      price: "0€",
+      description: "Inclus avec ton coaching.",
+      features: [
+        "Accès complet",
+        "Programmes du coach",
+        "Messagerie privée",
+        "Suivi partagé"
+      ],
+      cta: "S'inscrire",
+      highlight: false
+    }
+  ];
+
+  return (
+    <section id="pricing" className={`py-32 relative ${theme === 'dark' ? 'bg-slate-950' : 'bg-white'}`}>
+       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+         <div className="text-center mb-16">
+           <h2 className={`text-3xl md:text-5xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+             Tarifs <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600">Transparents</span>
+           </h2>
+           <p className={`text-xl ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+             Pas de frais cachés. Annulation en 1 clic.
+           </p>
+         </div>
+
+         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {plans.map((plan, idx) => (
+              <PricingCard key={idx} plan={plan} theme={theme} />
+            ))}
+         </div>
+       </div>
+    </section>
+  );
+};
+
+const PricingCard = ({ plan, theme }: { plan: PricingPlan, theme: string }) => {
+  return (
+    <motion.div 
+      whileHover={{ y: -10 }}
+      className={`relative rounded-3xl p-8 flex flex-col transition-all ${
+        plan.highlight 
+          ? `border-2 border-indigo-500 shadow-2xl shadow-indigo-500/10 ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}` 
+          : `border ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`
+      }`}
+    >
+      {plan.popular && (
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
+          Best Seller
+        </div>
+      )}
+
+      <h3 className={`text-xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{plan.name}</h3>
+      <div className="flex items-baseline gap-1 mb-4">
+        <span className={`text-4xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{plan.price}</span>
+        {plan.period && <span className="text-slate-500">{plan.period}</span>}
+      </div>
+      <p className="text-sm text-slate-500 mb-8 max-w-[80%]">{plan.description}</p>
+
+      <div className="space-y-4 mb-8 flex-grow">
+        {plan.features.map((feat, i) => (
+          <div key={i} className="flex items-start gap-3">
+             <CheckCircle2 className="w-5 h-5 text-indigo-500 flex-shrink-0" />
+             <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>{feat}</span>
+          </div>
+        ))}
+      </div>
+
+      <Link
+        to="/register"
+        className={`w-full py-3 rounded-xl font-bold text-center transition-all ${
+          plan.highlight
+            ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/25'
+            : `border-2 ${theme === 'dark' ? 'border-slate-800 text-white hover:bg-slate-800' : 'border-slate-200 text-slate-900 hover:bg-slate-100'}`
+        }`}
+      >
+        {plan.cta}
+      </Link>
+    </motion.div>
+  );
+};
+
+const ScienceSection = ({ theme }: { theme: string }) => {
+  return (
+    <section className={`py-32 relative overflow-hidden ${theme === 'dark' ? 'bg-slate-950' : 'bg-slate-50'}`}>
+        {/* Background Gradient */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+                className="text-center mb-24"
+            >
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-500 text-sm font-bold mb-6">
+                    <Brain size={16} /> Neurosciences & Performance
+                </div>
+                <h2 className={`text-5xl md:text-7xl font-black tracking-tighter mb-8 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                    Plus qu'une app.<br/>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500">Un hack biologique.</span>
+                </h2>
+                <p className={`text-xl md:text-2xl max-w-3xl mx-auto font-medium leading-relaxed ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                    MyTrackLy ne se contente pas de stocker des chiffres. Elle est conçue pour exploiter les mécanismes psychologiques de la motivation humaine.
+                </p>
+            </motion.div>
+            
+            <div className="grid md:grid-cols-3 gap-12 mb-16">
+                <ScienceCard 
+                    icon={Zap}
+                    title="Circuit de la Dopamine"
+                    desc="Valider une série déclenche une micro-récompense immédiate dans votre cerveau. Ce feedback positif crée une boucle d'habitude indestructible."
+                    color="text-amber-500"
+                    theme={theme}
+                    delay={0}
+                />
+                <ScienceCard 
+                    icon={TrendingUp}
+                    title="Surcharge Progressive"
+                    desc="L'hypertrophie requiert un stress mécanique croissant. Sans suivi précis, vous stagnez. Avec des données, vous forcez l'adaptation biologique."
+                    color="text-indigo-500"
+                    theme={theme}
+                    delay={0.2}
+                />
+                <ScienceCard 
+                    icon={Brain}
+                    title="Charge Mentale Zéro"
+                    desc="L'effort cognitif doit être dédié à l'exécution du mouvement, pas au calcul. L'externalisation de la mémoire permet une connexion Muscle-Cerveau maximale."
+                    color="text-rose-500"
+                    theme={theme}
+                    delay={0.4}
+                />
+            </div>
+
+            <div className="text-center">
+                 <Link 
+                    to="/features/science"
+                    className={`inline-flex items-center gap-2 px-8 py-4 rounded-full font-bold border-2 transition-all hover:scale-105 ${theme === 'dark' ? 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10' : 'border-emerald-500/20 text-emerald-700 hover:bg-emerald-50'}`}
+                 >
+                    <Brain className="w-5 h-5" /> En savoir plus sur la science <ArrowRight className="w-4 h-4 ml-1" />
+                 </Link>
+            </div>
+        </div>
+    </section>
+  )
+}
+
+const ScienceCard = ({ icon: Icon, title, desc, color, theme, delay }: any) => {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay }}
+            className="flex flex-col gap-6"
+        >
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${theme === 'dark' ? 'bg-slate-900 shadow-2xl shadow-black/50' : 'bg-white shadow-xl shadow-slate-200'}`}>
+                <Icon size={32} className={color} />
+            </div>
+            <div>
+                <h3 className={`text-2xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{title}</h3>
+                <p className={`text-lg leading-relaxed ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                    {desc}
+                </p>
+            </div>
+        </motion.div>
+    )
+}
 
 export default LandingPage;
