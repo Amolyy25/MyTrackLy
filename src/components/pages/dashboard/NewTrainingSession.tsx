@@ -144,17 +144,23 @@ const NewTrainingSession: React.FC = () => {
     const exercise = { ...updatedExercises[index] };
 
     if (field === "sets") {
-      exercise.sets = parseInt(value) || 0;
-      if (exercise.repsType === "variable") {
-        const newLength = exercise.sets;
-        const currentLength = exercise.repsPerSet.length;
-        if (newLength > currentLength) {
-          exercise.repsPerSet = [
-            ...exercise.repsPerSet,
-            ...Array(newLength - currentLength).fill(exercise.repsUniform),
-          ];
-        } else {
-          exercise.repsPerSet = exercise.repsPerSet.slice(0, newLength);
+      if (value === "") {
+        // Laisser le champ visuellement vide au lieu de remettre 0
+        (exercise as any).sets = "";
+      } else {
+        const parsed = parseInt(value, 10);
+        exercise.sets = Number.isNaN(parsed) ? 0 : parsed;
+        if (exercise.repsType === "variable") {
+          const newLength = Number(exercise.sets) || 0;
+          const currentLength = exercise.repsPerSet.length;
+          if (newLength > currentLength) {
+            exercise.repsPerSet = [
+              ...exercise.repsPerSet,
+              ...Array(newLength - currentLength).fill(exercise.repsUniform),
+            ];
+          } else {
+            exercise.repsPerSet = exercise.repsPerSet.slice(0, newLength);
+          }
         }
       }
     } else if (field === "repsType") {
@@ -163,13 +169,28 @@ const NewTrainingSession: React.FC = () => {
         exercise.repsPerSet = Array(exercise.sets).fill(exercise.repsUniform);
       }
     } else if (field === "repsUniform") {
-      exercise.repsUniform = parseInt(value) || 0;
+      if (value === "") {
+        (exercise as any).repsUniform = "";
+      } else {
+        const parsed = parseInt(value, 10);
+        exercise.repsUniform = Number.isNaN(parsed) ? 0 : parsed;
+      }
     } else if (field === "repsPerSet") {
       exercise.repsPerSet = value;
     } else if (field === "weightKg") {
-      exercise.weightKg = parseFloat(value) || 0;
+      if (value === "") {
+        (exercise as any).weightKg = "";
+      } else {
+        const parsed = parseFloat(value);
+        exercise.weightKg = Number.isNaN(parsed) ? 0 : parsed;
+      }
     } else if (field === "restSeconds") {
-      exercise.restSeconds = parseInt(value) || 0;
+      if (value === "") {
+        (exercise as any).restSeconds = "";
+      } else {
+        const parsed = parseInt(value, 10);
+        exercise.restSeconds = Number.isNaN(parsed) ? 0 : parsed;
+      }
     } else if (field === "notes") {
       exercise.notes = value;
     }
@@ -185,20 +206,31 @@ const NewTrainingSession: React.FC = () => {
   ) => {
     const updatedExercises = [...exercises];
     const repsPerSet = [...updatedExercises[exerciseIndex].repsPerSet];
-    repsPerSet[setIndex] = parseInt(value) || 0;
+    if (value === "") {
+      (repsPerSet as any)[setIndex] = "";
+    } else {
+      const parsed = parseInt(value, 10);
+      repsPerSet[setIndex] = Number.isNaN(parsed) ? 0 : parsed;
+    }
     updatedExercises[exerciseIndex].repsPerSet = repsPerSet;
     setExercises(updatedExercises);
   };
 
   const calculateTotalReps = (exercise: ExerciseForm): number => {
     if (exercise.repsType === "uniform") {
-      return exercise.sets * exercise.repsUniform;
+      const sets = Number((exercise as any).sets || 0);
+      const repsUniform = Number((exercise as any).repsUniform || 0);
+      return sets * repsUniform;
     }
-    return exercise.repsPerSet.reduce((sum, reps) => sum + reps, 0);
+    return exercise.repsPerSet.reduce(
+      (sum, reps) => sum + Number((reps as any) || 0),
+      0
+    );
   };
 
   const calculateVolume = (exercise: ExerciseForm): number => {
-    return calculateTotalReps(exercise) * exercise.weightKg;
+    const weight = Number((exercise as any).weightKg || 0);
+    return calculateTotalReps(exercise) * weight;
   };
 
   const calculateTotalVolume = (): number => {
@@ -221,10 +253,17 @@ const NewTrainingSession: React.FC = () => {
             exerciseDefaultUnit: "reps",
           }),
           sets: ex.sets,
-          repsUniform: ex.repsType === "uniform" ? ex.repsUniform : undefined,
-          repsPerSet: ex.repsType === "variable" ? ex.repsPerSet : undefined,
-          weightKg: ex.weightKg,
-          restSeconds: ex.restSeconds,
+          repsUniform:
+            ex.repsType === "uniform"
+              ? Number((ex as any).repsUniform || 0)
+              : undefined,
+          repsPerSet:
+            ex.repsType === "variable"
+              ? ex.repsPerSet.map((r) => Number((r as any) || 0))
+              : undefined,
+          sets: Number((ex as any).sets || 0),
+          weightKg: Number((ex as any).weightKg || 0),
+          restSeconds: Number((ex as any).restSeconds || 0),
           notes: ex.notes,
           orderIndex: index,
         })),
