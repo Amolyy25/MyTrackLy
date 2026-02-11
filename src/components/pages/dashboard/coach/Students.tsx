@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../contexts/AuthContext";
 import API_URL from "../../../../config/api";
 import { useToast } from "../../../../contexts/ToastContext";
+import { useCreateVirtualStudent } from "../../../../hooks/useStudents";
 import { Card, CardContent } from "../../ui/card";
 import { Button } from "../../ui/button";
 import { Avatar, AvatarFallback } from "../../ui/avatar";
@@ -11,15 +13,11 @@ import {
   Copy,
   Check,
   Search,
-  Filter,
   Dumbbell,
   Scale,
   Calendar,
   ChevronRight,
   Target,
-  TrendingUp,
-  Clock,
-  Mail,
   MoreVertical,
   Ticket,
   Sparkles,
@@ -27,6 +25,10 @@ import {
   AlertCircle,
   RefreshCw,
   X,
+  Mail,
+  MailX,
+  Ghost,
+  Shield,
 } from "lucide-react";
 
 interface Student {
@@ -34,6 +36,8 @@ interface Student {
   name: string;
   email: string;
   goalType: string | null;
+  isVirtual: boolean;
+  allowEmails: boolean;
   createdAt: string;
   updatedAt: string;
   _count: {
@@ -58,15 +62,27 @@ interface InvitationCode {
 const Students: React.FC = () => {
   const { token } = useAuth();
   const { showToast } = useToast();
+  const navigate = useNavigate();
+  const { createVirtualStudent, isLoading: isCreatingClient } = useCreateVirtualStudent();
   const [students, setStudents] = useState<Student[]>([]);
   const [invitationCodes, setInvitationCodes] = useState<InvitationCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showCreateClientModal, setShowCreateClientModal] = useState(false);
   const [creatingCode, setCreatingCode] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterGoal, setFilterGoal] = useState<string>("all");
+  const [filterType, setFilterType] = useState<string>("all"); // "all" | "active" | "virtual"
+
+  // Formulaire de création client
+  const [clientForm, setClientForm] = useState({
+    name: "",
+    email: "",
+    goalType: "",
+    allowEmails: true,
+  });
 
   useEffect(() => {
     fetchStudents();
@@ -128,6 +144,29 @@ const Students: React.FC = () => {
     }
   };
 
+  const handleCreateClient = async () => {
+    if (!clientForm.name.trim() || !clientForm.email.trim()) {
+      showToast("Le nom et l'email sont obligatoires.", "error");
+      return;
+    }
+
+    const result = await createVirtualStudent({
+      name: clientForm.name,
+      email: clientForm.email,
+      goalType: clientForm.goalType,
+      allowEmails: clientForm.allowEmails,
+    });
+
+    if (result) {
+      setStudents([result as Student, ...students]);
+      setClientForm({ name: "", email: "", goalType: "", allowEmails: true });
+      setShowCreateClientModal(false);
+      showToast("Fiche client créée avec succès !", "success");
+    } else {
+      showToast("Erreur lors de la création de la fiche client.", "error");
+    }
+  };
+
   const copyToClipboard = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
@@ -161,13 +200,19 @@ const Students: React.FC = () => {
         student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         student.email.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesGoal = filterGoal === "all" || student.goalType === filterGoal;
-      return matchesSearch && matchesGoal;
+      const matchesType =
+        filterType === "all" ||
+        (filterType === "active" && !student.isVirtual) ||
+        (filterType === "virtual" && student.isVirtual);
+      return matchesSearch && matchesGoal && matchesType;
     });
-  }, [students, searchQuery, filterGoal]);
+  }, [students, searchQuery, filterGoal, filterType]);
 
   const availableCodes = invitationCodes.filter((c) => !c.used);
   const totalSessions = students.reduce((sum, s) => sum + s._count.trainingSessions, 0);
   const totalMeasurements = students.reduce((sum, s) => sum + s._count.measurements, 0);
+  const virtualCount = students.filter((s) => s.isVirtual).length;
+  const activeCount = students.filter((s) => !s.isVirtual).length;
 
   if (loading) {
     return (
@@ -191,30 +236,53 @@ const Students: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Mes Élèves</h1>
             <p className="text-muted-foreground text-sm">
-              {students.length} élève{students.length > 1 ? "s" : ""} • {availableCodes.length} invitation{availableCodes.length > 1 ? "s" : ""} disponible{availableCodes.length > 1 ? "s" : ""}
+              {activeCount} actif{activeCount > 1 ? "s" : ""} • {virtualCount} fiche{virtualCount > 1 ? "s" : ""} client • {availableCodes.length} invitation{availableCodes.length > 1 ? "s" : ""} disponible{availableCodes.length > 1 ? "s" : ""}
             </p>
           </div>
         </div>
-        <Button
-          className="rounded-xl h-11 gap-2 bg-gradient-to-r from-primary to-violet-500 hover:opacity-90 shadow-lg shadow-primary/25"
-          onClick={() => setShowInviteModal(true)}
-        >
-          <UserPlus className="h-4 w-4" />
-          Inviter un élève
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            className="rounded-xl h-11 gap-2"
+            onClick={() => setShowCreateClientModal(true)}
+          >
+            <Ghost className="h-4 w-4" />
+            Ajouter un client
+          </Button>
+          <Button
+            className="rounded-xl h-11 gap-2 bg-gradient-to-r from-primary to-violet-500 hover:opacity-90 shadow-lg shadow-primary/25"
+            onClick={() => setShowInviteModal(true)}
+          >
+            <UserPlus className="h-4 w-4" />
+            Inviter un élève
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="border-border/50 bg-card hover:shadow-md transition-shadow">
           <CardContent className="p-5">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                <Users className="h-6 w-6 text-primary" />
+                <Shield className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-3xl font-bold text-foreground">{students.length}</p>
+                <p className="text-3xl font-bold text-foreground">{activeCount}</p>
                 <p className="text-sm text-muted-foreground">Élèves actifs</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-border/50 bg-card hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10">
+                <Ghost className="h-6 w-6 text-violet-500" />
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-foreground">{virtualCount}</p>
+                <p className="text-sm text-muted-foreground">Fiches clients</p>
               </div>
             </div>
           </CardContent>
@@ -276,6 +344,15 @@ const Students: React.FC = () => {
             </div>
             <div className="flex gap-2">
               <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="px-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground transition-all min-w-[140px]"
+              >
+                <option value="all">Tous les types</option>
+                <option value="active">Élèves actifs</option>
+                <option value="virtual">Fiches clients</option>
+              </select>
+              <select
                 value={filterGoal}
                 onChange={(e) => setFilterGoal(e.target.value)}
                 className="px-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground transition-all min-w-[160px]"
@@ -302,15 +379,25 @@ const Students: React.FC = () => {
                 </div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">Aucun élève pour le moment</h3>
                 <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                  Invitez vos premiers élèves en créant un code d'invitation. Ils pourront s'inscrire et vous les retrouverez ici.
+                  Invitez vos premiers élèves avec un code d'invitation ou créez une fiche client manuellement.
                 </p>
-                <Button
-                  className="rounded-xl h-11 gap-2 bg-gradient-to-r from-primary to-violet-500"
-                  onClick={() => setShowInviteModal(true)}
-                >
-                  <UserPlus className="h-4 w-4" />
-                  Créer mon premier code d'invitation
-                </Button>
+                <div className="flex gap-3 justify-center">
+                  <Button
+                    variant="outline"
+                    className="rounded-xl h-11 gap-2"
+                    onClick={() => setShowCreateClientModal(true)}
+                  >
+                    <Ghost className="h-4 w-4" />
+                    Créer une fiche client
+                  </Button>
+                  <Button
+                    className="rounded-xl h-11 gap-2 bg-gradient-to-r from-primary to-violet-500"
+                    onClick={() => setShowInviteModal(true)}
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Créer un code d'invitation
+                  </Button>
+                </div>
               </>
             ) : (
               <>
@@ -332,32 +419,53 @@ const Students: React.FC = () => {
               key={student.id}
               className="border-border/50 bg-card hover:shadow-lg hover:border-primary/30 transition-all group cursor-pointer"
               style={{ animationDelay: `${index * 50}ms` }}
+              onClick={() => navigate(`/dashboard/coach/student/${student.id}`)}
             >
               <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12 border-2 border-primary/20">
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-violet-500 text-white font-bold">
+                      <AvatarFallback className={`${student.isVirtual ? "bg-gradient-to-br from-violet-400 to-fuchsia-500" : "bg-gradient-to-br from-primary to-violet-500"} text-white font-bold`}>
                         {student.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {student.name}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                          {student.name}
+                        </h3>
+                        {student.isVirtual && (
+                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase bg-violet-500/10 text-violet-600 border border-violet-500/20">
+                            Fiche
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground truncate max-w-[180px]">
                         {student.email}
                       </p>
                     </div>
                   </div>
-                  <button className="p-2 rounded-lg hover:bg-muted transition-colors opacity-0 group-hover:opacity-100">
-                    <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {!student.allowEmails && (
+                      <div className="p-1.5 rounded-lg" title="Emails désactivés">
+                        <MailX className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <button className="p-2 rounded-lg hover:bg-muted transition-colors opacity-0 group-hover:opacity-100">
+                      <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </div>
                 </div>
 
-                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border mb-4 ${getGoalColor(student.goalType)}`}>
-                  <Target className="h-3 w-3" />
-                  {getGoalLabel(student.goalType)}
+                <div className="flex items-center gap-2 mb-4">
+                  <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getGoalColor(student.goalType)}`}>
+                    <Target className="h-3 w-3" />
+                    {getGoalLabel(student.goalType)}
+                  </div>
+                  <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${student.isVirtual ? "bg-violet-500/10 text-violet-600 border-violet-500/20" : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"}`}>
+                    {student.isVirtual ? <Ghost className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
+                    {student.isVirtual ? "Fiche client" : "Actif"}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-4">
@@ -380,7 +488,7 @@ const Students: React.FC = () => {
                 <div className="flex items-center justify-between pt-3 border-t border-border">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Calendar className="h-3.5 w-3.5" />
-                    Inscrit le {new Date(student.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
+                    {student.isVirtual ? "Créé" : "Inscrit"} le {new Date(student.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
@@ -474,6 +582,148 @@ const Students: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Create Client Modal */}
+      {showCreateClientModal && (
+        <div className="fixed inset-0 z-[100] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCreateClientModal(false)} />
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 fade-in duration-200">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-400 to-fuchsia-500">
+                      <Ghost className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-foreground">Ajouter un client</h2>
+                      <p className="text-sm text-muted-foreground">Créer une fiche client sans compte</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowCreateClientModal(false)}
+                    className="p-2 rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <X className="h-5 w-5 text-muted-foreground" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Nom */}
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
+                      Prénom et Nom <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={clientForm.name}
+                      onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
+                      placeholder="Jean Dupont"
+                      className="w-full px-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground transition-all"
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
+                      Email <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={clientForm.email}
+                      onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
+                      placeholder="jean.dupont@email.com"
+                      className="w-full px-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground transition-all"
+                    />
+                  </div>
+
+                  {/* Objectif */}
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
+                      Objectif
+                    </label>
+                    <select
+                      value={clientForm.goalType}
+                      onChange={(e) => setClientForm({ ...clientForm, goalType: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground transition-all"
+                    >
+                      <option value="">Sélectionner un objectif</option>
+                      <option value="weight_loss">Perte de poids</option>
+                      <option value="weight_gain">Prise de poids</option>
+                      <option value="muscle_gain">Prise de muscle</option>
+                      <option value="maintenance">Maintien</option>
+                    </select>
+                  </div>
+
+                  {/* Toggle emails */}
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50 border border-border">
+                    <div className="flex items-center gap-3">
+                      {clientForm.allowEmails ? (
+                        <Mail className="h-5 w-5 text-primary" />
+                      ) : (
+                        <MailX className="h-5 w-5 text-muted-foreground" />
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Autoriser l'envoi d'emails</p>
+                        <p className="text-xs text-muted-foreground">Rapports de séance, notifications</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setClientForm({ ...clientForm, allowEmails: !clientForm.allowEmails })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${clientForm.allowEmails ? "bg-primary" : "bg-muted-foreground/30"}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${clientForm.allowEmails ? "translate-x-6" : "translate-x-1"}`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Info box */}
+                  <div className="p-4 rounded-xl bg-violet-500/5 border border-violet-500/20">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10 flex-shrink-0 mt-0.5">
+                        <Ghost className="h-4 w-4 text-violet-500" />
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <p className="font-medium text-foreground mb-1">Fiche client</p>
+                        <p>Ce client n'aura pas accès à l'application. Vous pourrez gérer ses séances, mensurations et notes depuis votre tableau de bord.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <Button
+                    variant="outline"
+                    className="flex-1 rounded-xl h-11"
+                    onClick={() => setShowCreateClientModal(false)}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    className="flex-1 rounded-xl h-11 gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                    onClick={handleCreateClient}
+                    disabled={isCreatingClient || !clientForm.name.trim() || !clientForm.email.trim()}
+                  >
+                    {isCreatingClient ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Création...
+                      </>
+                    ) : (
+                      <>
+                        <Ghost className="h-4 w-4" />
+                        Créer la fiche
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Invite Modal */}

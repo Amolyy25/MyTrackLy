@@ -72,6 +72,19 @@ export async function sendEmail(
       return;
     }
 
+    // Vérifier si l'utilisateur autorise les emails (fiches clients)
+    const targetUser = await prisma.user.findUnique({
+      where: { email: to.toLowerCase().trim() },
+      select: { allowEmails: true, isVirtual: true },
+    });
+
+    if (targetUser && !targetUser.allowEmails) {
+      console.log(
+        `Email non envoyé à ${to} : l'utilisateur a désactivé les emails (allowEmails=false)`
+      );
+      return;
+    }
+
     const fromEmail = process.env.EMAIL_SENDER || "onboarding@resend.dev";
     const htmlContent = getEmailTemplate(templateName, templateData);
     const resend = getResendClient();

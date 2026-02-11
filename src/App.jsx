@@ -43,6 +43,7 @@ import SettingsPage from "./components/pages/dashboard/SettingsPage";
 import StudentReservations from "./components/pages/dashboard/student/Reservations";
 import CoachReservations from "./components/pages/dashboard/coach/Reservations";
 import CoachAvailabilities from "./components/pages/dashboard/coach/Availabilities";
+import StudentProfile from "./components/pages/dashboard/coach/StudentProfile";
 import Statistics from "./components/pages/dashboard/statistics";
 import NotFound from "./components/pages/NotFound";
 
@@ -233,6 +234,7 @@ function AppRoutes() {
       >
         <Route index element={<DashboardHome />} />
         <Route path="students" element={<Students />} />
+        <Route path="coach/student/:id" element={<StudentProfile />} />
         <Route path="sessions" element={<Sessions />} />
         <Route path="training/new" element={<NewTrainingSession />} />
         <Route path="training/history" element={<TrainingHistory />} />

@@ -240,6 +240,136 @@ export async function createMeasurement(req: Request, res: Response) {
   }
 }
 
+// --- Créer une mensuration pour un élève (coach uniquement) ---
+export async function createStudentMeasurement(req: Request, res: Response) {
+  try {
+    const coachId = getUserIdFromRequest(req, res);
+    if (!coachId) return;
+
+    const { studentId } = req.params;
+
+    // Vérifier que l'utilisateur est un coach
+    const coach = await prisma.user.findUnique({
+      where: { id: coachId },
+      select: { role: true },
+    });
+
+    if (!coach || coach.role !== "coach") {
+      return res.status(403).json({
+        message:
+          "Seuls les coaches peuvent créer des mensurations pour leurs élèves.",
+      });
+    }
+
+    // Vérifier que l'élève appartient bien au coach (élève actif ou fiche client)
+    const student = await prisma.user.findFirst({
+      where: {
+        id: studentId,
+        coachId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    if (!student) {
+      return res.status(404).json({
+        message: "Élève non trouvé ou vous n'avez pas accès à cet élève.",
+      });
+    }
+
+    const parsedData = parseMeasurementData(req.body);
+
+    if (!parsedData.date) {
+      return res.status(400).json({
+        message: "La date est requise",
+      });
+    }
+
+    // Vérifier s'il existe déjà une mesure pour cette date pour cet élève
+    const existingMeasurement = await prisma.measurement.findFirst({
+      where: {
+        userId: student.id,
+        date: parsedData.date,
+      },
+    });
+
+    if (existingMeasurement) {
+      return res.status(400).json({
+        message:
+          "Une mensuration existe déjà pour cette date pour cet élève. Utilisez PUT pour la modifier.",
+      });
+    }
+
+    // Créer la mensuration pour l'élève
+    const measurement = await prisma.measurement.create({
+      data: {
+        userId: student.id,
+        ...prepareMeasurementData(parsedData),
+      },
+    });
+
+    // Emails de notification (élève + coach), en asynchrone via sendEmail (respecte allowEmails)
+    const measurementDetailsHTML = formatMeasurementDetailsHTML(measurement);
+
+    // Email à l'élève
+    sendEmail(
+      student.email,
+      "Mensuration enregistrée par votre coach - MyTrackLy",
+      "measurementConfirmation",
+      {
+        userName: student.name,
+        measurementDate: formatDateFrench(measurement.date),
+        measurementDetailsHTML: measurementDetailsHTML,
+      }
+    ).catch((error) => {
+      console.error(
+        "Erreur lors de l'envoi de l'email de confirmation à l'élève:",
+        error
+      );
+    });
+
+    // Email au coach (récap)
+    const coachUser = await prisma.user.findUnique({
+      where: { id: coachId },
+      select: {
+        name: true,
+        email: true,
+      },
+    });
+
+    if (coachUser) {
+      sendEmail(
+        coachUser.email,
+        `Nouvelle mensuration créée pour ${student.name} - MyTrackLy`,
+        "coachMeasurementNotification",
+        {
+          coachName: coachUser.name,
+          studentName: student.name,
+          measurementDate: formatDateFrench(measurement.date),
+          measurementDetailsHTML: measurementDetailsHTML,
+        }
+      ).catch((error) => {
+        console.error(
+          "Erreur lors de l'envoi de l'email au coach (création par coach):",
+          error
+        );
+      });
+    }
+
+    res.status(201).json(measurement);
+  } catch (error) {
+    console.error("CreateStudentMeasurement Error:", error);
+    res.status(500).json({
+      message:
+        "Une erreur est survenue lors de la création de la mensuration pour l'élève.",
+    });
+  }
+}
+
 // --- Modifier une mensuration ---
 export async function updateMeasurement(req: Request, res: Response) {
   try {

@@ -190,6 +190,12 @@ export async function login(req: Request, res: Response) {
       return;
     }
 
+    // 2.5 Rejeter les comptes virtuels (fiches clients sans accès)
+    if (user.isVirtual || !user.passwordHash) {
+      res.status(403).json({ message: "Ce compte n'a pas accès à l'application." });
+      return;
+    }
+
     // 3. Vérifier le mot de passe
     const isPasswordValid = await comparePassword(password, user.passwordHash);
 

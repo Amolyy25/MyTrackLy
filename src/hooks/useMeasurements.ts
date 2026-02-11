@@ -140,6 +140,60 @@ export function useCreateMeasurement() {
   return { createMeasurement, isLoading, error };
 }
 
+// Hook pour créer une mensuration pour un élève (coach)
+export function useCreateStudentMeasurement(studentId: string | undefined) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const createStudentMeasurement = async (measurementData: any) => {
+    if (!studentId) {
+      throw new Error("Aucun élève sélectionné");
+    }
+
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("Non authentifié");
+      }
+
+      const response = await fetch(
+        `${API_URL}/measurements/student/${studentId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(measurementData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message ||
+            "Erreur lors de la création de la mensuration pour l'élève"
+        );
+      }
+
+      const data = await response.json();
+      setError(null);
+      return data;
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { createStudentMeasurement, isLoading, error };
+}
+
 // Hook pour modifier une mensuration
 export function useUpdateMeasurement() {
   const [isLoading, setIsLoading] = useState(false);

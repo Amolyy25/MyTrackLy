@@ -13,6 +13,8 @@ export interface User {
     | null;
   coachId?: string;
   coach?: User;
+  isVirtual?: boolean;
+  allowEmails?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -258,4 +260,74 @@ export interface CoachOverviewStats {
     daysSinceLastActivity: number | null;
   }>;
   dateRange: { from: string; to: string };
+}
+
+// --- Fiches Clients (Virtual Students) ---
+
+export interface CoachNote {
+  id: string;
+  coachId: string;
+  studentId: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentListItem {
+  id: string;
+  name: string;
+  email: string;
+  goalType: string | null;
+  isVirtual: boolean;
+  allowEmails: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count: {
+    trainingSessions: number;
+    measurements: number;
+  };
+}
+
+export interface StudentProfileStats {
+  student: {
+    id: string;
+    name: string;
+    email: string;
+    goalType: string | null;
+    isVirtual: boolean;
+    allowEmails: boolean;
+    createdAt: string;
+  };
+  stats: {
+    totalSessions: number;
+    totalVolume: number;
+    topExercises: Array<{ name: string; count: number }>;
+    weeklyFrequency: Array<{ week: string; count: number }>;
+    weightEvolution: Array<{ date: string; weight: number | null }>;
+    currentStreak: number;
+    sessionsWithComments: number;
+    notesCount: number;
+  };
+  recentSessions: Array<{
+    id: string;
+    date: string;
+    durationMinutes: number | null;
+    notes: string | null;
+    coachComment: string | null;
+    exerciseCount: number;
+    totalVolume: number;
+    exercises: Array<{
+      name: string;
+      sets: number;
+      repsUniform: number | null;
+      weightKg: number | null;
+    }>;
+  }>;
+}
+
+export interface CreateVirtualStudentForm {
+  name: string;
+  email: string;
+  goalType: string;
+  allowEmails: boolean;
 }
