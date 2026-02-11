@@ -1,7 +1,10 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useExercises } from "../../../hooks/useExercises";
-import { useCreateTrainingSession } from "../../../hooks/useTrainingSessions";
+import {
+  useCreateTrainingSession,
+  useCreateTrainingSessionForStudent,
+} from "../../../hooks/useTrainingSessions";
 import { useToast } from "../../../contexts/ToastContext";
 import { useAuth } from "../../../contexts/AuthContext";
 import LoadingSpinner from "../../composants/LoadingSpinner";
@@ -43,6 +46,8 @@ interface ExerciseForm {
 
 const NewTrainingSession: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const studentIdFromQuery = searchParams.get("studentId");
   const { showToast } = useToast();
   const { user } = useAuth();
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
@@ -61,10 +66,18 @@ const NewTrainingSession: React.FC = () => {
   } = useExercises();
 
   const {
-    createSession,
-    isLoading,
-    error: createError,
+    createSession: createSessionSelf,
+    isLoading: isLoadingSelf,
+    error: createErrorSelf,
   } = useCreateTrainingSession();
+  const {
+    createSession: createSessionForStudent,
+    isLoading: isLoadingStudent,
+    error: createErrorStudent,
+  } = useCreateTrainingSessionForStudent();
+
+  const isLoading = isLoadingSelf || isLoadingStudent;
+  const createError = createErrorSelf || createErrorStudent;
 
   const predefinedExercises = exerciseLibrary.filter((ex) => !ex.isCustom);
   const customExercises = exerciseLibrary.filter((ex) => ex.isCustom);
@@ -217,9 +230,18 @@ const NewTrainingSession: React.FC = () => {
         })),
       };
 
-      await createSession(sessionData);
-      showToast("Séance enregistrée avec succès ! 💪", "success");
-      navigate("/dashboard");
+      if (studentIdFromQuery) {
+        await createSessionForStudent(studentIdFromQuery, sessionData);
+        showToast(
+          "Séance enregistrée pour cet élève avec succès ! 💪",
+          "success"
+        );
+        navigate(`/dashboard/coach/student/${studentIdFromQuery}`);
+      } else {
+        await createSessionSelf(sessionData);
+        showToast("Séance enregistrée avec succès ! 💪", "success");
+        navigate("/dashboard");
+      }
     } catch (error) {
       console.error("Error creating session:", error);
       showToast("Erreur lors de l'enregistrement de la séance", "error");

@@ -12,6 +12,7 @@ import habitRoutes from "./routes/habitRoutes";
 import calendarRoutes from "./routes/calendarRoutes";
 import availabilityRoutes from "./routes/availabilityRoutes";
 import statsRoutes from "./routes/statsRoutes";
+import coachNoteRoutes from "./routes/coachNoteRoutes";
 import { initStreakCron } from "./cron/streakJob";
 import { initReminderCron } from "./cron/reminderJob";
 
@@ -23,7 +24,16 @@ const port = process.env.PORT || 3000;
 // CORS dynamique selon l'environnement
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
-  : ["http://localhost:5173"];
+  : [
+      // Frontend Vite (dev)
+      "http://localhost:5173",
+      // Frontend ou proxy éventuel sur 3000
+      "http://localhost:3000",
+      // Frontend prod Vercel
+      "https://my-track-ly.vercel.app",
+      // Backend/preview Railway (si appels cross-origin depuis un autre domaine)
+      "https://mytrackly-production.up.railway.app",
+    ];
 
 app.use(
   cors({
@@ -65,6 +75,7 @@ app.use("/api/habits", habitRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/availability", availabilityRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/coach-notes", coachNoteRoutes);
 app.get("/", (req, res) => {
   res.json({ message: "API fonctionnel" });
 });

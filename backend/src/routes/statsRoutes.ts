@@ -4,6 +4,7 @@ import {
   getMeasurementsStats,
   getOverviewStats,
   getStudentStats,
+  getStudentProfileStats,
   getCoachOverviewStats,
 } from "../controllers/statsController";
 import { authenticateToken } from "../middleware/auth";
@@ -20,6 +21,7 @@ router.get("/overview", getOverviewStats);
 
 // Routes coach
 router.get("/coach/overview", getCoachOverviewStats);
+router.get("/coach/students/:studentId/profile", getStudentProfileStats);
 router.get("/coach/students/:studentId", getStudentStats);
 
 export default router;

@@ -565,6 +565,225 @@ export async function getCoachOverviewStats(req: Request, res: Response) {
   }
 }
 
+/**
+ * GET /api/stats/coach/students/:studentId/profile
+ * Get detailed profile statistics for a student (coach only)
+ * Returns: total sessions, top 3 exercises, total volume, weight evolution,
+ * weekly frequency, recent sessions
+ */
+export async function getStudentProfileStats(req: Request, res: Response) {
+  try {
+    const coachId = getUserIdFromRequest(req, res);
+    if (!coachId) return;
+
+    const { studentId } = req.params;
+    const { range = "all" } = req.query;
+
+    // Verify coach-student relationship
+    const student = await prisma.user.findFirst({
+      where: {
+        id: studentId,
+        coachId: coachId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        goalType: true,
+        isVirtual: true,
+        allowEmails: true,
+        createdAt: true,
+      },
+    });
+
+    if (!student) {
+      return res.status(403).json({
+        message: "Vous n'avez pas accès aux statistiques de cet élève",
+      });
+    }
+
+    // Date range
+    let dateFilter: { gte?: Date; lte?: Date } = {};
+    if (range !== "all") {
+      const { from, to } = getDateRange(range as string);
+      dateFilter = { gte: from, lte: to };
+    }
+
+    // Get ALL sessions for this student (with exercises)
+    const sessions = await prisma.trainingSession.findMany({
+      where: {
+        userId: studentId,
+        ...(dateFilter.gte ? { date: dateFilter } : {}),
+      },
+      include: {
+        exercises: {
+          include: {
+            exercise: true,
+          },
+        },
+      },
+      orderBy: { date: "desc" },
+    });
+
+    // Total sessions
+    const totalSessions = sessions.length;
+
+    // Total volume
+    let totalVolume = 0;
+    const exercisesCount: { [key: string]: { name: string; count: number } } = {};
+
+    sessions.forEach((session) => {
+      session.exercises.forEach((ex) => {
+        totalVolume += calculateExerciseVolume(ex);
+
+        // Count exercises
+        const exerciseName = ex.exercise?.name || "Unknown";
+        const exerciseId = ex.exerciseId;
+        if (!exercisesCount[exerciseId]) {
+          exercisesCount[exerciseId] = { name: exerciseName, count: 0 };
+        }
+        exercisesCount[exerciseId].count++;
+      });
+    });
+
+    // Top 3 exercises
+    const topExercises = Object.values(exercisesCount)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
+
+    // Weekly frequency (sessions per week over the last 12 weeks)
+    const weeklyFrequency: { week: string; count: number }[] = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(weekStart.getDate() - (i * 7 + weekStart.getDay()));
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+
+      const count = sessions.filter((s) => {
+        const d = new Date(s.date);
+        return d >= weekStart && d < weekEnd;
+      }).length;
+
+      const weekLabel = weekStart.toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "short",
+      });
+
+      weeklyFrequency.push({ week: weekLabel, count });
+    }
+
+    // Weight evolution (from measurements)
+    const measurements = await prisma.measurement.findMany({
+      where: {
+        userId: studentId,
+        bodyWeightKg: { not: null },
+      },
+      orderBy: { date: "asc" },
+      select: {
+        date: true,
+        bodyWeightKg: true,
+      },
+    });
+
+    const weightEvolution = measurements.map((m) => ({
+      date: m.date.toISOString().split("T")[0],
+      weight: m.bodyWeightKg,
+    }));
+
+    // Recent sessions (last 10) with details
+    const recentSessions = sessions.slice(0, 10).map((session) => ({
+      id: session.id,
+      date: session.date,
+      durationMinutes: session.durationMinutes,
+      notes: session.notes,
+      coachComment: session.coachComment,
+      exerciseCount: session.exercises.length,
+      totalVolume: session.exercises.reduce(
+        (sum, ex) => sum + calculateExerciseVolume(ex),
+        0
+      ),
+      exercises: session.exercises.map((ex) => ({
+        name: ex.exercise?.name || "Unknown",
+        sets: ex.sets,
+        repsUniform: ex.repsUniform,
+        weightKg: ex.weightKg,
+      })),
+    }));
+
+    // Coach notes count
+    const notesCount = await prisma.coachNote.count({
+      where: {
+        coachId,
+        studentId,
+      },
+    });
+
+    // Sessions with coach comment
+    const sessionsWithComments = sessions.filter(
+      (s) => s.coachComment && s.coachComment.trim() !== ""
+    ).length;
+
+    // Current streak
+    let currentStreak = 0;
+    if (sessions.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let checkDate = new Date(sessions[0].date);
+      checkDate.setHours(0, 0, 0, 0);
+      const daysDiff = Math.floor(
+        (today.getTime() - checkDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      if (daysDiff <= 7) {
+        // Consider a weekly streak
+        currentStreak = 1;
+        for (let i = 1; i < sessions.length; i++) {
+          const prevDate = new Date(sessions[i - 1].date);
+          prevDate.setHours(0, 0, 0, 0);
+          const currDate = new Date(sessions[i].date);
+          currDate.setHours(0, 0, 0, 0);
+          const diff = Math.floor(
+            (prevDate.getTime() - currDate.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          if (diff <= 7) {
+            currentStreak++;
+          } else {
+            break;
+          }
+        }
+      }
+    }
+
+    res.json({
+      student: {
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        goalType: student.goalType,
+        isVirtual: student.isVirtual,
+        allowEmails: student.allowEmails,
+        createdAt: student.createdAt,
+      },
+      stats: {
+        totalSessions,
+        totalVolume: Math.round(totalVolume),
+        topExercises,
+        weeklyFrequency,
+        weightEvolution,
+        currentStreak,
+        sessionsWithComments,
+        notesCount,
+      },
+      recentSessions,
+    });
+  } catch (error) {
+    console.error("Error getting student profile stats:", error);
+    res.status(500).json({ message: "Une erreur est survenue" });
+  }
+}
+
 // Helper functions
 
 function getWeekKey(date: Date): string {

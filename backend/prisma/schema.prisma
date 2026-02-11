@@ -10,7 +10,7 @@ datasource db {
 model User {
   id                   String               @id @default(uuid())
   email                String               @unique
-  passwordHash         String               @map("password_hash")
+  passwordHash         String?              @map("password_hash") // Nullable pour les fiches clients (isVirtual)
   role                 String               @default("personnel") @map("role") // "personnel" | "eleve" | "coach"
   name                 String
   goalType             String?              @map("goal_type")
@@ -20,6 +20,10 @@ model User {
   createdAt            DateTime             @default(now()) @map("created_at")
   updatedAt            DateTime             @updatedAt @map("updated_at")
 
+  // Fiches clients (élèves passifs créés par le coach)
+  isVirtual            Boolean              @default(false) @map("is_virtual") // true = fiche client sans accès app
+  allowEmails          Boolean              @default(true) @map("allow_emails") // false = aucun email envoyé pour cet utilisateur
+
   // Relations existantes
   trainingSessions     TrainingSession[]
   customExercises      Exercise[]
@@ -28,6 +32,10 @@ model User {
   invitationCodes      InvitationCode[]     // Codes d'invitation créés par le coach
   usedInvitationCodes  InvitationCode[]     @relation("UsedInvitationCodes") // Codes utilisés par l'élève
   passwordResetTokens  PasswordResetToken[] // Tokens de reset de mot de passe
+
+  // Notes privées du coach sur cet élève
+  coachNotes           CoachNote[]          @relation("StudentNotes")
+  writtenNotes         CoachNote[]          @relation("CoachWrittenNotes")
 
   // Intégration Google Calendar (pour les coaches)
   googleCalendarAccessToken  String?  @map("google_calendar_access_token")
@@ -209,6 +217,23 @@ model CoachAvailability {
   @@index([coachId])
 }
 
+// Notes privées du coach sur un élève (pas liées à une séance)
+model CoachNote {
+  id          String   @id @default(uuid())
+  coachId     String   @map("coach_id")
+  coach       User     @relation("CoachWrittenNotes", fields: [coachId], references: [id], onDelete: Cascade)
+  studentId   String   @map("student_id")
+  student     User     @relation("StudentNotes", fields: [studentId], references: [id], onDelete: Cascade)
+  content     String   // Contenu de la note
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("coach_notes")
+  @@index([coachId])
+  @@index([studentId])
+  @@index([coachId, studentId])
+}
+
 enum Frequency {
   DAILY
   WEEKLY
@@ -236,15 +261,15 @@ model Habit {
   @@map("habits")
   @@index([userId])
   @@index([userId, startDate])
-}
-
-model HabitLog {
+}model HabitLog {
   id            String   @id @default(uuid())
   habitId       String   @map("habit_id")
   habit         Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
   completedAt   DateTime @map("completed_at") // Date/heure de complétion
   value         Float?   // Valeur si quantifiable (litres, heures, etc.)
-  createdAt     DateTime @default(now()) @map("created_at")  @@map("habit_logs")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("habit_logs")
   @@unique([habitId, completedAt])
   @@index([habitId, completedAt])
   @@index([completedAt])
