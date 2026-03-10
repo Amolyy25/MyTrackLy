@@ -1,11 +1,11 @@
 import prisma from "../config/database";
-import { Frequency } from "@prisma/client";
+import { Frequency, Prisma } from "@prisma/client";
 
 export class StreakService {
   /**
    * Recalculates the streak for a specific habit based on its frequency.
    */
-  static async calculateAndWeightStreak(habitId: string) {
+  static async calculateAndWeightStreak(habitId: string): Promise<Prisma.HabitGetPayload<{ include: { logs: true } }> | null> {
     const habit = await prisma.habit.findUnique({
       where: { id: habitId },
       include: { logs: { orderBy: { completedAt: "desc" } } },
@@ -18,6 +18,7 @@ export class StreakService {
       return await prisma.habit.update({
         where: { id: habitId },
         data: { currentStreak: 0, lastLogDate: null },
+        include: { logs: true },
       });
     }
 
@@ -45,29 +46,46 @@ export class StreakService {
         longestStreak,
         lastLogDate,
       },
+      include: { logs: true },
     });
   }
 
   private static calculateDailyStreak(dates: Date[], now: Date): number {
-    const uniqueDates = Array.from(new Set(dates.map(d => d.toISOString().split('T')[0]))).sort().reverse();
+    const uniqueDates = Array.from(new Set(dates.map(d => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }))).sort().reverse();
     
-    let streak = 0;
-    const todayStr = now.toISOString().split('T')[0];
+    if (uniqueDates.length === 0) return 0;
+
+    const getLocalDateStr = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const todayStr = getLocalDateStr(now);
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const yesterdayStr = getLocalDateStr(yesterday);
 
     // Check if the streak is still alive (last log today or yesterday)
     if (uniqueDates[0] !== todayStr && uniqueDates[0] !== yesterdayStr) {
       return 0;
     }
 
+    let streak = 0;
+    const startDate = new Date(uniqueDates[0]);
+    
     for (let i = 0; i < uniqueDates.length; i++) {
-        const current = new Date(uniqueDates[i]);
-        const expected = new Date(uniqueDates[0]);
-        expected.setDate(expected.getDate() - i);
+        const expected = new Date(startDate);
+        expected.setDate(startDate.getDate() - i);
+        const expectedStr = getLocalDateStr(expected);
         
-        if (current.toISOString().split('T')[0] === expected.toISOString().split('T')[0]) {
+        if (uniqueDates[i] === expectedStr) {
             streak++;
         } else {
             break;
@@ -77,35 +95,85 @@ export class StreakService {
   }
 
   private static calculateWeeklyStreak(dates: Date[], now: Date): number {
-    // Group by ISO week
     const getWeekKey = (d: Date) => {
-        const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-        date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
-        const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-        const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-        return `${date.getUTCFullYear()}-W${weekNo}`;
+        const date = new Date(d.getTime());
+        date.setHours(0, 0, 0, 0);
+        // Thursday in current week decides the year
+        date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+        const jan4 = new Date(date.getFullYear(), 0, 4);
+        const weekNumber = 1 + Math.round(((date.getTime() - jan4.getTime()) / 86400000 - 3 + (jan4.getDay() + 6) % 7) / 7);
+        return `${date.getFullYear()}-W${String(weekNumber).padStart(2, '0')}`;
     };
 
     const uniqueWeeks = Array.from(new Set(dates.map(getWeekKey))).sort().reverse();
-    const currentWeek = getWeekKey(now);
+    if (uniqueWeeks.length === 0) return 0;
+
+    const currentWeekKey = getWeekKey(now);
     
+    // Last week key
+    const lastWeek = new Date(now);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    const lastWeekKey = getWeekKey(lastWeek);
+
     // Check if streak alive (last log this week or last week)
-    // For simplicity, we compare keys. This might be tricky across years but getWeekKey includes year.
-    // A better way is to check date diff.
-    
-    let streak = 0;
-    // ... logic for weekly streak ...
-    // To keep it simple: if last week is missing, streak is dead.
-    // We'll use a more robust check for week continuity.
-    
-    // TODO: Implement more robust week diff
-    return uniqueWeeks.length; // Placeholder for now, refine if needed
+    if (uniqueWeeks[0] !== currentWeekKey && uniqueWeeks[0] !== lastWeekKey) {
+      return 0;
+    }
+
+    let streak = 1;
+    for (let i = 1; i < uniqueWeeks.length; i++) {
+        const prevWeekKey = uniqueWeeks[i-1];
+        const currWeekKey = uniqueWeeks[i];
+        
+        // Check if currWeekKey is exactly one week before prevWeekKey
+        // Complex to do with keys, easier to use dates
+        const [pYear, pWeek] = prevWeekKey.split('-W').map(Number);
+        const [cYear, cWeek] = currWeekKey.split('-W').map(Number);
+        
+        let isConsecutive = false;
+        if (pYear === cYear && pWeek === cWeek + 1) {
+            isConsecutive = true;
+        } else if (pYear === cYear + 1 && pWeek === 1) {
+            // Check if curr was the last week of previous year
+            // Rough approximation: week 52 or 53
+            if (cWeek >= 52) isConsecutive = true;
+        }
+        
+        if (isConsecutive) {
+            streak++;
+        } else {
+            break;
+        }
+    }
+    return streak;
   }
 
   private static calculateMonthlyStreak(dates: Date[], now: Date): number {
-    const getMonthKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}`;
+    const getMonthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     const uniqueMonths = Array.from(new Set(dates.map(getMonthKey))).sort().reverse();
-    return uniqueMonths.length; // Placeholder
+    if (uniqueMonths.length === 0) return 0;
+
+    const currentMonthKey = getMonthKey(now);
+    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthKey = getMonthKey(lastMonthDate);
+
+    if (uniqueMonths[0] !== currentMonthKey && uniqueMonths[0] !== lastMonthKey) {
+      return 0;
+    }
+
+    let streak = 1;
+    for (let i = 1; i < uniqueMonths.length; i++) {
+        const [pYear, pMonth] = uniqueMonths[i-1].split('-').map(Number);
+        const [cYear, cMonth] = uniqueMonths[i].split('-').map(Number);
+        
+        if ((pYear === cYear && pMonth === cMonth + 1) || 
+            (pYear === cYear + 1 && pMonth === 1 && cMonth === 12)) {
+            streak++;
+        } else {
+            break;
+        }
+    }
+    return streak;
   }
 
   static async recalculateAllStreaks() {

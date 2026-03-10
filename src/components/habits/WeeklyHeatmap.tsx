@@ -9,9 +9,6 @@ interface WeeklyHeatmapProps {
 }
 
 export function WeeklyHeatmap({ data, habitName, size = "md" }: WeeklyHeatmapProps) {
-  const days = ["L", "M", "M", "J", "V", "S", "D"];
-  const daysLong = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-  
   // Ensure we have exactly 7 days
   const heatmapData = data.length === 7 
     ? data 
@@ -64,20 +61,26 @@ export function WeeklyHeatmap({ data, habitName, size = "md" }: WeeklyHeatmapPro
       <div className="flex flex-col gap-1.5">
         {/* Day labels */}
         <div className="flex gap-1.5 justify-between px-0.5">
-          {days.map((day, index) => (
-            <div
-              key={index}
-              className={cn(
-                "font-medium text-muted-foreground text-center",
-                cellSizes[size],
-                "flex items-center justify-center",
-                fontSize[size]
-              )}
-            >
-              <span className="sm:hidden">{day}</span>
-              <span className="hidden sm:inline">{daysLong[index]}</span>
-            </div>
-          ))}
+          {heatmapData.map((day, index) => {
+            const dateObj = new Date(day.date);
+            const dayLabel = dateObj.toLocaleDateString("fr-FR", { weekday: "short" }).replace('.', '');
+            const dayShort = dayLabel.charAt(0).toUpperCase();
+            
+            return (
+              <div
+                key={index}
+                className={cn(
+                  "font-medium text-muted-foreground text-center",
+                  cellSizes[size],
+                  "flex items-center justify-center",
+                  fontSize[size]
+                )}
+              >
+                <span className="sm:hidden">{dayShort}</span>
+                <span className="hidden sm:inline capitalize">{dayLabel}</span>
+              </div>
+            );
+          })}
         </div>
         
         {/* Day cells */}

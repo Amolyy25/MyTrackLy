@@ -19,85 +19,20 @@ function getUserIdFromRequest(req: Request, res: Response): string | undefined {
 }
 
 /**
- * Calculate streak for a habit (consecutive days with at least one log)
- */
-async function calculateStreak(habitId: string): Promise<{ current: number; best: number }> {
-  const logs = await prisma.habitLog.findMany({
-    where: { habitId },
-    orderBy: { completedAt: "desc" },
-  });
-
-  if (logs.length === 0) {
-    return { current: 0, best: 0 };
-  }
-
-  // Get unique dates (YYYY-MM-DD)
-  const uniqueDates = Array.from(
-    new Set(
-      logs.map((log) => {
-        const date = new Date(log.completedAt);
-        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-      })
-    )
-  ).sort((a, b) => b.localeCompare(a)); // Sort descending
-
-  // Calculate current streak
-  let currentStreak = 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  for (let i = 0; i < uniqueDates.length; i++) {
-    const dateStr = uniqueDates[i];
-    const [year, month, day] = dateStr.split("-").map(Number);
-    const logDate = new Date(year, month - 1, day);
-    logDate.setHours(0, 0, 0, 0);
-    
-    const expectedDate = new Date(today);
-    expectedDate.setDate(today.getDate() - i);
-    expectedDate.setHours(0, 0, 0, 0);
-    
-    if (logDate.getTime() === expectedDate.getTime()) {
-      currentStreak++;
-    } else {
-      break;
-    }
-  }
-
-  // Calculate best streak
-  let bestStreak = 1;
-  let tempStreak = 1;
-  for (let i = 1; i < uniqueDates.length; i++) {
-    const [year1, month1, day1] = uniqueDates[i - 1].split("-").map(Number);
-    const [year2, month2, day2] = uniqueDates[i].split("-").map(Number);
-    const date1 = new Date(year1, month1 - 1, day1);
-    const date2 = new Date(year2, month2 - 1, day2);
-    
-    const diffDays = Math.floor((date1.getTime() - date2.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) {
-      tempStreak++;
-      bestStreak = Math.max(bestStreak, tempStreak);
-    } else {
-      tempStreak = 1;
-    }
-  }
-
-  return { current: currentStreak, best: bestStreak };
-}
-
-/**
  * Get completion status for today
  */
 function isCompletedToday(logs: any[]): boolean {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayEnd = new Date(today);
-  todayEnd.setHours(23, 59, 59, 999);
+  if (!logs || logs.length === 0) return false;
+  
+  const getLocalDateStr = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
-  return logs.some((log) => {
-    const logDate = new Date(log.completedAt);
-    return logDate >= today && logDate <= todayEnd;
-  });
+  const todayStr = getLocalDateStr(new Date());
+  return logs.some((log) => getLocalDateStr(new Date(log.completedAt)) === todayStr);
 }
 
 // --- Récupérer toutes les habitudes de l'utilisateur ---
@@ -345,14 +280,14 @@ export async function updateHabit(req: Request, res: Response) {
       },
     });
 
-    const streak = await calculateStreak(habit.id);
-    const completedToday = isCompletedToday(habit.logs);
+    const updatedHabit = await StreakService.calculateAndWeightStreak(habit.id);
+    const completedToday = isCompletedToday(updatedHabit?.logs || habit.logs);
 
     res.json({
-      ...habit,
+      ...updatedHabit,
       completedToday,
-      streak: streak.current,
-      bestStreak: streak.best,
+      streak: updatedHabit?.currentStreak,
+      bestStreak: updatedHabit?.longestStreak,
     });
   } catch (error) {
     console.error("UpdateHabit Error:", error);
@@ -421,20 +356,22 @@ export async function checkHabit(req: Request, res: Response) {
     }
 
     // Check if already completed today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(today);
-    todayEnd.setHours(23, 59, 59, 999);
+    const getLocalDateStr = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
 
-    const existingLog = await prisma.habitLog.findFirst({
-      where: {
-        habitId: id,
-        completedAt: {
-          gte: today,
-          lte: todayEnd,
-        },
-      },
+    const todayStr = getLocalDateStr(new Date());
+
+    // On récupère tous les logs de l'habitude pour vérifier aujourd'hui
+    // (Plus robuste que findFirst avec des dates complexes)
+    const allLogs = await prisma.habitLog.findMany({
+      where: { habitId: id }
     });
+
+    const existingLog = allLogs.find(log => getLocalDateStr(new Date(log.completedAt)) === todayStr);
 
     if (existingLog) {
       return res.status(400).json({
@@ -519,25 +456,15 @@ export async function uncheckHabit(req: Request, res: Response) {
       where: { id: log.id },
     });
 
-    const updatedHabit = await prisma.habit.findUnique({
-      where: { id },
-      include: {
-        logs: {
-          orderBy: { completedAt: "desc" },
-          take: 30,
-        },
-      },
-    });
-
-    const streak = await calculateStreak(id);
-    const completedToday = isCompletedToday(updatedHabit!.logs);
+    const updatedHabit = await StreakService.calculateAndWeightStreak(id);
+    const completedToday = isCompletedToday(updatedHabit?.logs || []);
 
     res.json({
       habit: {
         ...updatedHabit!,
         completedToday,
-        streak: streak.current,
-        bestStreak: streak.best,
+        streak: updatedHabit?.currentStreak,
+        bestStreak: updatedHabit?.longestStreak,
       },
     });
   } catch (error) {
