@@ -27,8 +27,10 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   : [
       // Frontend Vite (dev)
       "http://localhost:5173",
-      // Frontend ou proxy éventuel sur 3000
+      // Frontend ou proxy éventuel sur 3000/3001/5050
       "http://localhost:3000",
+      "http://localhost:3001",
+      "http://localhost:5050",
       // Frontend prod Vercel
       "https://my-track-ly.vercel.app",
       // Backend/preview Railway (si appels cross-origin depuis un autre domaine)
