@@ -21,6 +21,8 @@ interface StatsData {
   // Pour les coachs
   studentsCount?: number;
   upcomingReservations?: number;
+  monthlyRevenue?: number;
+  revenueEvolution?: number;
 }
 
 interface StatsCardsProps {
@@ -120,29 +122,40 @@ export function StatsCards({ stats, role }: StatsCardsProps) {
             </CardContent>
           </Card>
 
-          {/* Volume total élèves */}
+          {/* Chiffre d'affaires ce mois */}
           <Card className="group border-border bg-card card-hover-lift overflow-hidden relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-chart-4/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardContent className="p-5 relative">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Volume total
+                    CA du mois
                   </p>
-                  <p
-                    className={`mt-2 text-3xl font-bold tracking-tight text-foreground ${
-                      animated ? "animate-number-pop" : ""
-                    }`}
-                  >
-                    {stats.totalVolume}
-                  </p>
+                  <div className="flex items-baseline gap-1 mt-2">
+                    <p
+                      className={`text-3xl font-bold tracking-tight text-foreground ${
+                        animated ? "animate-number-pop" : ""
+                      }`}
+                    >
+                      {(stats.monthlyRevenue ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
+                    </p>
+                    <span className="text-lg font-bold text-foreground opacity-70">€</span>
+                  </div>
                 </div>
-                <div className="rounded-xl bg-gradient-to-br from-chart-4/20 to-chart-4/10 p-3 group-hover:animate-float">
-                  <BarChart3 className="h-5 w-5 text-chart-4" />
+                <div className="rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 p-3 group-hover:animate-float">
+                  <BarChart3 className="h-5 w-5 text-emerald-500" />
                 </div>
               </div>
-              <div className="mt-4 text-sm text-muted-foreground">
-                Soulevé par vos élèves
+              <div className="mt-4 flex items-center gap-2">
+                <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                  (stats.revenueEvolution ?? 0) >= 0 
+                  ? "bg-emerald-500/10 text-emerald-500" 
+                  : "bg-red-500/10 text-red-500"
+                }`}>
+                  {(stats.revenueEvolution ?? 0) >= 0 ? <ArrowUpRight className="h-2.5 w-2.5" /> : null}
+                  {stats.revenueEvolution ?? 0}%
+                </div>
+                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">vs mois dernier</span>
               </div>
             </CardContent>
           </Card>

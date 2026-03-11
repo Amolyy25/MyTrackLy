@@ -2,7 +2,10 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   useCoachAvailabilities,
   AvailabilitySlot,
+  useCoachServices,
+  CoachServiceData,
 } from "../../../../hooks/useAvailabilities";
+import { useAuth } from "../../../../contexts/AuthContext";
 import { useToast } from "../../../../contexts/ToastContext";
 import { Card, CardContent } from "../../ui/card";
 import { Button } from "../../ui/button";
@@ -26,6 +29,7 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
+  Euro,
 } from "lucide-react";
 
 const DAYS_OF_WEEK = [
@@ -46,28 +50,36 @@ const Availabilities: React.FC = () => {
   const {
     availabilities,
     slotDuration,
+    bufferTime,
+    autoConfirmReservations,
+    hourlyRate,
     isLoading,
     error,
     saveAvailabilities,
     refetch,
   } = useCoachAvailabilities();
   const { showToast } = useToast();
-  const [localAvailabilities, setLocalAvailabilities] = useState<
-    AvailabilitySlot[]
-  >([]);
+  const [localAvailabilities, setLocalAvailabilities] = useState<AvailabilitySlot[]>([]);
   const [localSlotDuration, setLocalSlotDuration] = useState<number>(60);
+  const [localBufferTime, setLocalBufferTime] = useState<number>(0);
+  const [localAutoConfirm, setLocalAutoConfirm] = useState<boolean>(false);
+  const [localHourlyRate, setLocalHourlyRate] = useState<number | string>(0);
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const { user } = useAuth();
+
+  // Services State
+  const { services, saveService, deleteService } = useCoachServices();
+  const [editingService, setEditingService] = useState<Partial<CoachServiceData> | null>(null);
 
   // Synchroniser l'état local avec les données chargées
   useEffect(() => {
-    if (availabilities) {
-      setLocalAvailabilities(availabilities);
-    }
-    if (slotDuration) {
-      setLocalSlotDuration(slotDuration);
-    }
-  }, [availabilities, slotDuration]);
+    if (availabilities) setLocalAvailabilities(availabilities);
+    if (slotDuration) setLocalSlotDuration(slotDuration);
+    if (bufferTime !== undefined) setLocalBufferTime(bufferTime);
+    if (autoConfirmReservations !== undefined) setLocalAutoConfirm(autoConfirmReservations);
+    if (hourlyRate !== undefined) setLocalHourlyRate(hourlyRate);
+  }, [availabilities, slotDuration, bufferTime, autoConfirmReservations, hourlyRate]);
 
   // Stats
   const stats = useMemo(() => {
@@ -81,11 +93,11 @@ const Availabilities: React.FC = () => {
       return acc + (endMinutes - startMinutes) / 60;
     }, 0);
     const creneauxPerWeek = Math.floor(
-      (totalHours * 60) / (localSlotDuration || 60)
+      (totalHours * 60) / (localSlotDuration + localBufferTime || 60)
     );
 
     return { activeDays, totalSlots, totalHours, creneauxPerWeek };
-  }, [localAvailabilities, localSlotDuration]);
+  }, [localAvailabilities, localSlotDuration, localBufferTime]);
 
   const handleAddSlot = (dayIndex: number) => {
     setLocalAvailabilities([
@@ -124,12 +136,21 @@ const Availabilities: React.FC = () => {
     setHasUnsavedChanges(true);
   };
 
-  const handleSave = async (newSlots?: AvailabilitySlot[], newDuration?: number) => {
+  const handleSave = async (
+    newSlots?: AvailabilitySlot[], 
+    newDuration?: number,
+    newAutoConfirm?: boolean,
+    newHourlyRate?: number,
+    newBufferTime?: number
+  ) => {
     try {
       setIsSaving(true);
       await saveAvailabilities(
         newSlots ?? localAvailabilities, 
-        newDuration ?? localSlotDuration
+        newDuration ?? localSlotDuration,
+        newAutoConfirm ?? localAutoConfirm,
+        Number(newHourlyRate ?? localHourlyRate),
+        newBufferTime ?? localBufferTime
       );
       setHasUnsavedChanges(false);
       showToast("Disponibilités enregistrées avec succès !", "success");
@@ -654,6 +675,7 @@ const Availabilities: React.FC = () => {
               </CardContent>
             </Card>
 
+
             {/* Save Button (Mobile) */}
             <div className="lg:hidden">
               <Button
@@ -741,6 +763,255 @@ const Availabilities: React.FC = () => {
                     className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground"
                   />
                 </div>
+
+                <div className="pt-4 border-t border-border/50">
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Laps de temps entre les séances (pauses)
+                  </label>
+                  <div className="flex items-center gap-3 bg-background border border-border rounded-xl px-4 py-2 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary">
+                    <Coffee className="h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="number"
+                      min="0"
+                      step="5"
+                      value={localBufferTime}
+                      onChange={(e) => {
+                        setLocalBufferTime(Number(e.target.value));
+                        setHasUnsavedChanges(true);
+                      }}
+                      className="w-full bg-transparent border-none focus:ring-0 text-foreground"
+                      placeholder="Ex: 5, 10, 15..."
+                    />
+                    <span className="text-sm text-muted-foreground">min</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Temps de battement ajouté automatiquement après chaque séance.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Reservation Settings */}
+          <Card className="border-border/50 bg-card">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10">
+                  <Sparkles className="h-6 w-6 text-indigo-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">
+                    Paramètres de réservation
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Automatisation & Tarifs
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border/50">
+                  <div className="space-y-1">
+                    <p className="font-medium text-foreground">Confirmation automatique</p>
+                    <p className="text-sm text-muted-foreground">Accepter les réservations sans validation manuelle</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setLocalAutoConfirm(!localAutoConfirm);
+                      setHasUnsavedChanges(true);
+                    }}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${localAutoConfirm ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                  >
+                    <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${localAutoConfirm ? 'translate-x-6' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+
+                <div className="p-4 rounded-xl border border-border/50 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10">
+                      <Euro className="h-5 w-5 text-emerald-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">Tarif horaire</p>
+                      <p className="text-sm text-muted-foreground">Prix appliqué par heure</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1">
+                      <input
+                        type="number"
+                        value={localHourlyRate === 0 ? "" : localHourlyRate}
+                        placeholder="0"
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setLocalHourlyRate(val === "" ? 0 : val);
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="w-full pl-4 pr-12 py-3 bg-background border border-border rounded-xl font-bold text-lg text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-lg">€ / h</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Public Link Section */}
+          <Card className="border-border/50 bg-card lg:col-span-2">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10">
+                  <Sparkles className="h-6 w-6 text-blue-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">
+                    Votre lien public
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Partagez ce lien à vos clients (sans compte) pour qu'ils puissent réserver une prestation
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted/40 border border-border/50 rounded-xl">
+                <p className="text-sm font-medium text-foreground truncate select-all">
+                  {window.location.origin}/book/{user?.id}
+                </p>
+                <Button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/book/${user?.id}`);
+                    showToast("Lien copié dans le presse-papier !", "success");
+                  }} 
+                  className="ml-4 gap-2 h-9 px-4 shrink-0" 
+                  size="sm"
+                >
+                  <Euro className="h-4 w-4" /> {/* Or Copy icon */}
+                  Copier
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Coach Services Config */}
+          <Card className="border-border/50 bg-card lg:col-span-2">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10">
+                    <Calendar className="h-6 w-6 text-violet-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      Types de prestations
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Gérez vos offres (distanciel, présentiel...)
+                    </p>
+                  </div>
+                </div>
+                {!editingService && (
+                  <Button
+                    onClick={() => setEditingService({ title: "", duration: 60, price: 0, isActive: true, location: "" })}
+                    className="gap-2 bg-violet-600 hover:bg-violet-700"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Créer une prestation
+                  </Button>
+                )}
+              </div>
+
+              {editingService && (
+                <div className="p-4 bg-muted/30 border border-border rounded-xl mb-6 space-y-4">
+                  <h4 className="font-semibold">{editingService.id ? "Modifier" : "Nouvelle"} prestation</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2 text-sm">
+                      <label>Titre de la prestation</label>
+                      <input 
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                        placeholder="Ex: Séance Présentielle (1h)"
+                        value={editingService.title || ""}
+                        onChange={e => setEditingService({...editingService, title: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <label>Lieu / Type</label>
+                      <input 
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                        placeholder="Ex: Distanciel, Adresse..."
+                        value={editingService.location || ""}
+                        onChange={e => setEditingService({...editingService, location: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <label>Prix (€)</label>
+                      <input 
+                        type="number"
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                        value={editingService.price || 0}
+                        onChange={e => setEditingService({...editingService, price: Number(e.target.value)})}
+                      />
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <label>Durée (min)</label>
+                      <input 
+                        type="number"
+                        step="5"
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                        value={editingService.duration || 60}
+                        onChange={e => setEditingService({...editingService, duration: Number(e.target.value)})}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setEditingService(null)}>
+                      Annuler
+                    </Button>
+                    <Button 
+                      className="bg-violet-600 hover:bg-violet-700"
+                      onClick={async () => {
+                         try {
+                           await saveService(editingService);
+                           setEditingService(null);
+                           showToast("Prestation enregistrée", "success");
+                         } catch (err: any) {
+                           showToast(err.message, "error");
+                         }
+                      }}
+                    >
+                      Sauvegarder
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {services.map((service) => (
+                  <div key={service.id} className="p-4 rounded-xl border border-border/50 bg-background flex flex-col">
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-semibold">{service.title}</h4>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setEditingService(service)}>
+                          <Settings className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:text-rose-500" onClick={async () => {
+                          if (confirm("Supprimer cette prestation ?")) {
+                            await deleteService(service.id);
+                          }
+                        }}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4">{service.location || "Aucun lieu spécifié"}</p>
+                    <div className="mt-auto flex gap-4 text-sm font-medium">
+                      <span className="bg-primary/10 text-primary px-2 py-1 rounded-md">{service.duration} min</span>
+                      <span className="bg-emerald-500/10 text-emerald-600 px-2 py-1 rounded-md">{service.price} €</span>
+                    </div>
+                  </div>
+                ))}
+                {services.length === 0 && !editingService && (
+                  <p className="text-muted-foreground col-span-2 text-center py-4 text-sm">Aucune prestation configurée.</p>
+                )}
               </div>
             </CardContent>
           </Card>

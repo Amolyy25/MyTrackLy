@@ -20,6 +20,19 @@ interface User {
     name: string;
     email: string;
   };
+  stripeAccountId?: string | null;
+  stripeOnboardingComplete?: boolean;
+  stripeChargesEnabled?: boolean;
+  stripePayoutsEnabled?: boolean;
+  businessName?: string | null;
+  businessSiret?: string | null;
+  businessAddress?: string | null;
+  taxStatus?: string | null;
+  isTaxExempt?: boolean;
+  taxRate?: number | null;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  stripeSubscriptionStatus?: string | null;
 }
 
 interface AuthContextType {
@@ -27,6 +40,7 @@ interface AuthContextType {
   token: string | null;
   login: (token: string, user: User) => void;
   logout: () => void;
+  refetchUser: () => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -102,6 +116,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     token,
     login,
     logout,
+    refetchUser: async () => {
+      const storedToken = localStorage.getItem("token");
+      if (storedToken) {
+        await fetchUser(storedToken);
+      }
+    },
     isAuthenticated: !!token && !!user,
     isLoading,
   };

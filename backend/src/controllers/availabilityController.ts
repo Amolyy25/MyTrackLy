@@ -45,7 +45,7 @@ export async function setAvailabilities(req: Request, res: Response) {
 
     // availabilities: [{ dayOfWeek: 1, startTime: "09:00", endTime: "12:00" }, ...]
     // slotDuration: 60 (minutes)
-    const { availabilities, slotDuration } = req.body;
+    const { availabilities, slotDuration, autoConfirmReservations, hourlyRate, bufferTime } = req.body;
 
     if (!Array.isArray(availabilities)) {
       return res.status(400).json({
@@ -81,6 +81,9 @@ export async function setAvailabilities(req: Request, res: Response) {
         where: { id: coachId },
         data: {
           slotDuration: typeof slotDuration === "number" ? slotDuration : 60,
+          autoConfirmReservations: typeof autoConfirmReservations === "boolean" ? autoConfirmReservations : false,
+          hourlyRate: typeof hourlyRate === "number" ? hourlyRate : null,
+          bufferTime: typeof bufferTime === "number" ? bufferTime : 0,
           myTrackLyCalendarId: myTrackLyCalendarId,
         },
       });
@@ -122,10 +125,15 @@ export async function getAvailabilities(req: Request, res: Response) {
     const coachId = getUserIdFromRequest(req, res);
     if (!coachId) return;
 
-    // Récupérer la config du coach (durée)
+    // Récupérer la config du coach
     const coachConfig = await prisma.user.findUnique({
       where: { id: coachId },
-      select: { slotDuration: true },
+      select: { 
+        slotDuration: true,
+        autoConfirmReservations: true,
+        hourlyRate: true,
+        bufferTime: true
+      },
     });
 
     const availabilities = await prisma.coachAvailability.findMany({
@@ -136,6 +144,9 @@ export async function getAvailabilities(req: Request, res: Response) {
     res.json({
       availabilities,
       slotDuration: coachConfig?.slotDuration || 60,
+      autoConfirmReservations: coachConfig?.autoConfirmReservations || false,
+      hourlyRate: coachConfig?.hourlyRate || 0,
+      bufferTime: coachConfig?.bufferTime || 0,
     });
   } catch (error) {
     console.error("Erreur lors de la récupération des disponibilités:", error);
@@ -172,12 +183,13 @@ export async function getCoachSlots(req: Request, res: Response) {
       return res.status(400).json({ message: "Date invalide." });
     }
 
-    // Récupérer la durée configurée par le coach
+    // Récupérer la durée configurée par le coach et le laps de temps
     const coach = await prisma.user.findUnique({
       where: { id: coachId },
-      select: { slotDuration: true, googleCalendarAccessToken: true },
+      select: { slotDuration: true, bufferTime: true, googleCalendarAccessToken: true },
     });
     const slotDurationMinutes = coach?.slotDuration || 60;
+    const bufferTimeMinutes = coach?.bufferTime || 0;
 
     // 1. Récupérer les disponibilités pour ce jour de la semaine
     const dayOfWeek = targetDate.getDay(); // 0-6
@@ -221,7 +233,7 @@ export async function getCoachSlots(req: Request, res: Response) {
         ).padStart(2, "0")}`;
 
         possibleSlots.push({ start: startStr, end: endStr });
-        currentMinute += slotDurationMinutes;
+        currentMinute += slotDurationMinutes + bufferTimeMinutes;
       }
     }
 
@@ -235,7 +247,7 @@ export async function getCoachSlots(req: Request, res: Response) {
     const existingReservations = await prisma.reservation.findMany({
       where: {
         coachId,
-        status: { in: ["pending", "confirmed"] },
+        status: { in: ["pending", "confirmed", "approved"] },
         startDateTime: {
           gte: startOfDay,
           lte: endOfDay,
@@ -297,5 +309,145 @@ export async function getCoachSlots(req: Request, res: Response) {
     res.status(500).json({
       message: "Une erreur est survenue lors du calcul des créneaux.",
     });
+  }
+}
+
+/**
+ * --- Gestion des Prestations (CoachServices) ---
+ */
+export async function getServices(req: Request, res: Response) {
+  try {
+    const coachId = getUserIdFromRequest(req, res);
+    if (!coachId) return;
+
+    const services = await prisma.coachService.findMany({
+      where: { coachId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json(services);
+  } catch (error) {
+    console.error("GetServices Error:", error);
+    res.status(500).json({ message: "Erreur lors de la récupération des prestations." });
+  }
+}
+
+export async function createService(req: Request, res: Response) {
+  try {
+    const coachId = getUserIdFromRequest(req, res);
+    if (!coachId) return;
+
+    const { title, description, duration, price, location, isActive } = req.body;
+
+    if (!title || !duration || price === undefined) {
+      return res.status(400).json({ message: "Titre, durée et prix sont obligatoires." });
+    }
+
+    const service = await prisma.coachService.create({
+      data: {
+        coachId,
+        title,
+        description,
+        duration,
+        price,
+        location,
+        isActive: isActive !== undefined ? isActive : true,
+      },
+    });
+
+    res.status(201).json(service);
+  } catch (error) {
+    console.error("CreateService Error:", error);
+    res.status(500).json({ message: "Erreur lors de la création de la prestation." });
+  }
+}
+
+export async function updateService(req: Request, res: Response) {
+  try {
+    const coachId = getUserIdFromRequest(req, res);
+    const { id } = req.params;
+    if (!coachId || !id) return;
+
+    // Verify ownership
+    const service = await prisma.coachService.findUnique({ where: { id } });
+    if (!service || service.coachId !== coachId) {
+      return res.status(403).json({ message: "Opération non autorisée." });
+    }
+
+    const { title, description, duration, price, location, isActive } = req.body;
+
+    const updated = await prisma.coachService.update({
+      where: { id },
+      data: {
+        title: title !== undefined ? title : service.title,
+        description: description !== undefined ? description : service.description,
+        duration: duration !== undefined ? duration : service.duration,
+        price: price !== undefined ? price : service.price,
+        location: location !== undefined ? location : service.location,
+        isActive: isActive !== undefined ? isActive : service.isActive,
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("UpdateService Error:", error);
+    res.status(500).json({ message: "Erreur lors de la mise à jour de la prestation." });
+  }
+}
+
+export async function deleteService(req: Request, res: Response) {
+  try {
+    const coachId = getUserIdFromRequest(req, res);
+    const { id } = req.params;
+    if (!coachId || !id) return;
+
+    // Verify ownership
+    const service = await prisma.coachService.findUnique({ where: { id } });
+    if (!service || service.coachId !== coachId) {
+      return res.status(403).json({ message: "Opération non autorisée." });
+    }
+
+    await prisma.coachService.delete({ where: { id } });
+
+    res.json({ message: "Prestation supprimée avec succès." });
+  } catch (error) {
+    console.error("DeleteService Error:", error);
+    res.status(500).json({ message: "Erreur lors de la suppression de la prestation." });
+  }
+}
+
+/**
+ * --- URL publique pour réserver un service sans être connecté ---
+ */
+export async function getPublicCoachProfile(req: Request, res: Response) {
+  try {
+    const { id } = req.params; // coachId
+    
+    if (!id) return res.status(400).json({ message: "ID du coach requis." });
+
+    const coach = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        services: {
+          where: { isActive: true },
+          orderBy: { price: "asc" }
+        }
+      }
+    });
+
+    if (!coach || coach.role !== "coach") {
+      return res.status(404).json({ message: "Profil de coach introuvable." });
+    }
+
+    res.json({
+      name: coach.name,
+      services: coach.services,
+    });
+  } catch (error) {
+    console.error("GetPublicCoachProfile Error:", error);
+    res.status(500).json({ message: "Erreur lors de la récupération du profil libre." });
   }
 }

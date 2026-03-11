@@ -13,6 +13,7 @@ import calendarRoutes from "./routes/calendarRoutes";
 import availabilityRoutes from "./routes/availabilityRoutes";
 import statsRoutes from "./routes/statsRoutes";
 import coachNoteRoutes from "./routes/coachNoteRoutes";
+import stripeRoutes from "./routes/stripeRoutes";
 import { initStreakCron } from "./cron/streakJob";
 import { initReminderCron } from "./cron/reminderJob";
 
@@ -63,6 +64,9 @@ app.use(
     optionsSuccessStatus: 200, // Pour les anciens navigateurs
   })
 );
+
+// Middleware Stripe Webhook (doit être avant express.json)
+app.use("/api/stripe", stripeRoutes);
 
 app.use(express.json());
 

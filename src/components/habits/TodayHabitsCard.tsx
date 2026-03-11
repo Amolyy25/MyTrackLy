@@ -17,8 +17,7 @@ import {
 } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
 import { cn } from "../../lib/utils";
-import HabitHeatmap from "./HabitHeatmap";
-import { HabitLog } from "../../types";
+
 
 const categoryIcons = {
   hydration: "💧",
@@ -326,19 +325,7 @@ export function TodayHabitsCard({
       </CardHeader>
       
       <CardContent className="pt-0 pb-5">
-        {/* Heatmap Section */}
-        <div className="mb-6 p-4 bg-muted/20 rounded-2xl border border-border/50">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-emerald-500" />
-              Activité des 12 derniers mois
-            </h4>
-            <div className="text-xs text-muted-foreground">
-              {habits.length} habitudes suivies
-            </div>
-          </div>
-          <HabitHeatmap logs={habits.flatMap(h => h.logs || [])} />
-        </div>
+
 
         {/* 2x2 Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">

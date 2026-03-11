@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import API_URL from "../../../../config/api";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../contexts/AuthContext";
 import { useToast } from "../../../../contexts/ToastContext";
@@ -9,6 +10,7 @@ import {
   useGoogleCalendarAuthUrl,
 } from "../../../../hooks/useCalendarReservations";
 import { useCoachSlots } from "../../../../hooks/useAvailabilities";
+import { useCoachInfo } from "../../../../hooks/useCoachInfo";
 import { Card, CardContent } from "../../ui/card";
 import { Button } from "../../ui/button";
 import {
@@ -43,9 +45,13 @@ const StudentReservations: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>("book");
   const [selectedDate, setSelectedDate] = useState("");
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{ start: string; end: string } | null>(null);
+  const [selectedSlots, setSelectedSlots] = useState<{ start: string; end: string }[]>([]);
   const [sessionType, setSessionType] = useState("muscu");
   const [notes, setNotes] = useState("");
+
+  const { reservations, isLoading: isLoadingReservations, error: reservationsError, refetch } = useMyReservations();
+  const { createReservation, isLoading: isCreatingReservation, error: createReservationError } = useCreateReservation();
+  const { cancelReservation, isLoading: isCancelling } = useCancelReservation();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -56,7 +62,42 @@ const StudentReservations: React.FC = () => {
       navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
       window.location.reload();
     }
-  }, [location, navigate, showToast]);
+
+    const paymentStatus = params.get("payment");
+    if (paymentStatus === "success") {
+      const sessionId = params.get("session_id");
+      
+      let isVerifying = false;
+      const verifyPayment = async () => {
+        if (!sessionId || isVerifying) return;
+        isVerifying = true;
+        try {
+          const token = localStorage.getItem("token");
+          await fetch(`${API_URL}/stripe/verify-session?sessionId=${sessionId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          showToast("Paiement réussi ! Votre séance est confirmée.", "success");
+          
+          const newParams = new URLSearchParams(location.search);
+          newParams.delete("payment");
+          newParams.delete("session_id");
+          newParams.delete("reservationId");
+          navigate({ pathname: location.pathname, search: newParams.toString() }, { replace: true });
+          refetch();
+        } catch (err) {
+          console.error("Verification error:", err);
+        } finally {
+          isVerifying = false;
+        }
+      };
+      
+      verifyPayment();
+    } else if (paymentStatus === "cancel") {
+      showToast("Paiement annulé.", "info");
+      params.delete("payment");
+      navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+    }
+  }, [location, navigate, showToast, refetch]);
 
   const handleConnectGoogleCalendar = async () => {
     try {
@@ -67,13 +108,38 @@ const StudentReservations: React.FC = () => {
     }
   };
 
-  const { reservations, isLoading: isLoadingReservations, error: reservationsError, refetch } = useMyReservations();
-  const { createReservation, isLoading: isCreatingReservation, error: createReservationError } = useCreateReservation();
-  const { cancelReservation, isLoading: isCancelling } = useCancelReservation();
-
   const hasCoach = user?.coachId;
   const isGoogleConnected = user?.googleCalendarId;
   const { slots, isLoading: isLoadingSlots, error: slotsError } = useCoachSlots(user?.coachId, selectedDate);
+  const { coach, isLoading: isLoadingCoachInfo } = useCoachInfo(user?.coachId);
+
+  // Calcul du prix et de la durée
+  const bookingSummary = useMemo(() => {
+    if (selectedSlots.length === 0) return { duration: 0, price: 0 };
+    
+    // Trier les slots par heure de début
+    const sorted = [...selectedSlots].sort((a, b) => a.start.localeCompare(b.start));
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    
+    // Calculer la durée totale
+    const start = new Date(`${selectedDate}T${first.start}:00`);
+    const end = new Date(`${selectedDate}T${last.end}:00`);
+    const durationMs = end.getTime() - start.getTime();
+    const durationHours = durationMs / (1000 * 60 * 60);
+    
+    // Prix
+    const price = coach?.hourlyRate ? coach.hourlyRate * durationHours : 0;
+    
+    return { 
+      duration: Math.round(durationMs / (1000 * 60)), 
+      price,
+      startTime: first.start,
+      endTime: last.end,
+      startDateTime: start.toISOString(),
+      endDateTime: end.toISOString()
+    };
+  }, [selectedSlots, selectedDate, coach]);
 
   const sessionIcons: Record<string, React.ReactNode> = {
     muscu: <Dumbbell className="w-5 h-5" />,
@@ -91,6 +157,7 @@ const StudentReservations: React.FC = () => {
 
   const statusConfig = {
     confirmed: { color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: CheckCircle, label: "Confirmée" },
+    approved: { color: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20", icon: Sparkles, label: "Approuvée (réglage requis)" },
     pending: { color: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: Clock, label: "En attente" },
     cancelled: { color: "bg-slate-500/10 text-slate-500 border-slate-500/20", icon: XCircle, label: "Annulée" },
     refused: { color: "bg-rose-500/10 text-rose-600 border-rose-500/20", icon: AlertCircle, label: "Refusée" },
@@ -102,10 +169,10 @@ const StudentReservations: React.FC = () => {
   const pastReservations = reservations.filter(r => new Date(r.endDateTime) <= now);
   
   // Stats (only from future reservations)
-  const upcomingReservations = futureReservations.filter(r => r.status === "confirmed" || r.status === "pending");
+  const upcomingReservations = futureReservations.filter(r => r.status === "confirmed" || r.status === "pending" || r.status === "approved");
   const nextReservation = upcomingReservations[0];
   const confirmedCount = futureReservations.filter(r => r.status === "confirmed").length;
-  const pendingCount = futureReservations.filter(r => r.status === "pending").length;
+  const pendingCount = futureReservations.filter(r => r.status === "pending" || r.status === "approved").length;
 
   const handleCancel = async (id: string) => {
     if (!window.confirm("Êtes-vous sûr de vouloir annuler cette réservation ?")) return;
@@ -118,30 +185,70 @@ const StudentReservations: React.FC = () => {
     }
   };
 
+  const handlePayment = async (id: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Non authentifié");
+
+      const response = await fetch(`${API_URL}/stripe/create-checkout-session`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reservationId: id }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Erreur lors de la création de la session de paiement");
+      }
+
+      const { url } = await response.json();
+      window.location.href = url;
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Erreur lors du paiement", "error");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDate || !selectedTimeSlot) {
-      showToast("Sélectionnez une date et un créneau", "error");
+    if (!selectedDate || selectedSlots.length === 0) {
+      showToast("Sélectionnez une date et au moins un créneau", "error");
       return;
     }
+    
     try {
-      const startDateTime = `${selectedDate}T${selectedTimeSlot.start}:00`;
-      const endDateTime = `${selectedDate}T${selectedTimeSlot.end}:00`;
+      const { startDateTime, endDateTime } = bookingSummary;
+      
       await createReservation({
         coachId: user!.coachId as string,
-        startDateTime: new Date(startDateTime).toISOString(),
-        endDateTime: new Date(endDateTime).toISOString(),
+        startDateTime,
+        endDateTime,
         sessionType,
         notes: notes || undefined,
       });
-      showToast("Réservation envoyée à votre coach", "success");
+      
+      showToast("Réservation enregistrée !", "success");
       setNotes("");
-      setSelectedTimeSlot(null);
+      setSelectedSlots([]);
       setSelectedDate("");
       setActiveTab("reservations");
       refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Impossible de créer la réservation", "error");
+    }
+  };
+
+  const handleSlotClick = (slot: { start: string; end: string }) => {
+    const isSelected = selectedSlots.some(s => s.start === slot.start);
+    
+    if (isSelected) {
+      // Retirer le slot
+      setSelectedSlots(selectedSlots.filter(s => s.start !== slot.start));
+    } else {
+      // Ajouter le slot
+      setSelectedSlots([...selectedSlots, slot]);
     }
   };
 
@@ -360,25 +467,28 @@ const StudentReservations: React.FC = () => {
                           </div>
                         ) : (
                           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                            {slots.map((slot, index) => (
-                              <button
-                                key={`${slot.start}-${index}`}
-                                type="button"
-                                onClick={() => setSelectedTimeSlot(slot)}
-                                className={`py-3 px-2 text-center rounded-xl border-2 transition-all ${
-                                  selectedTimeSlot?.start === slot.start
-                                    ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
-                                    : "bg-muted/20 border-border/50 hover:border-primary/50 hover:bg-primary/5"
-                                }`}
-                              >
-                                <span className="block text-sm font-semibold">{slot.start}</span>
-                                <span className={`block text-xs mt-0.5 ${
-                                  selectedTimeSlot?.start === slot.start ? "text-primary-foreground/70" : "text-muted-foreground"
-                                }`}>
-                                  {slot.end}
-                                </span>
-                              </button>
-                            ))}
+                            {slots.map((slot, index) => {
+                              const isSelected = selectedSlots.some(s => s.start === slot.start);
+                              return (
+                                <button
+                                  key={`${slot.start}-${index}`}
+                                  type="button"
+                                  onClick={() => handleSlotClick(slot)}
+                                  className={`py-3 px-2 text-center rounded-xl border-2 transition-all ${
+                                    isSelected
+                                      ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
+                                      : "bg-muted/20 border-border/50 hover:border-primary/50 hover:bg-primary/5"
+                                  }`}
+                                >
+                                  <span className="block text-sm font-semibold">{slot.start}</span>
+                                  <span className={`block text-xs mt-0.5 ${
+                                    isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
+                                  }`}>
+                                    {slot.end}
+                                  </span>
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -435,10 +545,27 @@ const StudentReservations: React.FC = () => {
                         </div>
                       )}
 
+                      {/* Récapitulatif et Prix */}
+                      {selectedSlots.length > 0 && (
+                        <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-2">
+                          <div className="flex justify-between items-center text-sm font-medium">
+                            <span className="text-muted-foreground">Durée totale</span>
+                            <span className="text-foreground">{bookingSummary.duration} min</span>
+                          </div>
+                          <div className="flex justify-between items-center text-lg font-bold">
+                            <span className="text-foreground">Prix total</span>
+                            <span className="text-primary text-2xl">{bookingSummary.price}€</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground text-right italic">
+                            Basé sur le tarif de {coach?.hourlyRate || 0}€/h
+                          </p>
+                        </div>
+                      )}
+
                       {/* Submit */}
                       <Button
                         type="submit"
-                        disabled={isCreatingReservation || !selectedDate || !selectedTimeSlot}
+                        disabled={isCreatingReservation || !selectedDate || selectedSlots.length === 0}
                         className="w-full h-12 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 text-base font-semibold"
                       >
                         {isCreatingReservation ? (
@@ -449,7 +576,7 @@ const StudentReservations: React.FC = () => {
                         ) : (
                           <>
                             <CalendarCheck className="h-4 w-4 mr-2" />
-                            Réserver cette séance
+                            {bookingSummary.price > 0 ? `Réserver (${bookingSummary.price}€)` : "Réserver cette séance"}
                           </>
                         )}
                       </Button>
@@ -584,6 +711,16 @@ const StudentReservations: React.FC = () => {
                                 {" - "}
                                 {new Date(reservation.endDateTime).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                               </p>
+                              {reservation.totalPrice > 0 && (
+                                <p className="text-sm font-bold text-primary mt-1">
+                                  {reservation.totalPrice}€
+                                  {reservation.isPaid ? (
+                                    <span className="ml-2 text-[10px] text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-full border border-emerald-500/20 italic font-normal">Payé</span>
+                                  ) : (
+                                    <span className="ml-2 text-[10px] text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full border border-amber-500/20 italic font-normal">À régler</span>
+                                  )}
+                                </p>
+                              )}
                               {reservation.notes && (
                                 <p className="text-xs text-muted-foreground mt-2 truncate italic">"{reservation.notes}"</p>
                               )}
@@ -595,15 +732,33 @@ const StudentReservations: React.FC = () => {
                                 <StatusIcon className="h-3.5 w-3.5" />
                                 {config?.label}
                               </div>
-                              {(reservation.status === "pending" || reservation.status === "confirmed") && (
+                               {reservation.status === "approved" && (
+                                <Button
+                                  onClick={() => handlePayment(reservation.id)}
+                                  className="text-sm bg-emerald-600 hover:bg-emerald-700 text-white h-11 px-6 rounded-xl shadow-lg shadow-emerald-500/20 w-full font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                >
+                                  <Sparkles className="h-4 w-4 mr-2" />
+                                  Payer la séance
+                                </Button>
+                              )}
+                              {reservation.status === "confirmed" && !reservation.isPaid && (
+                                <Button
+                                  onClick={() => handlePayment(reservation.id)}
+                                  className="text-sm bg-emerald-600 hover:bg-emerald-700 text-white h-11 px-6 rounded-xl shadow-lg shadow-emerald-500/20 w-full font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                >
+                                  <Sparkles className="h-4 w-4 mr-2" />
+                                  Régler la séance maintenant
+                                </Button>
+                              )}
+                              {(reservation.status === "pending" || reservation.status === "approved" || reservation.status === "confirmed") && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleCancel(reservation.id)}
                                   disabled={isCancelling}
-                                  className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-3"
+                                  className="text-[10px] text-destructive/60 hover:text-destructive hover:bg-destructive/5 h-7 px-2"
                                 >
-                                  <X className="h-3.5 w-3.5 mr-1" />
+                                  <X className="h-3 w-3 mr-1" />
                                   Annuler
                                 </Button>
                               )}

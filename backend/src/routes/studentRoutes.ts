@@ -5,6 +5,7 @@ import {
   createVirtualStudent,
   updateVirtualStudent,
   deleteVirtualStudent,
+  getMyCoach,
 } from "../controllers/studentController";
 import { authenticateToken } from "../middleware/auth";
 
@@ -15,6 +16,9 @@ router.use(authenticateToken);
 
 // Liste des élèves (actifs + fiches clients)
 router.get("/", getStudents);
+
+// Infos sur le coach (pour l'élève)
+router.get("/my-coach", getMyCoach);
 
 // Fiches clients (élèves virtuels)
 router.post("/virtual", createVirtualStudent);

@@ -29,6 +29,7 @@ import {
   MailX,
   Ghost,
   Shield,
+  Send,
 } from "lucide-react";
 
 interface Student {
@@ -72,6 +73,8 @@ const Students: React.FC = () => {
   const [showCreateClientModal, setShowCreateClientModal] = useState(false);
   const [creatingCode, setCreatingCode] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterGoal, setFilterGoal] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all"); // "all" | "active" | "virtual"
@@ -141,6 +144,44 @@ const Students: React.FC = () => {
       showToast(errorMessage, "error");
     } finally {
       setCreatingCode(false);
+    }
+  };
+
+  const sendInvitationByEmail = async () => {
+    if (!inviteEmail.trim()) {
+      showToast("L'adresse email est requise", "error");
+      return;
+    }
+    
+    setSendingEmail(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_URL}/invitations/email`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: inviteEmail }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || "Erreur lors de l'envoi de l'invitation");
+      }
+      
+      if (data.invitationCode) {
+        setInvitationCodes([data.invitationCode, ...invitationCodes]);
+      }
+      setInviteEmail("");
+      showToast("Invitation envoyée avec succès !", "success");
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(errorMessage);
+      showToast(errorMessage, "error");
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -766,6 +807,36 @@ const Students: React.FC = () => {
                     </ol>
                   </div>
                 </div>
+              </div>
+
+              {/* Envoi par email */}
+              <div className="mb-6">
+                 <label className="block text-sm font-medium text-foreground mb-1.5">
+                   Envoyer l'invitation par e-mail
+                 </label>
+                 <div className="flex gap-2">
+                   <div className="relative flex-1">
+                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                     <input
+                       type="email"
+                       placeholder="eleve@email.com"
+                       value={inviteEmail}
+                       onChange={(e) => setInviteEmail(e.target.value)}
+                       className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground transition-all"
+                     />
+                   </div>
+                   <Button
+                     className="rounded-xl gap-2 bg-gradient-to-r from-primary to-violet-500"
+                     onClick={sendInvitationByEmail}
+                     disabled={sendingEmail || !inviteEmail.trim()}
+                   >
+                     {sendingEmail ? (
+                       <RefreshCw className="h-4 w-4 animate-spin" />
+                     ) : (
+                       <Send className="h-4 w-4" />
+                     )}
+                   </Button>
+                 </div>
               </div>
 
               {availableCodes.length > 0 && (

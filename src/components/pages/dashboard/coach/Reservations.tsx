@@ -41,7 +41,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-type StatusFilter = "all" | "pending" | "confirmed" | "cancelled" | "refused";
+type StatusFilter = "all" | "pending" | "approved" | "confirmed" | "cancelled" | "refused";
 type TabType = "overview" | "list";
 
 const CoachReservations: React.FC = () => {
@@ -131,6 +131,7 @@ const CoachReservations: React.FC = () => {
     return {
       all: futureReservations.length,
       pending: futureReservations.filter((r) => r.status === "pending").length,
+      approved: futureReservations.filter((r) => r.status === "approved").length,
       confirmed: futureReservations.filter((r) => r.status === "confirmed")
         .length,
       cancelled: futureReservations.filter((r) => r.status === "cancelled")
@@ -290,6 +291,13 @@ const CoachReservations: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case "approved":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-600 border border-indigo-500/20">
+            <Sparkles className="h-3 w-3" />
+            En attente de paiement
+          </span>
+        );
       case "confirmed":
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
@@ -550,6 +558,31 @@ const CoachReservations: React.FC = () => {
               </Card>
 
               <Card
+                className="border-border/50 bg-gradient-to-br from-indigo-500/5 to-indigo-500/10 overflow-hidden group hover:shadow-md transition-all cursor-pointer"
+                onClick={() => {
+                  setActiveTab("list");
+                  setStatusFilter("approved");
+                }}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium">
+                        En attente paiement
+                      </p>
+                      <p className="text-2xl font-bold text-foreground mt-1">
+                        {statusCounts.approved}
+                      </p>
+                      <p className="text-xs text-muted-foreground">approuvées</p>
+                    </div>
+                    <div className="h-10 w-10 rounded-xl bg-indigo-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Sparkles className="h-5 w-5 text-indigo-500" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card
                 className="border-border/50 bg-gradient-to-br from-emerald-500/5 to-emerald-500/10 overflow-hidden group hover:shadow-md transition-all cursor-pointer"
                 onClick={() => {
                   setActiveTab("list");
@@ -565,7 +598,7 @@ const CoachReservations: React.FC = () => {
                       <p className="text-2xl font-bold text-foreground mt-1">
                         {statusCounts.confirmed}
                       </p>
-                      <p className="text-xs text-muted-foreground">à venir</p>
+                      <p className="text-xs text-muted-foreground">payées</p>
                     </div>
                     <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                       <CheckCircle2 className="h-5 w-5 text-emerald-500" />
@@ -1069,6 +1102,16 @@ const CoachReservations: React.FC = () => {
                               {getSessionIcon(reservation.sessionType)}
                               {reservation.sessionType}
                             </span>
+                            {reservation.totalPrice > 0 && (
+                              <span className="flex items-center gap-1.5 text-sm font-bold text-primary">
+                                {reservation.totalPrice}€
+                                {reservation.isPaid ? (
+                                  <span className="text-[10px] text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-full border border-emerald-500/20 italic font-normal">Payé</span>
+                                ) : (
+                                  <span className="text-[10px] text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full border border-amber-500/20 italic font-normal">À régler</span>
+                                )}
+                              </span>
+                            )}
                           </div>
                         </div>
 
