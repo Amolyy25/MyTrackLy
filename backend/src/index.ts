@@ -86,7 +86,7 @@ app.get("/", (req, res) => {
   res.json({ message: "API fonctionnel" });
 });
 
-app.listen(port, () => {
+app.listen(Number(port), "0.0.0.0", () => {
   console.log(`Serveur lancé sur le port ${port}`);
   
   // Initialisation des tâches CRON
