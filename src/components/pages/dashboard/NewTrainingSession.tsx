@@ -261,7 +261,6 @@ const NewTrainingSession: React.FC = () => {
             ex.repsType === "variable"
               ? ex.repsPerSet.map((r) => Number((r as any) || 0))
               : undefined,
-          sets: Number((ex as any).sets || 0),
           weightKg: Number((ex as any).weightKg || 0),
           restSeconds: Number((ex as any).restSeconds || 0),
           notes: ex.notes,

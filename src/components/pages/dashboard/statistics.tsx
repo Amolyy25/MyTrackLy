@@ -52,6 +52,7 @@ import {
 import LoadingSpinner from "../../composants/LoadingSpinner";
 import ErrorDisplay from "../../composants/ErrorDisplay";
 import { Link } from "react-router-dom";
+import { RevenueModal } from "./coach/RevenueModal";
 
 type TabType = "overview" | "charts" | "body";
 
@@ -140,7 +141,7 @@ const Statistics: React.FC = () => {
     "bodyWeight",
   ]);
   const [dateRange, setDateRange] = useState<"7d" | "30d" | "90d" | "1y">(
-    "30d"
+    "30d",
   );
 
   // Hooks pour récupérer les données
@@ -216,8 +217,8 @@ const Statistics: React.FC = () => {
         const reps = ex.repsUniform
           ? ex.sets * ex.repsUniform
           : ex.repsPerSet
-          ? ex.repsPerSet.reduce((a, b) => a + b, 0)
-          : 0;
+            ? ex.repsPerSet.reduce((a, b) => a + b, 0)
+            : 0;
         dataByDate[dateKey].volume += reps * (ex.weightKg || 0);
       });
     });
@@ -267,8 +268,8 @@ const Statistics: React.FC = () => {
         const reps = ex.repsUniform
           ? ex.sets * ex.repsUniform
           : ex.repsPerSet
-          ? ex.repsPerSet.reduce((a, b) => a + b, 0)
-          : 0;
+            ? ex.repsPerSet.reduce((a, b) => a + b, 0)
+            : 0;
         totalVolume += reps * (ex.weightKg || 0);
 
         if (ex.exercise?.name) {
@@ -369,7 +370,7 @@ const Statistics: React.FC = () => {
     setSelectedMetrics((prev) =>
       prev.includes(metricId)
         ? prev.filter((m) => m !== metricId)
-        : [...prev, metricId]
+        : [...prev, metricId],
     );
   };
 
@@ -425,8 +426,8 @@ const Statistics: React.FC = () => {
             change > 0
               ? "bg-emerald-500/10 text-emerald-500"
               : change < 0
-              ? "bg-amber-500/10 text-amber-500"
-              : "bg-muted text-muted-foreground"
+                ? "bg-amber-500/10 text-amber-500"
+                : "bg-muted text-muted-foreground"
           }`}
         >
           {change > 0 ? (
@@ -465,27 +466,31 @@ const Statistics: React.FC = () => {
           </div>
         </div>
 
-        {/* Sélecteur de période */}
-        <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl">
-          {(["7d", "30d", "90d", "1y"] as const).map((range) => (
-            <button
-              key={range}
-              onClick={() => setDateRange(range)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                dateRange === range
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {range === "7d"
-                ? "7j"
-                : range === "30d"
-                ? "30j"
-                : range === "90d"
-                ? "3m"
-                : "1an"}
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          {user?.role === "coach" && <RevenueModal />}
+
+          {/* Sélecteur de période */}
+          <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-xl">
+            {(["7d", "30d", "90d", "1y"] as const).map((range) => (
+              <button
+                key={range}
+                onClick={() => setDateRange(range)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  dateRange === range
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {range === "7d"
+                  ? "7j"
+                  : range === "30d"
+                    ? "30j"
+                    : range === "90d"
+                      ? "3m"
+                      : "1an"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -594,7 +599,7 @@ const Statistics: React.FC = () => {
                       <defs>
                         {selectedMetrics.map((metricId) => {
                           const metric = TRACKING_METRICS.find(
-                            (m) => m.id === metricId
+                            (m) => m.id === metricId,
                           );
                           return (
                             <linearGradient
@@ -641,7 +646,7 @@ const Statistics: React.FC = () => {
                       <Tooltip content={<CustomTooltip />} />
                       {selectedMetrics.map((metricId) => {
                         const metric = TRACKING_METRICS.find(
-                          (m) => m.id === metricId
+                          (m) => m.id === metricId,
                         );
                         return (
                           <Area
@@ -937,7 +942,7 @@ const Statistics: React.FC = () => {
                         height={36}
                         formatter={(value) => {
                           const metric = TRACKING_METRICS.find(
-                            (m) => m.id === value
+                            (m) => m.id === value,
                           );
                           return (
                             <span className="text-sm text-foreground">
@@ -948,7 +953,7 @@ const Statistics: React.FC = () => {
                       />
                       {selectedMetrics.map((metricId) => {
                         const metric = TRACKING_METRICS.find(
-                          (m) => m.id === metricId
+                          (m) => m.id === metricId,
                         );
                         return (
                           <Line
@@ -1058,7 +1063,7 @@ const Statistics: React.FC = () => {
                         .sort(
                           (a, b) =>
                             new Date(a.date).getTime() -
-                            new Date(b.date).getTime()
+                            new Date(b.date).getTime(),
                         )
                         .map((m) => ({
                           date: new Date(m.date).toLocaleDateString("fr-FR", {

@@ -98,23 +98,24 @@ export function Header({ navItems }: HeaderProps) {
               <DropdownMenu key={item.name}>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className={`relative rounded-lg px-4 py-2 text-sm font-medium transition-all flex items-center gap-1 ${
+                    className={`relative rounded-lg px-4 py-2 text-sm font-medium transition-all flex items-center gap-2 ${
                       item.children.some(child => isActive(child.href))
-                        ? "text-foreground bg-muted"
+                        ? "text-foreground bg-muted shadow-sm"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     }`}
                   >
+                    {item.icon && <span className="text-primary/70">{item.icon}</span>}
                     {item.name}
-                    <ChevronDown className="h-3 w-3" />
+                    <ChevronDown className="h-3 w-3 opacity-50" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 border-border bg-card">
+                <DropdownMenuContent align="end" className="w-52 border-border bg-card shadow-xl animate-in fade-in zoom-in-95 duration-200">
                   {item.children.map((child) => (
                     <DropdownMenuItem
                       key={child.name}
-                      className={`cursor-pointer ${
+                      className={`cursor-pointer flex items-center gap-2 px-3 py-2.5 my-0.5 rounded-md transition-colors ${
                         isActive(child.href)
-                          ? "text-primary bg-primary/5"
+                          ? "text-primary bg-primary/10 font-semibold"
                           : "text-foreground hover:bg-muted"
                       }`}
                       onClick={() => navigate(child.href)}
@@ -128,15 +129,16 @@ export function Header({ navItems }: HeaderProps) {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`relative rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                className={`relative rounded-lg px-4 py-2 text-sm font-medium transition-all flex items-center gap-2 ${
                   isActive(item.href)
-                    ? "text-foreground bg-muted"
+                    ? "text-foreground bg-muted shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 }`}
               >
+                {item.icon && <span className={isActive(item.href) ? "text-primary" : "text-primary/60 group-hover:text-primary/80 transition-colors"}>{item.icon}</span>}
                 {item.name}
                 {isActive(item.href) && (
-                  <span className="absolute bottom-0 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full bg-primary" />
+                  <span className="absolute bottom-1 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full bg-primary" />
                 )}
               </Link>
             )
@@ -251,18 +253,19 @@ export function Header({ navItems }: HeaderProps) {
           <nav className="flex flex-col p-4 space-y-1">
             {navItems.map((item) => 
               item.isDropdown && item.children ? (
-                <div key={item.name} className="space-y-1">
-                  <p className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <div key={item.name} className="space-y-1 pb-2">
+                  <div className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-primary uppercase tracking-wider mt-2 opacity-80">
+                    {item.icon && <span className="text-primary">{item.icon}</span>}
                     {item.name}
-                  </p>
+                  </div>
                   {item.children.map((child) => (
                     <Link
                       key={child.name}
                       to={child.href}
                       onClick={() => setMobileMenuOpen(false)}
-                      className={`rounded-lg px-4 py-3 pl-8 text-sm font-medium transition-all block ${
+                      className={`rounded-lg px-4 py-3 pl-10 text-sm font-medium transition-all block ${
                         isActive(child.href)
-                          ? "text-foreground bg-muted"
+                          ? "text-foreground bg-primary/10"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       }`}
                     >
@@ -275,12 +278,13 @@ export function Header({ navItems }: HeaderProps) {
                   key={item.name}
                   to={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`rounded-lg px-4 py-3 text-sm font-medium transition-all ${
+                  className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all ${
                     isActive(item.href)
-                      ? "text-foreground bg-muted"
+                      ? "text-foreground bg-primary/10 border-l-4 border-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   }`}
                 >
+                  {item.icon && <span className={isActive(item.href) ? "text-primary" : "text-muted-foreground"}>{item.icon}</span>}
                   {item.name}
                 </Link>
               )

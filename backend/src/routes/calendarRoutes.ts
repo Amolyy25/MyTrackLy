@@ -12,12 +12,16 @@ import {
   updateReservationStatus,
   sendReservationReminder,
   cancelReservationByStudent,
+  createPublicReservation,
 } from "../controllers/calendarController";
 
 const router = Router();
 
 // Le callback Google ne peut pas utiliser authenticateToken car il vient directement de Google.
 router.get("/google/callback", googleOAuthCallback);
+
+// Réservation publique sans token
+router.post("/public/reservations", reservationRateLimiter, createPublicReservation);
 
 // Toutes les autres routes nécessitent le JWT
 router.use(authenticateToken);

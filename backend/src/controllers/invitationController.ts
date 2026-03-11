@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../config/database";
 import crypto from "crypto";
+import { sendEmail } from "../email/emailService";
 
 // Fonction pour générer un code d'invitation unique et complexe
 function generateInvitationCode(): string {
@@ -189,4 +190,94 @@ export async function validateInvitationCode(req: Request, res: Response) {
     });
   }
 }
+
+// --- Envoyer un code d'invitation par e-mail ---
+export async function sendInvitationEmail(req: Request, res: Response) {
+  try {
+    const userPayload = (req as any).user;
+    const userId = userPayload.userId;
+    const { email } = req.body;
+
+    if (!email || !email.trim()) {
+      res.status(400).json({ message: "L'adresse e-mail est requise." });
+      return;
+    }
+
+    // Vérifier que l'utilisateur est un coach
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, role: true },
+    });
+
+    if (!user || user.role !== "coach") {
+      res.status(403).json({
+        message: "Seuls les coaches peuvent envoyer des invitations.",
+      });
+      return;
+    }
+
+    // Générer un code unique (reprise logique de createInvitationCode)
+    let code: string;
+    let isUnique = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (!isUnique && attempts < maxAttempts) {
+      code = generateInvitationCode();
+      const existing = await prisma.invitationCode.findUnique({
+        where: { code },
+      });
+      if (!existing) {
+        isUnique = true;
+      }
+      attempts++;
+    }
+
+    if (!isUnique) {
+      res.status(500).json({
+        message: "Erreur lors de la génération du code. Veuillez réessayer.",
+      });
+      return;
+    }
+
+    // Créer le code d'invitation
+    const invitationCode = await prisma.invitationCode.create({
+      data: {
+        code: code!,
+        coachId: userId,
+      },
+    });
+
+    // Envoi de l'email
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const registrationUrl = `${frontendUrl}/register?plan=eleve&coachCode=${encodeURIComponent(invitationCode.code)}`;
+
+    await sendEmail(
+      email.trim(),
+      "Invitation à rejoindre MyTrackLy",
+      "studentInvitation",
+      {
+        coachName: user.name,
+        invitationCode: invitationCode.code,
+        registrationUrl: registrationUrl,
+      }
+    );
+
+    res.status(201).json({
+      message: "Invitation envoyée par e-mail avec succès.",
+      invitationCode: {
+        id: invitationCode.id,
+        code: invitationCode.code,
+        createdAt: invitationCode.createdAt,
+        used: invitationCode.used,
+      }
+    });
+  } catch (error) {
+    console.error("SendInvitationEmail Error:", error);
+    res.status(500).json({
+      message: "Une erreur est survenue lors de l'envoi de l'invitation.",
+    });
+  }
+}
+
 
