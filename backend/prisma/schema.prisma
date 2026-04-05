@@ -32,6 +32,7 @@ model User {
   invitationCodes      InvitationCode[]     // Codes d'invitation créés par le coach
   usedInvitationCodes  InvitationCode[]     @relation("UsedInvitationCodes") // Codes utilisés par l'élève
   passwordResetTokens  PasswordResetToken[] // Tokens de reset de mot de passe
+  trainingPlans        TrainingPlan[]
 
   // Notes privées du coach sur cet élève
   coachNotes           CoachNote[]          @relation("StudentNotes")
@@ -81,6 +82,7 @@ model TrainingSession {
   notes           String?
   coachComment    String?           @map("coach_comment") // Commentaire du coach sur la séance
   exercises       SessionExercise[]
+  planSessionLog  PlanSessionLog?
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
@@ -97,6 +99,7 @@ model Exercise {
   createdByUserId String?         @map("created_by_user_id")
   createdBy     User?             @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
   sessions      SessionExercise[]
+  planExercises PlanExercise[]
   createdAt     DateTime          @default(now()) @map("created_at")
 
   @@map("exercises")
@@ -273,4 +276,78 @@ model Habit {
   @@unique([habitId, completedAt])
   @@index([habitId, completedAt])
   @@index([completedAt])
+}
+
+model TrainingPlan {
+  id               String           @id @default(cuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdByCoachId String?
+  name             String
+  description      String?
+  isActive         Boolean          @default(true)
+  startDate        DateTime?
+  endDate          DateTime?
+  targetWeightKg   Float?
+  bodyGoal         String?          // "muscle_gain" | "weight_loss" | "maintenance" | "sport_perf" | "custom"
+  customGoal       String?
+  initialWeightKg  Float?
+  initialNotes     String?
+  days             PlanDay[]
+  sessions         PlanSessionLog[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([userId])
+}
+
+model PlanDay {
+  id           String           @id @default(cuid())
+  planId       String
+  plan         TrainingPlan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  dayOfWeek    Int              // 0=Lundi, 1=Mardi, ..., 6=Dimanche
+  timeOfDay    String           // "HH:mm" ex: "18:00"
+  label        String?
+  trainingType String           // "full_body" | "upper_body" | "lower_body" | "push" | "pull" | "cardio" | "core" | "custom"
+  customType   String?
+  exercises    PlanExercise[]
+  sessionLogs  PlanSessionLog[]
+  createdAt    DateTime         @default(now())
+
+  @@index([planId])
+}
+
+model PlanExercise {
+  id              String   @id @default(cuid())
+  planDayId       String
+  planDay         PlanDay  @relation(fields: [planDayId], references: [id], onDelete: Cascade)
+  exerciseId      String
+  exercise        Exercise @relation(fields: [exerciseId], references: [id])
+  plannedSets     Int
+  plannedReps     Int
+  plannedWeightKg Float?
+  orderIndex      Int
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  @@index([planDayId])
+}
+
+model PlanSessionLog {
+  id                String           @id @default(cuid())
+  planId            String
+  plan              TrainingPlan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  planDayId         String?
+  planDay           PlanDay?         @relation(fields: [planDayId], references: [id])
+  trainingSessionId String?          @unique
+  trainingSession   TrainingSession? @relation(fields: [trainingSessionId], references: [id])
+  date              DateTime
+  moodScore         Int?             // 1-5
+  moodNote          String?
+  performanceNote   String?
+  skipped           Boolean          @default(false)
+  skipReason        String?
+  createdAt         DateTime         @default(now())
+
+  @@index([planId])
 }
