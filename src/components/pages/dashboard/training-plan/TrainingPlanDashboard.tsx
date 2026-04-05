@@ -57,18 +57,18 @@ function authHeaders() {
 }
 
 // ─── Type color map ───────────────────────────────────────────────────────────
-const TYPE_COLORS: Record<string, string> = {
-  full_body: "bg-violet-500/20 text-violet-300 border-violet-500/30",
-  upper_body: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  lower_body: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-  push: "bg-orange-500/20 text-orange-300 border-orange-500/30",
-  pull: "bg-pink-500/20 text-pink-300 border-pink-500/30",
-  cardio: "bg-red-500/20 text-red-300 border-red-500/30",
-  core: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-  custom: "bg-slate-500/20 text-slate-300 border-slate-500/30",
-};
 function getTypeColor(t: string) {
-  return TYPE_COLORS[t] ?? TYPE_COLORS.custom;
+  const colors: Record<string, string> = {
+    full_body: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/20 dark:text-violet-300 dark:border-violet-500/30",
+    upper_body: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/30",
+    lower_body: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30",
+    push: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/20 dark:text-orange-300 dark:border-orange-500/30",
+    pull: "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-500/20 dark:text-pink-300 dark:border-pink-500/30",
+    cardio: "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-300 dark:border-red-500/30",
+    core: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-500/20 dark:text-yellow-300 dark:border-yellow-500/30",
+    custom: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-500/20 dark:text-slate-300 dark:border-slate-500/30",
+  };
+  return colors[t] ?? colors.custom;
 }
 
 // ─── Circular SVG ring ────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ function Ring({ pct, size = 100 }: { pct: number; size?: number }) {
   const dash = Math.min(pct / 100, 1) * circ;
   return (
     <svg width={size} height={size} className="-rotate-90">
-      <circle cx={cx} cy={cx} r={r} fill="none" stroke="#1e293b" strokeWidth={size * 0.08} />
+      <circle cx={cx} cy={cx} r={r} fill="none" className="stroke-slate-200 dark:stroke-slate-800" strokeWidth={size * 0.08} />
       <circle
         cx={cx} cy={cx} r={r} fill="none"
         stroke="url(#ringGrad)" strokeWidth={size * 0.08}
@@ -132,7 +132,7 @@ function EditField({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white placeholder-white/30 focus:outline-none focus:border-indigo-400 focus:bg-white/10 transition-all ${className}`}
+      className={`bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/30 focus:outline-none focus:border-indigo-400 focus:bg-white/10 transition-all ${className}`}
     />
   );
 }
@@ -156,7 +156,7 @@ function EditTextarea({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className={`bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white placeholder-white/30 focus:outline-none focus:border-indigo-400 focus:bg-white/10 transition-all resize-none w-full text-sm ${className}`}
+      className={`bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/30 focus:outline-none focus:border-indigo-400 focus:bg-white/10 transition-all resize-none w-full text-sm ${className}`}
     />
   );
 }
@@ -198,9 +198,9 @@ function ExerciseSearch({ onAdd, onClose }: { onAdd: (ex: Exercise) => void; onC
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Rechercher un exercice..."
-            className="w-full pl-8 pr-8 py-1.5 bg-slate-700/50 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-400 focus:outline-none focus:border-indigo-400"
+            className="w-full pl-8 pr-8 py-1.5 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-400"
           />
-          <button onClick={onClose} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+          <button onClick={onClose} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -233,8 +233,6 @@ function ExerciseSearch({ onAdd, onClose }: { onAdd: (ex: Exercise) => void; onC
 function ExerciseRow({
   ex,
   editMode,
-  planId,
-  dayId,
   onDelete,
   onUpdate,
 }: {
@@ -268,51 +266,51 @@ function ExerciseRow({
   return (
     <div className="group/ex">
       {editing ? (
-        <div className="flex items-center gap-2 py-2 border-b border-slate-700/50">
-          <span className="flex-1 text-sm text-slate-300 truncate">{ex.exercise?.name ?? "Exercice"}</span>
+        <div className="flex items-center gap-2 py-2 border-b border-slate-200 dark:border-slate-700/50">
+          <span className="flex-1 text-sm text-slate-600 dark:text-slate-300 truncate">{ex.exercise?.name ?? "Exercice"}</span>
           <div className="flex items-center gap-1">
             <input
               type="number" min="1" max="20"
               value={sets} onChange={(e) => setSets(e.target.value)}
-              className="w-10 text-center bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-xs text-white focus:outline-none focus:border-indigo-400"
+              className="w-10 text-center bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-1 py-0.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-400"
               title="Séries"
             />
-            <span className="text-slate-500 text-xs">×</span>
+            <span className="text-slate-400 text-xs">×</span>
             <input
               type="number" min="1" max="100"
               value={reps} onChange={(e) => setReps(e.target.value)}
-              className="w-10 text-center bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-xs text-white focus:outline-none focus:border-indigo-400"
+              className="w-10 text-center bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-1 py-0.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-400"
               title="Reps"
             />
             <input
               type="number" min="0" step="0.5"
               value={weight} onChange={(e) => setWeight(e.target.value)}
               placeholder="kg"
-              className="w-14 text-center bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-xs text-white focus:outline-none focus:border-indigo-400"
+              className="w-14 text-center bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-1 py-0.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-400"
               title="Poids (kg)"
             />
           </div>
-          <button onClick={save} disabled={saving} className="p-1 text-green-400 hover:text-green-300 disabled:opacity-50">
+          <button onClick={save} disabled={saving} className="p-1 text-green-600 dark:text-green-400 hover:text-green-500 disabled:opacity-50">
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
           </button>
-          <button onClick={() => setEditing(false)} className="p-1 text-slate-400 hover:text-slate-300">
+          <button onClick={() => setEditing(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       ) : (
-        <div className="flex items-center gap-2 py-2 border-b border-slate-700/30 last:border-0">
-          <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0" />
-          <span className="flex-1 text-sm text-slate-200 truncate">{ex.exercise?.name ?? "Exercice"}</span>
-          <span className="text-xs font-mono text-slate-400 flex-shrink-0">
+        <div className="flex items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700/30 last:border-0">
+          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 flex-shrink-0" />
+          <span className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{ex.exercise?.name ?? "Exercice"}</span>
+          <span className="text-xs font-mono text-slate-400 dark:text-slate-500 flex-shrink-0">
             {ex.plannedSets}×{ex.plannedReps}
-            {ex.plannedWeightKg != null && <span className="text-indigo-400"> @{ex.plannedWeightKg}kg</span>}
+            {ex.plannedWeightKg != null && <span className="text-indigo-600 dark:text-indigo-400 font-bold"> @{ex.plannedWeightKg}kg</span>}
           </span>
           {editMode && (
             <div className="flex items-center gap-0.5 opacity-0 group-hover/ex:opacity-100 transition-opacity">
-              <button onClick={() => setEditing(true)} className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-indigo-300">
+              <button onClick={() => setEditing(true)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300">
                 <Pencil className="w-3 h-3" />
               </button>
-              <button onClick={onDelete} className="p-1 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400">
+              <button onClick={onDelete} className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-500/20 text-slate-400 hover:text-red-500 dark:hover:text-red-400">
                 <Trash2 className="w-3 h-3" />
               </button>
             </div>
@@ -376,16 +374,16 @@ function DayCard({
     <div
       className={`flex flex-col rounded-2xl border transition-all duration-200 overflow-hidden ${
         isToday
-          ? "bg-gradient-to-br from-indigo-600 to-violet-700 border-indigo-400/50 shadow-lg shadow-indigo-900/40"
+          ? "bg-gradient-to-br from-indigo-600 to-violet-700 border-indigo-400 dark:border-indigo-400/50 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/40"
           : planDay
-          ? "bg-slate-800/80 border-slate-700/50 hover:border-slate-600/80"
-          : "bg-slate-900/40 border-slate-800/30 opacity-40"
+          ? "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/50 hover:border-indigo-200 dark:hover:border-slate-600/80 shadow-sm"
+          : "bg-slate-50/50 dark:bg-slate-900/40 border-slate-100 dark:border-slate-800/30 opacity-40"
       }`}
     >
       {/* Day header */}
       <div className={`px-3 pt-3 pb-2 border-b ${isToday ? "border-white/15" : "border-slate-700/50"}`}>
         <div className="flex items-center justify-between">
-          <span className={`text-xs font-bold uppercase tracking-wider ${isToday ? "text-indigo-100" : "text-slate-400"}`}>
+          <span className={`text-[10px] font-bold uppercase tracking-wider ${isToday ? "text-indigo-100" : "text-slate-400 dark:text-slate-500"}`}>
             {DAYS_FR[dayIndex]}
           </span>
           {isToday && (
@@ -934,9 +932,9 @@ const TrainingPlanDashboard: React.FC = () => {
   const totalExercises = plan.days.reduce((s, d) => s + d.exercises.length, 0);
 
   return (
-    <div className="w-full min-h-screen bg-slate-950">
+    <div className="w-full min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       {/* ── HERO HEADER ─────────────────────────────────────── */}
-      <div className="w-full bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 border-b border-white/5 px-4 sm:px-6 lg:px-8 pt-6 pb-8">
+      <div className="w-full bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950 border-b border-slate-200 dark:border-white/5 px-4 sm:px-6 lg:px-8 pt-6 pb-8">
         <button
           onClick={() => navigate("/dashboard/training-plans")}
           className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white mb-5 transition-colors"
@@ -1027,13 +1025,13 @@ const TrainingPlanDashboard: React.FC = () => {
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 flex-wrap mb-1">
-                <h1 className="text-3xl font-black text-white tracking-tight">{plan.name}</h1>
+                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{plan.name}</h1>
                 {plan.bodyGoal && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
                     {getBodyGoalEmoji(plan.bodyGoal)} {getBodyGoalLabel(plan.bodyGoal, plan.customGoal)}
                   </span>
                 )}
-                <span className={`text-xs px-2 py-1 rounded-full font-medium ${plan.isActive ? "bg-green-500/20 text-green-300 border border-green-500/30" : "bg-slate-700 text-slate-400 border border-slate-600"}`}>
+                <span className={`text-xs px-2 py-1 rounded-full font-bold ${plan.isActive ? "bg-green-100 text-green-700 border border-green-200 dark:bg-green-500/20 dark:text-green-300 dark:border-green-500/30" : "bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600"}`}>
                   {plan.isActive ? "● Actif" : "○ Inactif"}
                 </span>
               </div>
@@ -1097,10 +1095,10 @@ const TrainingPlanDashboard: React.FC = () => {
           <div className="xl:col-span-8 space-y-6">
 
             {/* ── WEEKLY CALENDAR ── */}
-            <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5">
+            <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4 text-indigo-400" />
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
                   Planning hebdomadaire
                 </h2>
                 {editMode && (
@@ -1168,9 +1166,9 @@ const TrainingPlanDashboard: React.FC = () => {
 
             {/* ── NEXT SESSION ── */}
             {nextDay && (
-              <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 rounded-2xl p-5">
-                <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/5 -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-black/10 translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+              <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 rounded-2xl p-6 shadow-lg shadow-indigo-200 dark:shadow-none">
+                <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/10 -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-black/5 translate-y-1/2 -translate-x-1/2 pointer-events-none" />
                 <div className="relative">
                   <p className="text-indigo-200 text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5" />
@@ -1192,16 +1190,16 @@ const TrainingPlanDashboard: React.FC = () => {
                     </button>
                   </div>
                   {nextDay.exercises.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {nextDay.exercises.map((ex) => (
-                        <div key={ex.id} className="flex items-center justify-between bg-white/10 rounded-xl px-3 py-2">
-                          <span className="text-sm text-indigo-100 flex items-center gap-2">
-                            <Dumbbell className="w-3.5 h-3.5 text-indigo-200" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+                      {nextDay.exercises.slice(0, 4).map((ex) => (
+                        <div key={ex.id} className="flex items-center justify-between bg-white/10 dark:bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 backdrop-blur-sm">
+                          <span className="text-sm text-white flex items-center gap-2">
+                            <Dumbbell className="w-4 h-4 text-indigo-100" />
                             {ex.exercise?.name ?? "Exercice"}
                           </span>
                           <span className="text-xs text-white font-mono font-bold">
                             {ex.plannedSets}×{ex.plannedReps}
-                            {ex.plannedWeightKg != null && <span className="text-indigo-200"> @{ex.plannedWeightKg}kg</span>}
+                            {ex.plannedWeightKg != null && <span className="text-indigo-100"> @{ex.plannedWeightKg}kg</span>}
                           </span>
                         </div>
                       ))}
@@ -1221,15 +1219,15 @@ const TrainingPlanDashboard: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                   {/* Completion ring */}
-                  <div className="flex flex-col items-center justify-center p-4 bg-slate-800/60 rounded-2xl border border-slate-700/50">
+                  <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-700/50">
                     <div className="relative mb-2">
                       <Ring pct={Math.round(progress.completionRate)} size={80} />
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-lg font-black text-indigo-400">{Math.round(progress.completionRate)}%</span>
+                        <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{Math.round(progress.completionRate)}%</span>
                       </div>
                     </div>
-                    <p className="text-xs text-slate-400 font-medium">Complétion</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{progress.totalLoggedSessions}/{progress.totalPlannedSessions} séances</p>
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">Complétion</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{progress.totalLoggedSessions}/{progress.totalPlannedSessions} séances</p>
                   </div>
 
                   {/* Streak */}
@@ -1242,13 +1240,13 @@ const TrainingPlanDashboard: React.FC = () => {
                   </div>
 
                   {/* Mood avg */}
-                  <div className="flex flex-col items-center justify-center p-4 bg-slate-800/60 rounded-2xl border border-slate-700/50">
+                  <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-700/50">
                     <span className="text-4xl mb-1">
                       {progress.averageMoodScore != null ? getMoodEmoji(Math.round(progress.averageMoodScore)) : "—"}
                     </span>
-                    <p className="text-xs text-slate-400 font-medium">Humeur moyenne</p>
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">Humeur moyenne</p>
                     {progress.averageMoodScore != null && (
-                      <p className="text-xs text-slate-500 mt-0.5">{progress.averageMoodScore.toFixed(1)}/5</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{progress.averageMoodScore.toFixed(1)}/5</p>
                     )}
                   </div>
                 </div>
@@ -1267,7 +1265,7 @@ const TrainingPlanDashboard: React.FC = () => {
                                 className="absolute bottom-0 left-0 right-0 rounded-lg transition-all duration-700"
                                 style={{
                                   height: `${pct}%`,
-                                  background: pct >= 80 ? "linear-gradient(180deg, #818cf8, #6366f1)" : pct >= 50 ? "linear-gradient(180deg, #a78bfa, #8b5cf6)" : "linear-gradient(180deg, #64748b, #475569)",
+                                  background: pct >= 80 ? "linear-gradient(180deg, #818cf8, #6366f1)" : pct >= 50 ? "linear-gradient(180deg, #a78bfa, #8b5cf6)" : "linear-gradient(180deg, #cbd5e1, #94a3b8)",
                                 }}
                               />
                             </div>
@@ -1285,18 +1283,18 @@ const TrainingPlanDashboard: React.FC = () => {
             )}
 
             {/* ── SESSION HISTORY ── */}
-            <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5">
-              <h2 className="text-base font-bold text-white flex items-center gap-2 mb-4">
-                <ListChecks className="w-4 h-4 text-indigo-400" />
+            <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+                <ListChecks className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
                 Historique des séances
               </h2>
               {logs.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-3">
-                    <Dumbbell className="w-5 h-5 text-slate-600" />
+                  <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3">
+                    <Dumbbell className="w-5 h-5 text-slate-300 dark:text-slate-600" />
                   </div>
                   <p className="text-sm text-slate-500">Aucune séance enregistrée</p>
-                  <p className="text-xs text-slate-600 mt-1">Commence par logger ta première séance !</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-600 mt-1">Commence par logger ta première séance !</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1305,8 +1303,8 @@ const TrainingPlanDashboard: React.FC = () => {
                       key={log.id}
                       className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${
                         log.skipped
-                          ? "bg-slate-800/40 border-slate-700/30 opacity-60"
-                          : "bg-slate-800/60 border-slate-700/50 hover:border-slate-600/80"
+                          ? "bg-slate-50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-700/30 opacity-60"
+                          : "bg-slate-50/50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700/50 hover:border-indigo-100 dark:hover:border-slate-600/80"
                       }`}
                     >
                       <span className="text-xl flex-shrink-0 mt-0.5">
@@ -1314,16 +1312,16 @@ const TrainingPlanDashboard: React.FC = () => {
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-medium text-white">{fmtDate(log.date)}</p>
+                          <p className="text-sm font-bold text-slate-800 dark:text-white">{fmtDate(log.date)}</p>
                           {log.skipped && (
-                            <span className="px-1.5 py-0.5 bg-slate-700 rounded-md text-xs text-slate-400 font-medium">Sautée</span>
+                            <span className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded-md text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">Sautée</span>
                           )}
                           {log.moodScore && !log.skipped && (
-                            <span className="text-xs text-slate-400">{log.moodScore}/5</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{log.moodScore}/5</span>
                           )}
                         </div>
                         {log.moodNote && (
-                          <p className="text-xs text-slate-400 mt-0.5 truncate">{log.moodNote}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 truncate">{log.moodNote}</p>
                         )}
                         {log.skipReason && (
                           <p className="text-xs text-slate-500 mt-0.5 italic truncate">{log.skipReason}</p>
@@ -1332,7 +1330,7 @@ const TrainingPlanDashboard: React.FC = () => {
                     </div>
                   ))}
                   {logs.length > 8 && (
-                    <p className="text-xs text-slate-500 text-center pt-1">+{logs.length - 8} séances supplémentaires</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 text-center pt-1 font-medium">+{logs.length - 8} séances supplémentaires</p>
                   )}
                 </div>
               )}
@@ -1350,22 +1348,22 @@ const TrainingPlanDashboard: React.FC = () => {
             />
 
             {/* Stats summary */}
-            <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4">
-              <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-yellow-400" />
+            <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-yellow-500" />
                 Résumé du plan
               </h2>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Séances/sem", value: plan.days.length, unit: "jours" },
                   { label: "Exercices", value: totalExercises, unit: "planifiés" },
                   { label: "Complétion", value: progress ? `${Math.round(progress.completionRate)}%` : "—", unit: "30 jours" },
                   { label: "Streak", value: progress?.streakDays ?? 0, unit: "jours" },
                 ].map((stat) => (
-                  <div key={stat.label} className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/40">
-                    <p className="text-xs text-slate-400 font-medium mb-1">{stat.label}</p>
-                    <p className="text-xl font-black text-white">{stat.value}</p>
-                    <p className="text-xs text-slate-500">{stat.unit}</p>
+                  <div key={stat.label} className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 border border-slate-100 dark:border-slate-700/40">
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tight mb-1">{stat.label}</p>
+                    <p className="text-xl font-black text-slate-900 dark:text-white">{stat.value}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{stat.unit}</p>
                   </div>
                 ))}
               </div>
