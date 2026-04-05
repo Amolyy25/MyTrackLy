@@ -694,3 +694,282 @@ export async function logPlanSession(req: Request, res: Response) {
     });
   }
 }
+
+/**
+ * Adds a new PlanDay to an existing plan.
+ */
+export async function addPlanDay(req: Request, res: Response) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifie (userId manquant)" });
+    }
+
+    const { id } = req.params;
+    const { dayOfWeek, timeOfDay, trainingType, customType, label } = req.body;
+
+    const plan = await prisma.trainingPlan.findFirst({ where: { id, userId } });
+    if (!plan) {
+      return res.status(404).json({ message: "Plan non trouve" });
+    }
+
+    if (dayOfWeek === undefined || dayOfWeek === null || dayOfWeek < 0 || dayOfWeek > 6) {
+      return res.status(400).json({ message: "dayOfWeek doit etre entre 0 et 6" });
+    }
+
+    const timeOfDayRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!timeOfDay || !timeOfDayRegex.test(timeOfDay)) {
+      return res.status(400).json({ message: "timeOfDay doit etre au format HH:mm" });
+    }
+
+    if (!trainingType || !trainingType.trim()) {
+      return res.status(400).json({ message: "trainingType est requis" });
+    }
+
+    const day = await prisma.planDay.create({
+      data: {
+        planId: id,
+        dayOfWeek,
+        timeOfDay,
+        trainingType,
+        customType: customType !== undefined ? customType : undefined,
+        label: label !== undefined ? label : undefined,
+      },
+      include: {
+        exercises: { include: { exercise: true }, orderBy: { orderIndex: "asc" } },
+      },
+    });
+
+    res.status(201).json(day);
+  } catch (error) {
+    console.error("Error adding plan day:", error);
+    res.status(500).json({ message: "Erreur serveur interne" });
+  }
+}
+
+/**
+ * Updates an existing PlanDay.
+ */
+export async function updatePlanDay(req: Request, res: Response) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifie (userId manquant)" });
+    }
+
+    const { id, dayId } = req.params;
+    const { timeOfDay, trainingType, customType, label } = req.body;
+
+    const plan = await prisma.trainingPlan.findFirst({ where: { id, userId } });
+    if (!plan) {
+      return res.status(404).json({ message: "Plan non trouve" });
+    }
+
+    const existingDay = await prisma.planDay.findFirst({ where: { id: dayId, planId: id } });
+    if (!existingDay) {
+      return res.status(404).json({ message: "Jour non trouve" });
+    }
+
+    if (timeOfDay !== undefined) {
+      const timeOfDayRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!timeOfDayRegex.test(timeOfDay)) {
+        return res.status(400).json({ message: "timeOfDay doit etre au format HH:mm" });
+      }
+    }
+
+    const updatedDay = await prisma.planDay.update({
+      where: { id: dayId },
+      data: {
+        timeOfDay: timeOfDay !== undefined ? timeOfDay : undefined,
+        trainingType: trainingType !== undefined ? trainingType : undefined,
+        customType: customType !== undefined ? customType : undefined,
+        label: label !== undefined ? label : undefined,
+      },
+      include: {
+        exercises: { include: { exercise: true }, orderBy: { orderIndex: "asc" } },
+      },
+    });
+
+    res.json(updatedDay);
+  } catch (error) {
+    console.error("Error updating plan day:", error);
+    res.status(500).json({ message: "Erreur serveur interne" });
+  }
+}
+
+/**
+ * Deletes a PlanDay (cascade removes exercises).
+ */
+export async function deletePlanDay(req: Request, res: Response) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifie (userId manquant)" });
+    }
+
+    const { id, dayId } = req.params;
+
+    const plan = await prisma.trainingPlan.findFirst({ where: { id, userId } });
+    if (!plan) {
+      return res.status(404).json({ message: "Plan non trouve" });
+    }
+
+    const existingDay = await prisma.planDay.findFirst({ where: { id: dayId, planId: id } });
+    if (!existingDay) {
+      return res.status(404).json({ message: "Jour non trouve" });
+    }
+
+    await prisma.planDay.delete({ where: { id: dayId } });
+
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error deleting plan day:", error);
+    res.status(500).json({ message: "Erreur serveur interne" });
+  }
+}
+
+/**
+ * Adds a new PlanExercise to a PlanDay.
+ */
+export async function addPlanExercise(req: Request, res: Response) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifie (userId manquant)" });
+    }
+
+    const { id, dayId } = req.params;
+    const { exerciseId, plannedSets, plannedReps, plannedWeightKg } = req.body;
+
+    const plan = await prisma.trainingPlan.findFirst({ where: { id, userId } });
+    if (!plan) {
+      return res.status(404).json({ message: "Plan non trouve" });
+    }
+
+    const day = await prisma.planDay.findFirst({ where: { id: dayId, planId: id } });
+    if (!day) {
+      return res.status(404).json({ message: "Jour non trouve" });
+    }
+
+    if (!plannedSets || !Number.isInteger(plannedSets) || plannedSets <= 0) {
+      return res.status(400).json({ message: "plannedSets doit etre un entier > 0" });
+    }
+
+    if (!plannedReps || !Number.isInteger(plannedReps) || plannedReps <= 0) {
+      return res.status(400).json({ message: "plannedReps doit etre un entier > 0" });
+    }
+
+    // Auto-assign orderIndex = current max + 1
+    const maxOrderResult = await prisma.planExercise.aggregate({
+      where: { planDayId: dayId },
+      _max: { orderIndex: true },
+    });
+    const nextOrderIndex = (maxOrderResult._max.orderIndex ?? -1) + 1;
+
+    const exercise = await prisma.planExercise.create({
+      data: {
+        planDayId: dayId,
+        exerciseId,
+        plannedSets,
+        plannedReps,
+        plannedWeightKg: plannedWeightKg !== undefined ? plannedWeightKg : undefined,
+        orderIndex: nextOrderIndex,
+      },
+      include: { exercise: true },
+    });
+
+    res.status(201).json(exercise);
+  } catch (error: any) {
+    console.error("Error adding plan exercise:", error);
+
+    if (error.code === "P2003") {
+      return res.status(400).json({
+        message: "L'exercice n'existe pas dans la base de donnees",
+      });
+    }
+
+    res.status(500).json({ message: "Erreur serveur interne" });
+  }
+}
+
+/**
+ * Updates an existing PlanExercise.
+ */
+export async function updatePlanExercise(req: Request, res: Response) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifie (userId manquant)" });
+    }
+
+    const { id, dayId, exId } = req.params;
+    const { plannedSets, plannedReps, plannedWeightKg, notes } = req.body;
+
+    const plan = await prisma.trainingPlan.findFirst({ where: { id, userId } });
+    if (!plan) {
+      return res.status(404).json({ message: "Plan non trouve" });
+    }
+
+    const day = await prisma.planDay.findFirst({ where: { id: dayId, planId: id } });
+    if (!day) {
+      return res.status(404).json({ message: "Jour non trouve" });
+    }
+
+    const existingExercise = await prisma.planExercise.findFirst({ where: { id: exId, planDayId: dayId } });
+    if (!existingExercise) {
+      return res.status(404).json({ message: "Exercice non trouve" });
+    }
+
+    const updatedExercise = await prisma.planExercise.update({
+      where: { id: exId },
+      data: {
+        plannedSets: plannedSets !== undefined ? plannedSets : undefined,
+        plannedReps: plannedReps !== undefined ? plannedReps : undefined,
+        plannedWeightKg: plannedWeightKg !== undefined ? plannedWeightKg : undefined,
+        notes: notes !== undefined ? notes : undefined,
+      },
+      include: { exercise: true },
+    });
+
+    res.json(updatedExercise);
+  } catch (error) {
+    console.error("Error updating plan exercise:", error);
+    res.status(500).json({ message: "Erreur serveur interne" });
+  }
+}
+
+/**
+ * Deletes a PlanExercise.
+ */
+export async function deletePlanExercise(req: Request, res: Response) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifie (userId manquant)" });
+    }
+
+    const { id, dayId, exId } = req.params;
+
+    const plan = await prisma.trainingPlan.findFirst({ where: { id, userId } });
+    if (!plan) {
+      return res.status(404).json({ message: "Plan non trouve" });
+    }
+
+    const day = await prisma.planDay.findFirst({ where: { id: dayId, planId: id } });
+    if (!day) {
+      return res.status(404).json({ message: "Jour non trouve" });
+    }
+
+    const existingExercise = await prisma.planExercise.findFirst({ where: { id: exId, planDayId: dayId } });
+    if (!existingExercise) {
+      return res.status(404).json({ message: "Exercice non trouve" });
+    }
+
+    await prisma.planExercise.delete({ where: { id: exId } });
+
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error deleting plan exercise:", error);
+    res.status(500).json({ message: "Erreur serveur interne" });
+  }
+}
