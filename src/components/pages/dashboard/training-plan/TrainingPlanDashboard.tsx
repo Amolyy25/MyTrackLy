@@ -699,7 +699,6 @@ function AddDayForm({
           Ajouter au planning
         </button>
       </div>
-      </div>
     </div>
   );
 }
