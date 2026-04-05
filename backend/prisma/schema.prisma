@@ -282,7 +282,7 @@ model HabitLog {
 }
 
 model TrainingPlan {
-  id               String           @id @default(cuid())
+  id               String           @id @default(uuid())
   userId           String           @map("user_id")
   user             User             @relation("UserTrainingPlans", fields: [userId], references: [id], onDelete: Cascade)
   createdByCoachId String?          @map("created_by_coach_id")
@@ -303,14 +303,15 @@ model TrainingPlan {
   updatedAt        DateTime         @updatedAt @map("updated_at")
 
   @@index([userId])
+  @@index([createdByCoachId])
   @@map("training_plans")
 }
 
 model PlanDay {
-  id           String           @id @default(cuid())
+  id           String           @id @default(uuid())
   planId       String           @map("plan_id")
   plan         TrainingPlan     @relation(fields: [planId], references: [id], onDelete: Cascade)
-  dayOfWeek    Int              @map("day_of_week") // 0=Lundi, 1=Mardi, ..., 6=Dimanche
+  dayOfWeek    Int              @map("day_of_week") // 0=Dimanche, 1=Lundi, ..., 6=Samedi
   timeOfDay    String           @map("time_of_day") // "HH:mm" ex: "18:00"
   label        String?
   trainingType String           @map("training_type") // "full_body" | "upper_body" | "lower_body" | "push" | "pull" | "cardio" | "core" | "custom"
@@ -325,7 +326,7 @@ model PlanDay {
 }
 
 model PlanExercise {
-  id              String   @id @default(cuid())
+  id              String   @id @default(uuid())
   planDayId       String   @map("plan_day_id")
   planDay         PlanDay  @relation(fields: [planDayId], references: [id], onDelete: Cascade)
   exerciseId      String   @map("exercise_id")
@@ -343,13 +344,13 @@ model PlanExercise {
 }
 
 model PlanSessionLog {
-  id                String           @id @default(cuid())
+  id                String           @id @default(uuid())
   planId            String           @map("plan_id")
   plan              TrainingPlan     @relation(fields: [planId], references: [id], onDelete: Cascade)
   planDayId         String?          @map("plan_day_id")
   planDay           PlanDay?         @relation(fields: [planDayId], references: [id], onDelete: SetNull)
   trainingSessionId String?          @unique @map("training_session_id")
-  trainingSession   TrainingSession? @relation(fields: [trainingSessionId], references: [id])
+  trainingSession   TrainingSession? @relation(fields: [trainingSessionId], references: [id], onDelete: SetNull)
   date              DateTime
   moodScore         Int?             @map("mood_score") // 1-5
   moodNote          String?          @map("mood_note")
