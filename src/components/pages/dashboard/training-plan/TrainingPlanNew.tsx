@@ -82,24 +82,24 @@ const TOTAL_STEPS = 4;
 
 function StepIndicator({ currentStep }: { currentStep: number }) {
   return (
-    <div className="flex items-center justify-center mb-10 gap-0">
+    <div className="flex items-center justify-between mb-8 gap-1">
       {STEP_LABELS.map((s, i) => (
         <React.Fragment key={i}>
-          <div className="flex flex-col items-center gap-1.5">
+          <div className="flex flex-col items-center gap-2 flex-1">
             <div
-              className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-all ${
+              className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm border-2 transition-all ${
                 currentStep > i + 1
                   ? "bg-indigo-600 border-indigo-600 text-white"
                   : currentStep === i + 1
-                  ? "bg-indigo-600 border-indigo-600 text-white scale-110 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/50"
-                  : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400"
+                  ? "bg-indigo-600 border-indigo-600 text-white scale-110 shadow-lg shadow-indigo-100 dark:shadow-indigo-900/40"
+                  : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400"
               }`}
             >
-              {currentStep > i + 1 ? <Check size={16} /> : i + 1}
+              {currentStep > i + 1 ? <Check size={14} /> : i + 1}
             </div>
             <span
-              className={`text-xs font-medium hidden sm:block ${
-                currentStep === i + 1 ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400 dark:text-gray-500"
+              className={`text-[10px] sm:text-xs font-bold uppercase tracking-tight text-center ${
+                currentStep === i + 1 ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-slate-500"
               }`}
             >
               {s}
@@ -107,8 +107,8 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
           </div>
           {i < STEP_LABELS.length - 1 && (
             <div
-              className={`h-0.5 w-10 sm:w-14 mx-1 mb-5 transition-colors ${
-                currentStep > i + 1 ? "bg-indigo-600" : "bg-gray-200 dark:bg-gray-700"
+              className={`h-0.5 flex-1 mx-1 mt-4 sm:mt-5 transition-colors ${
+                currentStep > i + 1 ? "bg-indigo-600" : "bg-slate-200 dark:bg-slate-800"
               }`}
             />
           )}
@@ -421,7 +421,7 @@ const TrainingPlanNew: React.FC = () => {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
           Notes pour l'IA
         </label>
         <textarea
@@ -429,10 +429,11 @@ const TrainingPlanNew: React.FC = () => {
           onChange={(e) => update({ initialNotes: e.target.value })}
           placeholder="Infos supplémentaires... (blessures, disponibilités, matériel...)"
           rows={3}
-          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none transition-all shadow-sm"
         />
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
-          💡 Plus vous donnez de contexte, plus les conseils seront précis
+        <p className="text-[10px] text-indigo-500 dark:text-indigo-400 font-bold uppercase tracking-wider mt-2 flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+          Plus vous donnez de contexte, plus les conseils seront précis
         </p>
       </div>
     </div>
@@ -491,23 +492,23 @@ const TrainingPlanNew: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <div className="p-4 space-y-3">
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Heure</label>
+                <div className="p-4 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 mb-1">Heure</label>
                       <input
                         type="time"
                         value={config?.timeOfDay ?? "08:00"}
                         onChange={(e) => updateDayConfig(dayOfWeek, { timeOfDay: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Type</label>
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 mb-1">Type</label>
                       <select
                         value={config?.trainingType ?? "full_body"}
                         onChange={(e) => updateDayConfig(dayOfWeek, { trainingType: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       >
                         {TRAINING_TYPES.map((t) => (
                           <option key={t.value} value={t.value}>
@@ -516,16 +517,19 @@ const TrainingPlanNew: React.FC = () => {
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Durée (min)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={config?.durationMinutes ?? ""}
-                        onChange={(e) => updateDayConfig(dayOfWeek, { durationMinutes: e.target.value })}
-                        placeholder="60"
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 mb-1">Durée cible</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          value={config?.durationMinutes ?? ""}
+                          onChange={(e) => updateDayConfig(dayOfWeek, { durationMinutes: e.target.value })}
+                          placeholder="60"
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">MIN</span>
+                      </div>
                     </div>
                   </div>
                   {config?.trainingType === "custom" && (
@@ -667,43 +671,53 @@ const TrainingPlanNew: React.FC = () => {
 
                 {/* Edit sets/reps for each exercise */}
                 {exercises.length > 0 && (
-                  <div className="space-y-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <div className="space-y-4 mt-6 pt-4 border-t border-slate-100 dark:border-slate-700">
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Ajuster les séries & répétitions</p>
                     {exercises.map((ex) => (
-                      <div key={ex.exerciseId} className="flex items-center gap-2 text-xs">
-                        <span className="text-gray-600 dark:text-gray-400 flex-1 truncate font-medium">{ex.exerciseName}</span>
-                        <label className="text-gray-400">Séries</label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={ex.plannedSets}
-                          onChange={(e) => updateExercise(dayOfWeek, ex.exerciseId, { plannedSets: parseInt(e.target.value) || 1 })}
-                          className="w-12 px-1.5 py-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        />
-                        <label className="text-gray-400">Reps</label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={ex.plannedReps}
-                          onChange={(e) => updateExercise(dayOfWeek, ex.exerciseId, { plannedReps: parseInt(e.target.value) || 1 })}
-                          className="w-12 px-1.5 py-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        />
-                        <label className="text-gray-400">kg</label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          value={ex.plannedWeightKg}
-                          onChange={(e) => updateExercise(dayOfWeek, ex.exerciseId, { plannedWeightKg: e.target.value })}
-                          placeholder="—"
-                          className="w-14 px-1.5 py-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeExercise(dayOfWeek, ex.exerciseId)}
-                          className="p-1 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                      <div key={ex.exerciseId} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex-1 truncate">{ex.exerciseName}</span>
+                        <div className="flex items-center gap-4 sm:gap-2">
+                          <div className="flex flex-col gap-1 items-center">
+                            <span className="text-[10px] text-slate-400 uppercase font-bold">Sets</span>
+                            <input
+                              type="number"
+                              min="1"
+                              value={ex.plannedSets}
+                              onChange={(e) => updateExercise(dayOfWeek, ex.exerciseId, { plannedSets: parseInt(e.target.value) || 1 })}
+                              className="w-14 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center font-bold focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <span className="mt-5 text-slate-300">×</span>
+                          <div className="flex flex-col gap-1 items-center">
+                            <span className="text-[10px] text-slate-400 uppercase font-bold">Reps</span>
+                            <input
+                              type="number"
+                              min="1"
+                              value={ex.plannedReps}
+                              onChange={(e) => updateExercise(dayOfWeek, ex.exerciseId, { plannedReps: parseInt(e.target.value) || 1 })}
+                              className="w-14 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center font-bold focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1 items-center">
+                            <span className="text-[10px] text-slate-400 uppercase font-bold">KG</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              value={ex.plannedWeightKg}
+                              onChange={(e) => updateExercise(dayOfWeek, ex.exerciseId, { plannedWeightKg: e.target.value })}
+                              placeholder="—"
+                              className="w-16 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center font-bold focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeExercise(dayOfWeek, ex.exerciseId)}
+                            className="mt-5 p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

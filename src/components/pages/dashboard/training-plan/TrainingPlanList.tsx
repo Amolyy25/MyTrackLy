@@ -44,15 +44,15 @@ function PlanCard({
     .join(", ");
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4 hover:shadow-xl hover:shadow-indigo-500/5 dark:hover:shadow-none hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all group">
       {/* Top row */}
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-bold text-gray-900 dark:text-white text-base leading-tight">
+        <h3 className="font-black text-slate-900 dark:text-white text-lg leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
           {plan.name}
         </h3>
         <button
-          onClick={() => onDelete(plan.id)}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
+          onClick={(e) => { e.preventDefault(); onDelete(plan.id); }}
+          className="p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all flex-shrink-0"
           title="Supprimer le plan"
         >
           <Trash2 className="w-4 h-4" />
@@ -63,17 +63,17 @@ function PlanCard({
       <div className="flex flex-wrap gap-2">
         {plan.bodyGoal && (
           <span
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${goalBadgeColor(plan.bodyGoal)}`}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-tight ${goalBadgeColor(plan.bodyGoal)}`}
           >
             <span>{getBodyGoalEmoji(plan.bodyGoal)}</span>
             <span>{getBodyGoalLabel(plan.bodyGoal, plan.customGoal)}</span>
           </span>
         )}
         <span
-          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+          className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
             plan.isActive
-              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-              : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+              ? "bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-300 dark:border-green-500/30"
+              : "bg-slate-50 text-slate-500 border-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
           }`}
         >
           {plan.isActive ? "Actif" : "Inactif"}
@@ -82,19 +82,21 @@ function PlanCard({
 
       {/* Days summary */}
       {daysLabel && (
-        <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-          <CalendarDays className="w-3.5 h-3.5" />
-          <span>{daysLabel}</span>
-        </p>
+        <div className="py-2 px-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+          <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <CalendarDays className="w-3.5 h-3.5 text-indigo-500" />
+            <span className="font-medium">{daysLabel}</span>
+          </p>
+        </div>
       )}
 
       {/* Footer */}
-      <div className="pt-1">
+      <div className="pt-2 mt-auto">
         <Link
           to={`/dashboard/training-plans/${plan.id}`}
-          className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-slate-200 dark:shadow-none"
         >
-          Voir le plan
+          Ouvrir le plan
           <ChevronRight className="w-4 h-4" />
         </Link>
       </div>
