@@ -2,7 +2,7 @@ import React from "react";
 import { Lightbulb, AlertTriangle, Flame, RefreshCw, MessageSquare, Calendar, TrendingUp, Plus } from "lucide-react";
 import { usePlanAISuggestions } from "../../../../hooks/usePlanAISuggestions";
 import { AISuggestion } from "../../../../types";
-import { toast } from "react-hot-toast";
+import { useToast } from "../../../../contexts/ToastContext";
 
 interface AIPlanInsightsProps {
   planId: string;
@@ -53,15 +53,16 @@ function ActionButton({ action, onClick }: { action: any; onClick: () => void })
 }
 
 const AIPlanInsights: React.FC<AIPlanInsightsProps> = ({ planId }) => {
+  const { showToast } = useToast();
   const { suggestions, isLoading, error, refresh, canRefresh, cooldownText } =
     usePlanAISuggestions(planId);
 
   const handleAction = (action: any) => {
     console.log("AI Action triggered:", action);
     if (action.type === "ask_question") {
-      toast(`Réponse coach: ${action.payload.question}`, { icon: "💬" });
+      showToast(`AI Suggestion: ${action.payload.question}`, "success");
     } else {
-      toast.success(`Action: ${action.label} (En cours de développement)`);
+      showToast(`Action: ${action.label} (En cours de développement)`, "success");
     }
   };
 
@@ -157,5 +158,12 @@ const AIPlanInsights: React.FC<AIPlanInsightsProps> = ({ planId }) => {
     </div>
   );
 };
+
+
+function SkeletonCard() {
+  return (
+    <div className="h-24 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse w-full" />
+  );
+}
 
 export default AIPlanInsights;
