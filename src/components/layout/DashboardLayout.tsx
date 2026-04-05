@@ -27,20 +27,36 @@ const DashboardLayout: React.FC = () => {
     { name: "Accueil", href: "/dashboard", icon: <LayoutDashboard size={18} /> },
     { name: "Séances", href: "/dashboard/training/history", icon: <Dumbbell size={18} /> },
     { name: "Mon Plan", href: "/dashboard/training-plans", icon: <CalendarDays size={18} /> },
-    { name: "Mensurations", href: "/dashboard/measurements", icon: <Ruler size={18} /> },
-    { name: "Habitudes", href: "/dashboard/habits", icon: <ClipboardList size={18} /> },
-    { name: "Statistiques", href: "/dashboard/statistics", icon: <PieChart size={18} /> },
+    {
+      name: "Suivi",
+      href: "#",
+      icon: <Activity size={18} />,
+      isDropdown: true,
+      children: [
+        { name: "Mensurations", href: "/dashboard/measurements" },
+        { name: "Habitudes", href: "/dashboard/habits" },
+        { name: "Statistiques", href: "/dashboard/statistics" },
+      ],
+    },
   ];
 
   // Navigation pour le rôle Élève
   const studentNavigation = [
     { name: "Accueil", href: "/dashboard", icon: <LayoutDashboard size={18} /> },
-    { name: "Séances", href: "/dashboard/training/history", icon: <Dumbbell size={18} /> },
     { name: "Mon Plan", href: "/dashboard/training-plans", icon: <CalendarDays size={18} /> },
+    { name: "Séances", href: "/dashboard/training/history", icon: <Dumbbell size={18} /> },
     { name: "Réservations", href: "/dashboard/reservations", icon: <Calendar size={18} /> },
-    { name: "Mensurations", href: "/dashboard/measurements", icon: <Ruler size={18} /> },
-    { name: "Habitudes", href: "/dashboard/habits", icon: <ClipboardList size={18} /> },
-    { name: "Statistiques", href: "/dashboard/statistics", icon: <PieChart size={18} /> },
+    {
+      name: "Suivi",
+      href: "#",
+      icon: <Activity size={18} />,
+      isDropdown: true,
+      children: [
+        { name: "Mensurations", href: "/dashboard/measurements" },
+        { name: "Habitudes", href: "/dashboard/habits" },
+        { name: "Statistiques", href: "/dashboard/statistics" },
+      ],
+    },
   ];
 
   // Navigation pour le rôle Coach
