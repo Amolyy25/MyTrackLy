@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes";
 import emailRoutes from "./routes/emailRoutes";
 import trainingRoutes from "./routes/trainingRoutes";
+import trainingPlanRoutes from "./routes/trainingPlanRoutes";
+import { authenticateToken } from "./middleware/auth";
 import exerciseRoute from "./routes/exerciceRoute";
 import invitationRoutes from "./routes/invitationRoutes";
 import studentRoutes from "./routes/studentRoutes";
@@ -76,6 +78,7 @@ app.use("/api/calendar", calendarRoutes);
 app.use("/api/availability", availabilityRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/coach-notes", coachNoteRoutes);
+app.use("/api/training-plans", authenticateToken, trainingPlanRoutes);
 app.get("/", (req, res) => {
   res.json({ message: "API fonctionnel" });
 });
