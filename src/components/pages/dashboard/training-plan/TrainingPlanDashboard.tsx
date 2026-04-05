@@ -132,7 +132,7 @@ function EditField({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/30 focus:outline-none focus:border-indigo-400 focus:bg-white/10 transition-all ${className}`}
+      className={`bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm ${className}`}
     />
   );
 }
@@ -156,7 +156,7 @@ function EditTextarea({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className={`bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/30 focus:outline-none focus:border-indigo-400 focus:bg-white/10 transition-all resize-none w-full text-sm ${className}`}
+      className={`bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none w-full text-sm shadow-sm ${className}`}
     />
   );
 }
@@ -188,52 +188,72 @@ function ExerciseSearch({ onAdd, onClose }: { onAdd: (ex: Exercise) => void; onC
   const filtered = list.filter((ex) => ex.name.toLowerCase().includes(q.toLowerCase())).slice(0, 20);
 
   return (
-    <div ref={ref} className="absolute z-50 top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl overflow-hidden">
-      <div className="p-2 border-b border-slate-700">
+    <div 
+      ref={ref} 
+      className="absolute z-[100] top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+    >
+      <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             autoFocus
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Rechercher un exercice..."
-            className="w-full pl-8 pr-8 py-1.5 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-400"
+            placeholder="Rechercher ou créer..."
+            className="w-full pl-9 pr-9 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all shadow-sm"
           />
-          <button onClick={onClose} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white">
-            <X className="w-3.5 h-3.5" />
-          </button>
+          {q && (
+            <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
-      <div className="max-h-48 overflow-y-auto">
+      <div className="max-h-64 overflow-y-auto overscroll-contain">
         {loading ? (
-          <div className="flex justify-center py-4">
-            <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+          <div className="flex flex-col items-center justify-center py-10 opacity-50">
+            <Loader2 className="w-6 h-6 text-indigo-400 animate-spin mb-2" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Chargement...</p>
           </div>
         ) : filtered.length > 0 ? (
-          filtered.map((ex) => (
-            <button
-              key={ex.id}
-              onClick={() => { onAdd(ex); onClose(); }}
-              className="w-full text-left px-3 py-2 hover:bg-slate-700/50 flex items-center justify-between transition-colors group"
-            >
-              <div className="flex flex-col">
-                <span className="text-sm text-slate-200 group-hover:text-white">{ex.name}</span>
-                <span className="text-[10px] text-slate-500">{ex.category}</span>
-              </div>
-              <Plus className="w-3.5 h-3.5 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
-          ))
+          <div className="p-1.5">
+            {filtered.map((ex) => (
+              <button
+                key={ex.id}
+                onClick={() => { onAdd(ex); onClose(); }}
+                className="w-full text-left px-3 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl flex items-center justify-between transition-all group active:scale-[0.98]"
+              >
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate tracking-tight">{ex.name}</span>
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{ex.category}</span>
+                </div>
+                <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all border border-slate-100 dark:border-slate-700 shrink-0">
+                  <Plus className="w-4 h-4 text-indigo-500" />
+                </div>
+              </button>
+            ))}
+          </div>
         ) : q.trim().length > 0 ? (
-          <button
-            onClick={() => { onAdd({ name: q } as any); onClose(); }}
-            className="w-full text-left px-3 py-3 bg-indigo-500/10 text-indigo-400 text-sm font-bold flex items-center gap-2 hover:bg-indigo-500/20 transition-all border-t border-indigo-500/20"
-          >
-            <Plus className="w-4 h-4" />
-            Créer l'exercice "{q}"
-          </button>
+          <div className="p-3">
+            <button
+              onClick={() => { onAdd({ name: q } as any); onClose(); }}
+              className="w-full text-left px-4 py-4 bg-indigo-600 text-white rounded-2xl flex flex-col items-start gap-1 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-200 dark:shadow-none active:scale-95"
+            >
+              <div className="flex items-center gap-2">
+                <Plus className="w-5 h-5 fill-current" />
+                <span className="font-black text-sm uppercase tracking-wider">Créer l'exercice</span>
+              </div>
+              <span className="text-indigo-100 text-xs font-bold truncate w-full">"{q}"</span>
+            </button>
+          </div>
         ) : (
-          <p className="text-xs text-slate-500 p-4 text-center italic">Tapez pour rechercher...</p>
+          <div className="flex flex-col items-center justify-center py-12 opacity-50">
+            <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center mb-3">
+              <Search className="w-6 h-6 text-slate-300 dark:text-slate-600" />
+            </div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest italic">Commencez à taper...</p>
+          </div>
         )}
       </div>
     </div>
@@ -277,52 +297,74 @@ function ExerciseRow({
   return (
     <div className="group/ex">
       {editing ? (
-        <div className="flex items-center gap-2 py-2 border-b border-slate-200 dark:border-slate-700/50">
-          <span className="flex-1 text-sm text-slate-600 dark:text-slate-300 truncate">{ex.exercise?.name ?? "Exercice"}</span>
-          <div className="flex items-center gap-1">
-            <input
-              type="number" min="1" max="20"
-              value={sets} onChange={(e) => setSets(e.target.value)}
-              className="w-10 text-center bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-1 py-0.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-400"
-              title="Séries"
-            />
-            <span className="text-slate-400 text-xs">×</span>
-            <input
-              type="number" min="1" max="100"
-              value={reps} onChange={(e) => setReps(e.target.value)}
-              className="w-10 text-center bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-1 py-0.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-400"
-              title="Reps"
-            />
-            <input
-              type="number" min="0" step="0.5"
-              value={weight} onChange={(e) => setWeight(e.target.value)}
-              placeholder="kg"
-              className="w-14 text-center bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-1 py-0.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-400"
-              title="Poids (kg)"
-            />
+        <div className="flex flex-col gap-2 py-3 border-b border-indigo-100 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-500/5 -mx-3 px-3 rounded-xl transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-slate-800 dark:text-indigo-300 uppercase tracking-wider truncate mr-2">
+              {ex.exercise?.name ?? "Exercice"}
+            </span>
+            <div className="flex gap-1.5">
+              <button onClick={() => setEditing(false)} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                <X className="w-3.5 h-3.5" />
+              </button>
+              <button 
+                onClick={save} 
+                disabled={saving} 
+                className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-all shadow-sm shadow-indigo-200 dark:shadow-none"
+              >
+                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              </button>
+            </div>
           </div>
-          <button onClick={save} disabled={saving} className="p-1 text-green-600 dark:text-green-400 hover:text-green-500 disabled:opacity-50">
-            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-          </button>
-          <button onClick={() => setEditing(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-            <X className="w-3.5 h-3.5" />
-          </button>
+          
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-1">
+              <label className="block text-[9px] font-bold text-slate-400 uppercase ml-1">Séries</label>
+              <input
+                type="number" min="1" max="20"
+                value={sets} onChange={(e) => setSets(e.target.value)}
+                className="w-full text-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-2 py-2 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-[9px] font-bold text-slate-400 uppercase ml-1">Reps</label>
+              <input
+                type="number" min="1" max="100"
+                value={reps} onChange={(e) => setReps(e.target.value)}
+                className="w-full text-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-2 py-2 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-[9px] font-bold text-slate-400 uppercase ml-1">Poids (kg)</label>
+              <input
+                type="number" min="0" step="0.5"
+                value={weight} onChange={(e) => setWeight(e.target.value)}
+                placeholder="0"
+                className="w-full text-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-2 py-2 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              />
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="flex items-center gap-2 py-2 border-b border-slate-100 dark:border-slate-700/30 last:border-0">
+        <div className="flex items-center gap-2 py-2.5 border-b border-slate-100 dark:border-slate-800/50 last:border-0 group-hover/ex:bg-slate-50/50 dark:group-hover/ex:bg-white/5 -mx-1 px-1 rounded-lg transition-colors">
           <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 flex-shrink-0" />
-          <span className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{ex.exercise?.name ?? "Exercice"}</span>
-          <span className="text-xs font-mono text-slate-400 dark:text-slate-500 flex-shrink-0">
+          <span className="flex-1 text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{ex.exercise?.name ?? "Exercice"}</span>
+          <span className="text-xs font-black text-slate-400 dark:text-slate-500 flex-shrink-0 bg-slate-50 dark:bg-white/5 px-2 py-1 rounded-md border border-slate-100 dark:border-white/5">
             {ex.plannedSets}×{ex.plannedReps}
-            {ex.plannedWeightKg != null && <span className="text-indigo-600 dark:text-indigo-400 font-bold"> @{ex.plannedWeightKg}kg</span>}
+            {ex.plannedWeightKg != null && <span className="text-indigo-600 dark:text-indigo-400"> @{ex.plannedWeightKg}kg</span>}
           </span>
           {editMode && (
-            <div className="flex items-center gap-0.5 opacity-0 group-hover/ex:opacity-100 transition-opacity">
-              <button onClick={() => setEditing(true)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300">
-                <Pencil className="w-3 h-3" />
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={() => setEditing(true)} 
+                className="p-1.5 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-300 dark:hover:border-indigo-500/30 transition-all active:scale-90"
+              >
+                <Pencil className="w-3.5 h-3.5" />
               </button>
-              <button onClick={onDelete} className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-500/20 text-slate-400 hover:text-red-500 dark:hover:text-red-400">
-                <Trash2 className="w-3 h-3" />
+              <button 
+                onClick={onDelete} 
+                className="p-1.5 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 dark:hover:bg-red-500/20 dark:hover:text-red-400 dark:hover:border-red-500/30 transition-all active:scale-90"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
@@ -426,55 +468,72 @@ function DayCard({
         {planDay ? (
           <>
             {editingDay ? (
-              <div className="space-y-1.5">
-                <input
-                  type="time" value={timeVal}
-                  onChange={(e) => setTimeVal(e.target.value)}
-                  className="w-full px-2 py-1 rounded-lg bg-black/30 border border-white/20 text-xs text-white focus:outline-none focus:border-indigo-400"
-                />
-                <select
-                  value={typeVal}
-                  onChange={(e) => setTypeVal(e.target.value)}
-                  className="w-full px-2 py-1 rounded-lg bg-black/30 border border-white/20 text-xs text-white focus:outline-none focus:border-indigo-400"
-                >
-                  {TRAINING_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>
-                  ))}
-                </select>
-                <input
-                  type="text" value={labelVal}
-                  onChange={(e) => setLabelVal(e.target.value)}
-                  placeholder="Label (optionnel)"
-                  className="w-full px-2 py-1 rounded-lg bg-black/30 border border-white/20 text-xs text-white placeholder-white/30 focus:outline-none focus:border-indigo-400"
-                />
-                <div className="flex gap-1">
-                  <button
-                    onClick={saveDay} disabled={savingDay}
-                    className="flex-1 py-1 text-xs font-medium bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 text-white rounded-lg flex items-center justify-center gap-1"
-                  >
-                    {savingDay ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                    OK
-                  </button>
+              <div className="space-y-3 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-indigo-200 dark:border-indigo-500/20 shadow-inner">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase ml-1">Heure</label>
+                    <input
+                      type="time" value={timeVal}
+                      onChange={(e) => setTimeVal(e.target.value)}
+                      className="w-full px-2 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase ml-1">Type</label>
+                    <select
+                      value={typeVal}
+                      onChange={(e) => setTypeVal(e.target.value)}
+                      className="w-full px-2 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    >
+                      {TRAINING_TYPES.map((t) => (
+                        <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase ml-1">Nom du jour (optionnel)</label>
+                  <input
+                    type="text" value={labelVal}
+                    onChange={(e) => setLabelVal(e.target.value)}
+                    placeholder="Ex: Séance Jambes"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                  />
+                </div>
+                <div className="flex gap-2 pt-1">
                   <button
                     onClick={() => setEditingDay(false)}
-                    className="px-2 py-1 text-xs text-slate-300 bg-white/10 hover:bg-white/20 rounded-lg"
+                    className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 transition-all active:scale-95"
                   >
-                    ✕
+                    Annuler
+                  </button>
+                  <button
+                    onClick={saveDay} disabled={savingDay}
+                    className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-sm shadow-indigo-200 dark:shadow-none active:scale-95"
+                  >
+                    {savingDay ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-4 h-4" />}
+                    Prêt
                   </button>
                 </div>
               </div>
             ) : (
               <>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className={`text-xs font-medium ${isToday ? "text-indigo-100" : "text-slate-400"}`}>
-                    {planDay.timeOfDay}
-                  </span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded-md border font-medium ${
+                  <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 ${isToday ? "text-indigo-100" : "text-slate-500 dark:text-slate-400"}`}>
+                    <Clock className="w-3 h-3" />
+                    <span className="text-xs font-black">{planDay.timeOfDay}</span>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-md border font-black uppercase tracking-tight ${
                     isToday ? "bg-white/20 text-white border-white/20" : getTypeColor(planDay.trainingType)
                   }`}>
                     {getTrainingTypeEmoji(planDay.trainingType)} {getTrainingTypeLabel(planDay.trainingType, planDay.customType)}
                   </span>
                 </div>
+                {planDay.label && (
+                  <p className={`text-[10px] font-bold uppercase tracking-widest px-1 ${isToday ? "text-indigo-200" : "text-slate-400 dark:text-slate-500"}`}>
+                    {planDay.label}
+                  </p>
+                )}
 
                 {/* Exercises */}
                 {exCount > 0 && (
@@ -513,14 +572,14 @@ function DayCard({
                     ) : (
                       <button
                         onClick={() => setShowSearch(true)}
-                        className={`w-full py-1 text-xs rounded-lg border border-dashed flex items-center justify-center gap-1 transition-colors ${
+                        className={`w-full py-2 text-xs font-black uppercase tracking-widest rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
                           isToday
                             ? "border-white/30 text-white/60 hover:border-white/60 hover:text-white"
-                            : "border-indigo-500/40 text-indigo-400 hover:border-indigo-400 hover:bg-indigo-500/10"
+                            : "border-indigo-500/30 text-indigo-400 hover:border-indigo-500 hover:bg-indigo-500/10"
                         }`}
                       >
-                        <Plus className="w-3 h-3" />
-                        Exercice
+                        <Plus className="w-3.5 h-3.5" />
+                        Ajouter un exercice
                       </button>
                     )}
                   </div>
@@ -530,14 +589,14 @@ function DayCard({
                 {!editMode && (
                   <button
                     onClick={() => onLogSession(planDay)}
-                    className={`mt-auto py-1.5 text-xs font-medium rounded-xl flex items-center justify-center gap-1 transition-colors ${
+                    className={`mt-auto py-2.5 text-xs font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 ${
                       isToday
-                        ? "bg-white/25 hover:bg-white/35 text-white"
-                        : "bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400 hover:text-indigo-300 border border-indigo-500/20"
+                        ? "bg-white text-indigo-600 hover:bg-indigo-50"
+                        : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-200 dark:shadow-none"
                     }`}
                   >
-                    <Play className="w-3 h-3" />
-                    Faire
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    Commencer
                   </button>
                 )}
               </>
@@ -575,62 +634,69 @@ function AddDayForm({
   };
 
   return (
-    <div className="p-4 rounded-2xl border border-dashed border-indigo-500/40 bg-indigo-500/5 space-y-3">
-      <p className="text-sm font-semibold text-indigo-300">Nouveau jour d&apos;entraînement</p>
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="block text-xs text-slate-400 mb-1">Jour</label>
+    <div className="p-5 rounded-2xl border border-dashed border-indigo-500/30 bg-indigo-500/5 dark:bg-indigo-500/10 space-y-4 backdrop-blur-sm shadow-xl shadow-indigo-900/10">
+      <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+        <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+          <CalendarDays className="w-4 h-4" />
+        </div>
+        <p className="text-sm font-black uppercase tracking-wider">Nouveau jour d&apos;entraînement</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase ml-1">Jour de la semaine</label>
           <select
             value={dow}
             onChange={(e) => setDow(Number(e.target.value))}
-            className="w-full px-2 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-sm text-white focus:outline-none focus:border-indigo-400"
+            className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
           >
             {DAYS_FULL_FR.map((d, i) => <option key={i} value={i}>{d}</option>)}
           </select>
         </div>
-        <div>
-          <label className="block text-xs text-slate-400 mb-1">Heure</label>
+        <div className="space-y-1">
+          <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase ml-1">Heure prévue</label>
           <input
             type="time" value={time}
             onChange={(e) => setTime(e.target.value)}
-            className="w-full px-2 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-sm text-white focus:outline-none focus:border-indigo-400"
+            className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
           />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="block text-xs text-slate-400 mb-1">Type</label>
+      
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase ml-1">Type de séance</label>
           <select
             value={type}
             onChange={(e) => setType(e.target.value)}
-            className="w-full px-2 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-sm text-white focus:outline-none focus:border-indigo-400"
+            className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
           >
             {TRAINING_TYPES.map((t) => <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>)}
           </select>
         </div>
-        <div>
-          <label className="block text-xs text-slate-400 mb-1">Label (optionnel)</label>
+        <div className="space-y-1">
+          <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase ml-1">Label (optionnel)</label>
           <input
             type="text" value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="ex: Jambes"
-            className="w-full px-2 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400"
+            className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
           />
         </div>
       </div>
-      <div className="flex gap-2">
-        <button
-          onClick={submit} disabled={saving}
-          className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors"
-        >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-          Ajouter
-        </button>
+      <div className="flex gap-2 pt-2">
         <button
           onClick={onCancel}
-          className="px-4 py-2 rounded-xl border border-slate-600 text-slate-300 text-sm hover:bg-slate-800 transition-colors"
+          className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-95 transition-colors"
         >
           Annuler
+        </button>
+        <button
+          onClick={submit} disabled={saving}
+          className="flex-[2] py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-900/20 active:scale-95 transition-colors"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+          Ajouter au planning
         </button>
       </div>
     </div>
@@ -1154,7 +1220,7 @@ const TrainingPlanDashboard: React.FC = () => {
                 {editMode && (
                   <button
                     onClick={() => setShowAddDay(!showAddDay)}
-                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400 border border-indigo-500/20 font-medium transition-colors"
+                    className="flex items-center gap-1.5 text-[10px] sm:text-xs px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-900/10 active:scale-95 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Ajouter un jour
