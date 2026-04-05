@@ -2,25 +2,23 @@ import { Request, Response } from "express";
 import prisma from "../config/database";
 
 /**
- * Utility function to extract userId from req.user and handle errors.
+ * Utility: validate a date string, return Date or null if invalid.
  */
-function getUserIdFromRequest(req: Request, res: Response): string | undefined {
-  const userPayload = (req as any).user;
-  const userId = userPayload && (userPayload.userId || userPayload.id);
-  if (!userId) {
-    res.status(401).json({ message: "Utilisateur non authentifié (userId manquant)" });
-    return undefined;
-  }
-  return userId;
+function parseDate(value: string): Date | null {
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
 }
 
 /**
- * Creates a training plan with nested PlanDays and PlanExercises in a Prisma transaction.
+ * Creates a training plan with nested PlanDays and PlanExercises.
+ * A single prisma.trainingPlan.create with nested writes is already atomic.
  */
 export async function createPlan(req: Request, res: Response) {
   try {
-    const userId = getUserIdFromRequest(req, res);
-    if (!userId) return;
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifie (userId manquant)" });
+    }
 
     const {
       name,
@@ -42,7 +40,21 @@ export async function createPlan(req: Request, res: Response) {
     }
 
     if (!Array.isArray(days)) {
-      return res.status(400).json({ message: "Le champ 'days' doit être un tableau" });
+      return res.status(400).json({ message: "Le champ 'days' doit etre un tableau" });
+    }
+
+    // Validate dates if provided
+    if (startDate) {
+      const parsed = parseDate(startDate);
+      if (!parsed) {
+        return res.status(400).json({ message: "startDate est une date invalide" });
+      }
+    }
+    if (endDate) {
+      const parsed = parseDate(endDate);
+      if (!parsed) {
+        return res.status(400).json({ message: "endDate est une date invalide" });
+      }
     }
 
     const timeOfDayRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -67,58 +79,73 @@ export async function createPlan(req: Request, res: Response) {
           message: `Le jour ${i} doit avoir un 'trainingType'`,
         });
       }
+
+      // Validate exercises if present
+      if (Array.isArray(day.exercises)) {
+        for (let j = 0; j < day.exercises.length; j++) {
+          const ex = day.exercises[j];
+          if (!ex.plannedSets || !Number.isInteger(ex.plannedSets) || ex.plannedSets <= 0) {
+            return res.status(400).json({
+              message: `Jour ${i}, exercice ${j}: plannedSets doit etre un entier > 0`,
+            });
+          }
+          if (!ex.plannedReps || !Number.isInteger(ex.plannedReps) || ex.plannedReps <= 0) {
+            return res.status(400).json({
+              message: `Jour ${i}, exercice ${j}: plannedReps doit etre un entier > 0`,
+            });
+          }
+        }
+      }
     }
 
-    const plan = await prisma.$transaction(async (tx) => {
-      return tx.trainingPlan.create({
-        data: {
-          userId,
-          name: name.trim(),
-          description: description || undefined,
-          isActive: isActive !== undefined ? isActive : true,
-          startDate: startDate ? new Date(startDate) : undefined,
-          endDate: endDate ? new Date(endDate) : undefined,
-          targetWeightKg: targetWeightKg || undefined,
-          bodyGoal: bodyGoal || undefined,
-          customGoal: customGoal || undefined,
-          initialWeightKg: initialWeightKg || undefined,
-          initialNotes: initialNotes || undefined,
-          days: {
-            create: days.map((day: any) => ({
-              dayOfWeek: day.dayOfWeek,
-              timeOfDay: day.timeOfDay,
-              label: day.label || undefined,
-              trainingType: day.trainingType,
-              customType: day.customType || undefined,
-              exercises: {
-                create: Array.isArray(day.exercises)
-                  ? day.exercises.map((ex: any, idx: number) => ({
-                      exerciseId: ex.exerciseId,
-                      plannedSets: ex.plannedSets,
-                      plannedReps: ex.plannedReps,
-                      plannedWeightKg: ex.plannedWeightKg || undefined,
-                      orderIndex: ex.orderIndex !== undefined ? ex.orderIndex : idx,
-                      notes: ex.notes || undefined,
-                    }))
-                  : [],
-              },
-            })),
-          },
-        },
-        include: {
-          days: {
-            include: {
-              exercises: {
-                include: {
-                  exercise: true,
-                },
-                orderBy: { orderIndex: "asc" },
-              },
+    const plan = await prisma.trainingPlan.create({
+      data: {
+        userId,
+        name: name.trim(),
+        description: description !== undefined ? description : undefined,
+        isActive: isActive !== undefined ? isActive : true,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+        targetWeightKg: targetWeightKg !== undefined ? targetWeightKg : undefined,
+        bodyGoal: bodyGoal !== undefined ? bodyGoal : undefined,
+        customGoal: customGoal !== undefined ? customGoal : undefined,
+        initialWeightKg: initialWeightKg !== undefined ? initialWeightKg : undefined,
+        initialNotes: initialNotes !== undefined ? initialNotes : undefined,
+        days: {
+          create: days.map((day: any) => ({
+            dayOfWeek: day.dayOfWeek,
+            timeOfDay: day.timeOfDay,
+            label: day.label !== undefined ? day.label : undefined,
+            trainingType: day.trainingType,
+            customType: day.customType !== undefined ? day.customType : undefined,
+            exercises: {
+              create: Array.isArray(day.exercises)
+                ? day.exercises.map((ex: any, idx: number) => ({
+                    exerciseId: ex.exerciseId,
+                    plannedSets: ex.plannedSets,
+                    plannedReps: ex.plannedReps,
+                    plannedWeightKg: ex.plannedWeightKg !== undefined ? ex.plannedWeightKg : undefined,
+                    orderIndex: ex.orderIndex !== undefined ? ex.orderIndex : idx,
+                    notes: ex.notes !== undefined ? ex.notes : undefined,
+                  }))
+                : [],
             },
-            orderBy: { dayOfWeek: "asc" },
-          },
+          })),
         },
-      });
+      },
+      include: {
+        days: {
+          include: {
+            exercises: {
+              include: {
+                exercise: true,
+              },
+              orderBy: { orderIndex: "asc" },
+            },
+          },
+          orderBy: { dayOfWeek: "asc" },
+        },
+      },
     });
 
     res.status(201).json(plan);
@@ -127,26 +154,31 @@ export async function createPlan(req: Request, res: Response) {
 
     if (error.code === "P2003") {
       return res.status(400).json({
-        message: "Un ou plusieurs exercices n'existent pas dans la base de données",
+        message: "Un ou plusieurs exercices n'existent pas dans la base de donnees",
         error: "Foreign key constraint violation",
       });
     }
 
     res.status(500).json({
-      message: "Une erreur est survenue lors de la création du plan",
+      message: "Une erreur est survenue lors de la creation du plan",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 }
 
 /**
- * Returns all training plans for the authenticated user.
+ * Returns all training plans for the authenticated user with pagination.
  * Active plans first, then by createdAt desc.
  */
 export async function getMyPlans(req: Request, res: Response) {
   try {
-    const userId = getUserIdFromRequest(req, res);
-    if (!userId) return;
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifie (userId manquant)" });
+    }
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 20, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
 
     const plans = await prisma.trainingPlan.findMany({
       where: { userId },
@@ -156,6 +188,8 @@ export async function getMyPlans(req: Request, res: Response) {
         },
       },
       orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
+      take: limit,
+      skip: offset,
     });
 
     res.json(plans);
@@ -166,18 +200,20 @@ export async function getMyPlans(req: Request, res: Response) {
 }
 
 /**
- * Gets a training plan by id, checking ownership.
+ * Gets a training plan by id, checking ownership via combined query.
  * Includes days with exercises and last 5 sessions.
  */
 export async function getPlanById(req: Request, res: Response) {
   try {
-    const userId = getUserIdFromRequest(req, res);
-    if (!userId) return;
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifie (userId manquant)" });
+    }
 
     const { id } = req.params;
 
-    const plan = await prisma.trainingPlan.findUnique({
-      where: { id },
+    const plan = await prisma.trainingPlan.findFirst({
+      where: { id, userId },
       include: {
         days: {
           include: {
@@ -198,11 +234,7 @@ export async function getPlanById(req: Request, res: Response) {
     });
 
     if (!plan) {
-      return res.status(404).json({ message: "Plan non trouvé" });
-    }
-
-    if (plan.userId !== userId) {
-      return res.status(403).json({ message: "Accès interdit" });
+      return res.status(404).json({ message: "Plan non trouve" });
     }
 
     res.json(plan);
@@ -217,20 +249,18 @@ export async function getPlanById(req: Request, res: Response) {
  */
 export async function updatePlan(req: Request, res: Response) {
   try {
-    const userId = getUserIdFromRequest(req, res);
-    if (!userId) return;
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifie (userId manquant)" });
+    }
 
     const { id } = req.params;
 
-    // Check ownership
-    const existingPlan = await prisma.trainingPlan.findUnique({ where: { id } });
+    // Check ownership via combined query
+    const existingPlan = await prisma.trainingPlan.findFirst({ where: { id, userId } });
 
     if (!existingPlan) {
-      return res.status(404).json({ message: "Plan non trouvé" });
-    }
-
-    if (existingPlan.userId !== userId) {
-      return res.status(403).json({ message: "Accès interdit" });
+      return res.status(404).json({ message: "Plan non trouve" });
     }
 
     const {
@@ -245,6 +275,20 @@ export async function updatePlan(req: Request, res: Response) {
       initialWeightKg,
       initialNotes,
     } = req.body;
+
+    // Validate dates if provided
+    if (startDate !== undefined && startDate !== null) {
+      const parsed = parseDate(startDate);
+      if (!parsed) {
+        return res.status(400).json({ message: "startDate est une date invalide" });
+      }
+    }
+    if (endDate !== undefined && endDate !== null) {
+      const parsed = parseDate(endDate);
+      if (!parsed) {
+        return res.status(400).json({ message: "endDate est une date invalide" });
+      }
+    }
 
     const updatedPlan = await prisma.trainingPlan.update({
       where: { id },
@@ -274,19 +318,17 @@ export async function updatePlan(req: Request, res: Response) {
  */
 export async function deletePlan(req: Request, res: Response) {
   try {
-    const userId = getUserIdFromRequest(req, res);
-    if (!userId) return;
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifie (userId manquant)" });
+    }
 
     const { id } = req.params;
 
-    const existingPlan = await prisma.trainingPlan.findUnique({ where: { id } });
+    const existingPlan = await prisma.trainingPlan.findFirst({ where: { id, userId } });
 
     if (!existingPlan) {
-      return res.status(404).json({ message: "Plan non trouvé" });
-    }
-
-    if (existingPlan.userId !== userId) {
-      return res.status(403).json({ message: "Accès interdit" });
+      return res.status(404).json({ message: "Plan non trouve" });
     }
 
     await prisma.trainingPlan.delete({ where: { id } });
@@ -303,24 +345,22 @@ export async function deletePlan(req: Request, res: Response) {
  */
 export async function getPlanProgress(req: Request, res: Response) {
   try {
-    const userId = getUserIdFromRequest(req, res);
-    if (!userId) return;
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifie (userId manquant)" });
+    }
 
     const { id } = req.params;
 
-    const plan = await prisma.trainingPlan.findUnique({
-      where: { id },
+    const plan = await prisma.trainingPlan.findFirst({
+      where: { id, userId },
       include: {
         days: true,
       },
     });
 
     if (!plan) {
-      return res.status(404).json({ message: "Plan non trouvé" });
-    }
-
-    if (plan.userId !== userId) {
-      return res.status(403).json({ message: "Accès interdit" });
+      return res.status(404).json({ message: "Plan non trouve" });
     }
 
     const now = new Date();
@@ -338,13 +378,6 @@ export async function getPlanProgress(req: Request, res: Response) {
 
     const totalLoggedSessions = logs.filter((l) => !l.skipped).length;
     const skippedSessions = logs.filter((l) => l.skipped).length;
-
-    // totalPlannedSessions: count unique (planDayId, week) combinations in last 30 days
-    // Each plan day occurs once per week, so for 30 days (~4.28 weeks), count per day
-    const planDaysCount = plan.days.length;
-    // Number of weeks in 30 days (floor)
-    const weeksInPeriod = Math.floor(30 / 7);
-    const remainingDays = 30 % 7;
 
     // Count how many times each day of week occurs in the last 30 days
     let totalPlannedSessions = 0;
@@ -446,10 +479,119 @@ export async function getPlanProgress(req: Request, res: Response) {
 }
 
 /**
- * Placeholder for AI suggestions — returns 501.
+ * Returns AI suggestions for a training plan.
  */
 export async function getAISuggestions(req: Request, res: Response) {
-  res.status(501).json({ message: "AI suggestions not yet implemented" });
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifie (userId manquant)" });
+    }
+
+    const { id } = req.params;
+
+    // Fetch plan with full context
+    const plan = await prisma.trainingPlan.findFirst({
+      where: { id, userId },
+      include: {
+        user: { select: { name: true, goalType: true, role: true } },
+        days: {
+          include: {
+            exercises: { include: { exercise: true }, orderBy: { orderIndex: "asc" } },
+          },
+          orderBy: { dayOfWeek: "asc" },
+        },
+      },
+    });
+
+    if (!plan) {
+      return res.status(404).json({ message: "Plan non trouve" });
+    }
+
+    // Get recent sessions (last 10)
+    const recentSessions = await prisma.planSessionLog.findMany({
+      where: { planId: id },
+      orderBy: { date: "desc" },
+      take: 10,
+    });
+
+    // Get recent mood logs (last 5 with mood data)
+    const recentMoodLogs = await prisma.planSessionLog.findMany({
+      where: { planId: id, moodScore: { not: null } },
+      orderBy: { date: "desc" },
+      take: 5,
+    });
+
+    // Get latest measurement
+    const latestMeasurement = await prisma.measurement.findFirst({
+      where: { userId },
+      orderBy: { date: "desc" },
+    });
+
+    // Calculate weight trend (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const measurements = await prisma.measurement.findMany({
+      where: {
+        userId,
+        date: { gte: thirtyDaysAgo },
+        bodyWeightKg: { not: null },
+      },
+      orderBy: { date: "asc" },
+    });
+
+    let weightTrend: number | null = null;
+    if (measurements.length >= 2) {
+      const first = measurements[0].bodyWeightKg!;
+      const last = measurements[measurements.length - 1].bodyWeightKg!;
+      weightTrend = last - first;
+    }
+
+    // Import and call gemini service
+    const { getAISuggestions: fetchSuggestions } = await import("../services/geminiService");
+
+    const suggestions = await fetchSuggestions({
+      user: { name: plan.user.name, goalType: plan.user.goalType, role: plan.user.role },
+      plan: {
+        name: plan.name,
+        bodyGoal: plan.bodyGoal,
+        targetWeightKg: plan.targetWeightKg,
+        customGoal: plan.customGoal,
+        initialNotes: plan.initialNotes,
+        days: plan.days.map((d) => ({
+          trainingType: d.trainingType,
+          label: d.label,
+          dayOfWeek: d.dayOfWeek,
+          timeOfDay: d.timeOfDay,
+        })),
+      },
+      recentSessions: recentSessions.map((s) => ({
+        date: s.date,
+        durationMinutes: null,
+        notes: s.performanceNote,
+        exercises: [],
+      })),
+      recentMoodLogs: recentMoodLogs.map((s) => ({
+        date: s.date,
+        moodScore: s.moodScore,
+        moodNote: s.moodNote,
+        performanceNote: s.performanceNote,
+      })),
+      latestMeasurement: latestMeasurement
+        ? {
+            bodyWeightKg: latestMeasurement.bodyWeightKg,
+            waistCm: latestMeasurement.waistCm,
+            chestCm: latestMeasurement.chestCm,
+          }
+        : null,
+      weightTrend,
+    });
+
+    res.json({ suggestions });
+  } catch (error) {
+    console.error("Error fetching AI suggestions:", error);
+    res.status(500).json({ message: "Erreur serveur interne" });
+  }
 }
 
 /**
@@ -457,8 +599,10 @@ export async function getAISuggestions(req: Request, res: Response) {
  */
 export async function logPlanSession(req: Request, res: Response) {
   try {
-    const userId = getUserIdFromRequest(req, res);
-    if (!userId) return;
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifie (userId manquant)" });
+    }
 
     const { id } = req.params;
     const {
@@ -477,21 +621,34 @@ export async function logPlanSession(req: Request, res: Response) {
       return res.status(400).json({ message: "La date est requise" });
     }
 
+    const parsedDate = parseDate(date);
+    if (!parsedDate) {
+      return res.status(400).json({ message: "La date fournie est invalide" });
+    }
+
     if (moodScore !== undefined && moodScore !== null) {
       if (!Number.isInteger(moodScore) || moodScore < 1 || moodScore > 5) {
-        return res.status(400).json({ message: "moodScore doit être un entier entre 1 et 5" });
+        return res.status(400).json({ message: "moodScore doit etre un entier entre 1 et 5" });
       }
     }
 
-    // Check plan ownership
-    const plan = await prisma.trainingPlan.findUnique({ where: { id } });
+    // Check plan ownership via combined query
+    const plan = await prisma.trainingPlan.findFirst({ where: { id, userId } });
 
     if (!plan) {
-      return res.status(404).json({ message: "Plan non trouvé" });
+      return res.status(404).json({ message: "Plan non trouve" });
     }
 
-    if (plan.userId !== userId) {
-      return res.status(403).json({ message: "Accès interdit" });
+    // Validate planDayId belongs to this plan
+    if (planDayId) {
+      const planDay = await prisma.planDay.findFirst({
+        where: { id: planDayId, planId: id },
+      });
+      if (!planDay) {
+        return res.status(400).json({
+          message: "Le jour de plan specifie n'appartient pas a ce plan",
+        });
+      }
     }
 
     // If trainingSessionId provided, verify it belongs to the user
@@ -502,7 +659,7 @@ export async function logPlanSession(req: Request, res: Response) {
 
       if (!trainingSession) {
         return res.status(400).json({
-          message: "La séance d'entraînement n'existe pas ou ne vous appartient pas",
+          message: "La seance d'entrainement n'existe pas ou ne vous appartient pas",
         });
       }
     }
@@ -510,14 +667,14 @@ export async function logPlanSession(req: Request, res: Response) {
     const log = await prisma.planSessionLog.create({
       data: {
         planId: id,
-        planDayId: planDayId || undefined,
-        trainingSessionId: trainingSessionId || undefined,
-        date: new Date(date),
-        moodScore: moodScore || undefined,
-        moodNote: moodNote || undefined,
-        performanceNote: performanceNote || undefined,
+        planDayId: planDayId !== undefined ? planDayId : undefined,
+        trainingSessionId: trainingSessionId !== undefined ? trainingSessionId : undefined,
+        date: parsedDate,
+        moodScore: moodScore !== undefined ? moodScore : undefined,
+        moodNote: moodNote !== undefined ? moodNote : undefined,
+        performanceNote: performanceNote !== undefined ? performanceNote : undefined,
         skipped: skipped !== undefined ? skipped : false,
-        skipReason: skipReason || undefined,
+        skipReason: skipReason !== undefined ? skipReason : undefined,
       },
     });
 
@@ -527,7 +684,7 @@ export async function logPlanSession(req: Request, res: Response) {
 
     if (error.code === "P2002") {
       return res.status(409).json({
-        message: "Une entrée pour cette séance existe déjà",
+        message: "Une entree pour cette seance existe deja",
       });
     }
 
