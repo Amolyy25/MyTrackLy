@@ -331,3 +331,79 @@ export interface CreateVirtualStudentForm {
   goalType: string;
   allowEmails: boolean;
 }
+
+// --- Training Plans ---
+
+export interface TrainingPlan {
+  id: string;
+  userId: string;
+  createdByCoachId?: string | null;
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
+  targetWeightKg?: number | null;
+  bodyGoal?: string | null;
+  customGoal?: string | null;
+  initialWeightKg?: number | null;
+  initialNotes?: string | null;
+  days: PlanDay[];
+  sessions?: PlanSessionLog[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlanDay {
+  id: string;
+  planId: string;
+  dayOfWeek: number; // 0=Sunday (JS convention)
+  timeOfDay: string; // "HH:mm"
+  label?: string | null;
+  trainingType: string;
+  customType?: string | null;
+  exercises: PlanExercise[];
+  createdAt: string;
+}
+
+export interface PlanExercise {
+  id: string;
+  planDayId: string;
+  exerciseId: string;
+  exercise?: { id: string; name: string; category: string; muscleGroups: string[] };
+  plannedSets: number;
+  plannedReps: number;
+  plannedWeightKg?: number | null;
+  orderIndex: number;
+  notes?: string | null;
+}
+
+export interface PlanSessionLog {
+  id: string;
+  planId: string;
+  planDayId?: string | null;
+  trainingSessionId?: string | null;
+  date: string;
+  moodScore?: number | null;
+  moodNote?: string | null;
+  performanceNote?: string | null;
+  skipped: boolean;
+  skipReason?: string | null;
+  createdAt: string;
+}
+
+export interface PlanProgress {
+  totalPlannedSessions: number;
+  totalLoggedSessions: number;
+  skippedSessions: number;
+  completionRate: number;
+  averageMoodScore: number | null;
+  streakDays: number;
+  weeklyBreakdown: Array<{ weekStart: string; planned: number; logged: number }>;
+}
+
+export interface AISuggestion {
+  type: "advice" | "warning" | "motivation";
+  title: string;
+  content: string;
+}

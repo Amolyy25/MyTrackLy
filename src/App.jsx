@@ -46,6 +46,9 @@ import CoachAvailabilities from "./components/pages/dashboard/coach/Availabiliti
 import StudentProfile from "./components/pages/dashboard/coach/StudentProfile";
 import Statistics from "./components/pages/dashboard/statistics";
 import NotFound from "./components/pages/NotFound";
+import TrainingPlanList from "./components/pages/dashboard/training-plan/TrainingPlanList";
+import TrainingPlanNew from "./components/pages/dashboard/training-plan/TrainingPlanNew";
+import TrainingPlanDashboard from "./components/pages/dashboard/training-plan/TrainingPlanDashboard";
 
 // Component to redirect to the correct dashboard based on user role
 const DashboardHome = () => {
@@ -248,6 +251,9 @@ function AppRoutes() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="statistics" element={<Statistics />} />
+        <Route path="training-plans" element={<TrainingPlanList />} />
+        <Route path="training-plans/new" element={<TrainingPlanNew />} />
+        <Route path="training-plans/:id" element={<TrainingPlanDashboard />} />
         <Route path="programs" element={<SoonPage title="Programmes" />} />
         <Route path="chat" element={<SoonPage title="Discussion" />} />
         <Route path="messagerie" element={<SoonPage title="Messagerie" />} />
