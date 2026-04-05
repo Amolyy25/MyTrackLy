@@ -33,6 +33,8 @@ model User {
   invitationCodes      InvitationCode[]     // Codes d'invitation créés par le coach
   usedInvitationCodes  InvitationCode[]     @relation("UsedInvitationCodes") // Codes utilisés par l'élève
   passwordResetTokens  PasswordResetToken[] // Tokens de reset de mot de passe
+  trainingPlans        TrainingPlan[]       @relation("UserTrainingPlans")
+  coachCreatedPlans    TrainingPlan[]       @relation("CoachCreatedPlans")
 
   // Notes privées du coach sur cet élève
   coachNotes           CoachNote[]          @relation("StudentNotes")
@@ -104,6 +106,7 @@ model TrainingSession {
   notes           String?
   coachComment    String?           @map("coach_comment") // Commentaire du coach sur la séance
   exercises       SessionExercise[]
+  planSessionLog  PlanSessionLog?
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
@@ -120,6 +123,7 @@ model Exercise {
   createdByUserId String?         @map("created_by_user_id")
   createdBy     User?             @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
   sessions      SessionExercise[]
+  planExercises PlanExercise[]
   createdAt     DateTime          @default(now()) @map("created_at")
 
   @@map("exercises")
@@ -325,7 +329,9 @@ model Habit {
   @@map("habits")
   @@index([userId])
   @@index([userId, startDate])
-}model HabitLog {
+}
+
+model HabitLog {
   id            String   @id @default(uuid())
   habitId       String   @map("habit_id")
   habit         Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
@@ -337,4 +343,88 @@ model Habit {
   @@unique([habitId, completedAt])
   @@index([habitId, completedAt])
   @@index([completedAt])
+}
+
+model TrainingPlan {
+  id               String           @id @default(uuid())
+  userId           String           @map("user_id")
+  user             User             @relation("UserTrainingPlans", fields: [userId], references: [id], onDelete: Cascade)
+  createdByCoachId String?          @map("created_by_coach_id")
+  createdByCoach   User?            @relation("CoachCreatedPlans", fields: [createdByCoachId], references: [id], onDelete: SetNull)
+  name             String
+  description      String?
+  isActive         Boolean          @default(true) @map("is_active")
+  startDate        DateTime?        @map("start_date")
+  endDate          DateTime?        @map("end_date")
+  targetWeightKg   Float?           @map("target_weight_kg")
+  bodyGoal         String?          @map("body_goal") // "muscle_gain" | "weight_loss" | "maintenance" | "sport_perf" | "custom"
+  customGoal       String?          @map("custom_goal")
+  initialWeightKg  Float?           @map("initial_weight_kg")
+  initialNotes     String?          @map("initial_notes")
+  days             PlanDay[]
+  sessions         PlanSessionLog[]
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([createdByCoachId])
+  @@map("training_plans")
+}
+
+model PlanDay {
+  id           String           @id @default(uuid())
+  planId       String           @map("plan_id")
+  plan         TrainingPlan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  dayOfWeek    Int              @map("day_of_week") // 0=Dimanche, 1=Lundi, ..., 6=Samedi
+  timeOfDay    String           @map("time_of_day") // "HH:mm" ex: "18:00"
+  label        String?
+  trainingType String           @map("training_type") // "full_body" | "upper_body" | "lower_body" | "push" | "pull" | "cardio" | "core" | "custom"
+  customType   String?          @map("custom_type")
+  exercises    PlanExercise[]
+  sessionLogs  PlanSessionLog[]
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  @@index([planId])
+  @@map("plan_days")
+}
+
+model PlanExercise {
+  id              String   @id @default(uuid())
+  planDayId       String   @map("plan_day_id")
+  planDay         PlanDay  @relation(fields: [planDayId], references: [id], onDelete: Cascade)
+  exerciseId      String   @map("exercise_id")
+  exercise        Exercise @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  plannedSets     Int      @map("planned_sets")
+  plannedReps     Int      @map("planned_reps")
+  plannedWeightKg Float?   @map("planned_weight_kg")
+  orderIndex      Int      @map("order_index")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([planDayId])
+  @@map("plan_exercises")
+}
+
+model PlanSessionLog {
+  id                String           @id @default(uuid())
+  planId            String           @map("plan_id")
+  plan              TrainingPlan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  planDayId         String?          @map("plan_day_id")
+  planDay           PlanDay?         @relation(fields: [planDayId], references: [id], onDelete: SetNull)
+  trainingSessionId String?          @unique @map("training_session_id")
+  trainingSession   TrainingSession? @relation(fields: [trainingSessionId], references: [id], onDelete: SetNull)
+  date              DateTime
+  moodScore         Int?             @map("mood_score") // 1-5
+  moodNote          String?          @map("mood_note")
+  performanceNote   String?          @map("performance_note")
+  skipped           Boolean          @default(false)
+  skipReason        String?          @map("skip_reason")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  @@index([planId])
+  @@index([planDayId])
+  @@map("plan_session_logs")
 }

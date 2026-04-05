@@ -2,14 +2,15 @@ import React from "react";
 import { Outlet } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { Header } from "../pages/dashboard-new/header";
-import { 
-  Home, 
-  Users, 
-  Dumbbell, 
-  Calendar, 
-  Wallet, 
-  UserCircle, 
-  PieChart, 
+import {
+  Home,
+  Users,
+  Dumbbell,
+  Calendar,
+  CalendarDays,
+  Wallet,
+  UserCircle,
+  PieChart,
   Activity,
   Ruler,
   ClipboardList,
@@ -25,6 +26,7 @@ const DashboardLayout: React.FC = () => {
   const personalNavigation = [
     { name: "Accueil", href: "/dashboard", icon: <LayoutDashboard size={18} /> },
     { name: "Séances", href: "/dashboard/training/history", icon: <Dumbbell size={18} /> },
+    { name: "Mon Plan", href: "/dashboard/training-plans", icon: <CalendarDays size={18} /> },
     { name: "Mensurations", href: "/dashboard/measurements", icon: <Ruler size={18} /> },
     { name: "Habitudes", href: "/dashboard/habits", icon: <ClipboardList size={18} /> },
     { name: "Statistiques", href: "/dashboard/statistics", icon: <PieChart size={18} /> },
@@ -34,6 +36,7 @@ const DashboardLayout: React.FC = () => {
   const studentNavigation = [
     { name: "Accueil", href: "/dashboard", icon: <LayoutDashboard size={18} /> },
     { name: "Séances", href: "/dashboard/training/history", icon: <Dumbbell size={18} /> },
+    { name: "Mon Plan", href: "/dashboard/training-plans", icon: <CalendarDays size={18} /> },
     { name: "Réservations", href: "/dashboard/reservations", icon: <Calendar size={18} /> },
     { name: "Mensurations", href: "/dashboard/measurements", icon: <Ruler size={18} /> },
     { name: "Habitudes", href: "/dashboard/habits", icon: <ClipboardList size={18} /> },
@@ -72,6 +75,7 @@ const DashboardLayout: React.FC = () => {
       isDropdown: true,
       children: [
         { name: "Mes séances", href: "/dashboard/training/history" },
+        { name: "Mon Plan", href: "/dashboard/training-plans" },
         { name: "Mes mensurations", href: "/dashboard/my-measurements" },
         { name: "Mes habitudes", href: "/dashboard/habits" },
       ],
