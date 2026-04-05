@@ -17,8 +17,16 @@ import {
   X,
   Plus,
   Search,
-  Target,
   ArrowRight,
+  Scale,
+  TrendingUp,
+  TrendingDown,
+  AlertCircle,
+  Save,
+  ChevronDown,
+  ChevronUp,
+  ListChecks,
+  Zap,
 } from "lucide-react";
 import { usePlanById } from "../../../../hooks/usePlanById";
 import { usePlanProgress } from "../../../../hooks/usePlanProgress";
@@ -28,247 +36,590 @@ import {
   DAYS_FR,
   DAYS_FULL_FR,
   TRAINING_TYPES,
+  BODY_GOALS,
   getMoodEmoji,
   getTrainingTypeLabel,
   getTrainingTypeEmoji,
   getBodyGoalLabel,
   getBodyGoalEmoji,
 } from "../../../../utils/trainingPlanHelpers";
-import { PlanDay, PlanExercise, Exercise } from "../../../../types";
+import { PlanDay, PlanExercise, Exercise, Measurement } from "../../../../types";
 import LogPlanSessionModal from "./LogPlanSessionModal";
 import AIPlanInsights from "./AIPlanInsights";
 import API_URL from "../../../../config/api";
 
-// ---- Color coding for training types ----
-const TYPE_COLORS: Record<string, string> = {
-  full_body: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
-  upper_body: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  lower_body: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  push: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  pull: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
-  cardio: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  core: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-  custom: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400",
-};
-
-function getTypeColor(trainingType: string): string {
-  return TYPE_COLORS[trainingType] ?? TYPE_COLORS.custom;
+// ─── Auth headers ────────────────────────────────────────────────────────────
+function authHeaders() {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${localStorage.getItem("token")}`,
+  };
 }
 
-// ---- Circular progress ring ----
-function CircleProgress({ pct }: { pct: number }) {
-  const r = 52, cx = 60, cy = 60;
+// ─── Type color map ───────────────────────────────────────────────────────────
+const TYPE_COLORS: Record<string, string> = {
+  full_body: "bg-violet-500/20 text-violet-300 border-violet-500/30",
+  upper_body: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  lower_body: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+  push: "bg-orange-500/20 text-orange-300 border-orange-500/30",
+  pull: "bg-pink-500/20 text-pink-300 border-pink-500/30",
+  cardio: "bg-red-500/20 text-red-300 border-red-500/30",
+  core: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  custom: "bg-slate-500/20 text-slate-300 border-slate-500/30",
+};
+function getTypeColor(t: string) {
+  return TYPE_COLORS[t] ?? TYPE_COLORS.custom;
+}
+
+// ─── Circular SVG ring ────────────────────────────────────────────────────────
+function Ring({ pct, size = 100 }: { pct: number; size?: number }) {
+  const r = size * 0.4;
+  const cx = size / 2;
   const circ = 2 * Math.PI * r;
-  const dash = (pct / 100) * circ;
+  const dash = Math.min(pct / 100, 1) * circ;
   return (
-    <svg width="120" height="120" className="-rotate-90">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="currentColor" strokeWidth="10" className="text-gray-100 dark:text-gray-800" />
+    <svg width={size} height={size} className="-rotate-90">
+      <circle cx={cx} cy={cx} r={r} fill="none" stroke="#1e293b" strokeWidth={size * 0.08} />
       <circle
-        cx={cx} cy={cy} r={r} fill="none" stroke="currentColor" strokeWidth="10"
+        cx={cx} cy={cx} r={r} fill="none"
+        stroke="url(#ringGrad)" strokeWidth={size * 0.08}
         strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-        className="text-indigo-500 transition-all duration-700"
+        className="transition-all duration-700"
       />
+      <defs>
+        <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#818cf8" />
+          <stop offset="100%" stopColor="#a78bfa" />
+        </linearGradient>
+      </defs>
     </svg>
   );
 }
 
-// ---- Helpers ----
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+// ─── Format date ─────────────────────────────────────────────────────────────
+function fmtDate(s: string) {
+  return new Date(s).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+}
+function fmtDateShort(s: string) {
+  return new Date(s).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 }
 
+// ─── Next plan day ────────────────────────────────────────────────────────────
 function getNextPlanDay(days: PlanDay[]): PlanDay | null {
-  if (!days || days.length === 0) return null;
-  const todayDow = new Date().getDay();
+  if (!days?.length) return null;
+  const today = new Date().getDay();
   const sorted = [...days].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
-  return sorted.find((d) => d.dayOfWeek >= todayDow) ?? sorted[0];
+  return sorted.find((d) => d.dayOfWeek >= today) ?? sorted[0];
 }
 
-// ---- API helpers ----
-function authHeaders() {
-  const token = localStorage.getItem("token");
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
-// ---- ActiveToggle ----
-function ActiveToggle({ isActive, onToggle }: { isActive: boolean; onToggle: () => void }) {
-  return (
-    <button
-      onClick={onToggle}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-      title={isActive ? "Désactiver ce plan" : "Activer ce plan"}
-    >
-      {isActive ? (
-        <ToggleRight className="w-5 h-5 text-green-500" />
-      ) : (
-        <ToggleLeft className="w-5 h-5 text-gray-400" />
-      )}
-      <span className={`text-sm font-medium ${isActive ? "text-green-600 dark:text-green-400" : "text-gray-500 dark:text-gray-400"}`}>
-        {isActive ? "Actif" : "Inactif"}
-      </span>
-    </button>
-  );
-}
-
-// ---- Inline editable text ----
-function InlineEdit({
+// ─── EditInput / EditTextarea helpers ─────────────────────────────────────────
+function EditField({
   value,
-  onSave,
+  onChange,
   placeholder,
-  multiline = false,
+  type = "text",
   className = "",
 }: {
   value: string;
-  onSave: (v: string) => void;
+  onChange: (v: string) => void;
   placeholder?: string;
-  multiline?: boolean;
+  type?: string;
   className?: string;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (editing && inputRef.current) inputRef.current.focus();
-  }, [editing]);
-
-  const commit = () => {
-    setEditing(false);
-    if (draft !== value) onSave(draft);
-  };
-
-  if (!editing) {
-    return (
-      <span
-        className={`cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/10 rounded px-1 -mx-1 group flex items-center gap-1 ${className}`}
-        onClick={() => { setDraft(value); setEditing(true); }}
-      >
-        {value || <span className="text-gray-400 italic">{placeholder}</span>}
-        <Pencil className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 flex-shrink-0" />
-      </span>
-    );
-  }
-
-  const sharedClass = "px-2 py-1 rounded-lg border border-indigo-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full";
-
   return (
-    <span className="flex items-center gap-1 w-full">
-      {multiline ? (
-        <textarea
-          ref={inputRef as React.Ref<HTMLTextAreaElement>}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          rows={2}
-          className={`${sharedClass} resize-none text-sm`}
-        />
-      ) : (
-        <input
-          ref={inputRef as React.Ref<HTMLInputElement>}
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setEditing(false); setDraft(value); } }}
-          className={sharedClass}
-        />
-      )}
-      <button onClick={commit} className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded">
-        <Check className="w-4 h-4" />
-      </button>
-    </span>
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={`bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white placeholder-white/30 focus:outline-none focus:border-indigo-400 focus:bg-white/10 transition-all ${className}`}
+    />
   );
 }
 
-// ---- AddDayForm ----
+function EditTextarea({
+  value,
+  onChange,
+  placeholder,
+  rows = 2,
+  className = "",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  rows?: number;
+  className?: string;
+}) {
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={rows}
+      className={`bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white placeholder-white/30 focus:outline-none focus:border-indigo-400 focus:bg-white/10 transition-all resize-none w-full text-sm ${className}`}
+    />
+  );
+}
+
+// ─── Exercise search dropdown ─────────────────────────────────────────────────
+function ExerciseSearch({ onAdd, onClose }: { onAdd: (ex: Exercise) => void; onClose: () => void }) {
+  const [q, setQ] = useState("");
+  const [list, setList] = useState<Exercise[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch(`${API_URL}/exercises`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setList(Array.isArray(d) ? d : d.exercises ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
+
+  const filtered = list.filter((ex) => ex.name.toLowerCase().includes(q.toLowerCase())).slice(0, 20);
+
+  return (
+    <div ref={ref} className="absolute z-50 top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl overflow-hidden">
+      <div className="p-2 border-b border-slate-700">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <input
+            autoFocus
+            type="text"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Rechercher un exercice..."
+            className="w-full pl-8 pr-8 py-1.5 bg-slate-700/50 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-400 focus:outline-none focus:border-indigo-400"
+          />
+          <button onClick={onClose} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+      <div className="max-h-48 overflow-y-auto">
+        {loading ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <p className="text-xs text-slate-400 text-center py-3">Aucun résultat</p>
+        ) : (
+          filtered.map((ex) => (
+            <button
+              key={ex.id}
+              onClick={() => { onAdd(ex); onClose(); }}
+              className="w-full text-left px-3 py-2 hover:bg-indigo-500/20 transition-colors group"
+            >
+              <span className="text-sm text-slate-200 group-hover:text-white">{ex.name}</span>
+              <span className="ml-2 text-xs text-slate-500">{ex.category}</span>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Exercise row (view + edit inline) ───────────────────────────────────────
+function ExerciseRow({
+  ex,
+  editMode,
+  planId,
+  dayId,
+  onDelete,
+  onUpdate,
+}: {
+  ex: PlanExercise;
+  editMode: boolean;
+  planId: string;
+  dayId: string;
+  onDelete: () => void;
+  onUpdate: (patch: Partial<PlanExercise>) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [sets, setSets] = useState(String(ex.plannedSets));
+  const [reps, setReps] = useState(String(ex.plannedReps));
+  const [weight, setWeight] = useState(ex.plannedWeightKg != null ? String(ex.plannedWeightKg) : "");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onUpdate({
+        plannedSets: Number(sets) || ex.plannedSets,
+        plannedReps: Number(reps) || ex.plannedReps,
+        plannedWeightKg: weight ? Number(weight) : null,
+      });
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="group/ex">
+      {editing ? (
+        <div className="flex items-center gap-2 py-2 border-b border-slate-700/50">
+          <span className="flex-1 text-sm text-slate-300 truncate">{ex.exercise?.name ?? "Exercice"}</span>
+          <div className="flex items-center gap-1">
+            <input
+              type="number" min="1" max="20"
+              value={sets} onChange={(e) => setSets(e.target.value)}
+              className="w-10 text-center bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-xs text-white focus:outline-none focus:border-indigo-400"
+              title="Séries"
+            />
+            <span className="text-slate-500 text-xs">×</span>
+            <input
+              type="number" min="1" max="100"
+              value={reps} onChange={(e) => setReps(e.target.value)}
+              className="w-10 text-center bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-xs text-white focus:outline-none focus:border-indigo-400"
+              title="Reps"
+            />
+            <input
+              type="number" min="0" step="0.5"
+              value={weight} onChange={(e) => setWeight(e.target.value)}
+              placeholder="kg"
+              className="w-14 text-center bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-xs text-white focus:outline-none focus:border-indigo-400"
+              title="Poids (kg)"
+            />
+          </div>
+          <button onClick={save} disabled={saving} className="p-1 text-green-400 hover:text-green-300 disabled:opacity-50">
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+          </button>
+          <button onClick={() => setEditing(false)} className="p-1 text-slate-400 hover:text-slate-300">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 py-2 border-b border-slate-700/30 last:border-0">
+          <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0" />
+          <span className="flex-1 text-sm text-slate-200 truncate">{ex.exercise?.name ?? "Exercice"}</span>
+          <span className="text-xs font-mono text-slate-400 flex-shrink-0">
+            {ex.plannedSets}×{ex.plannedReps}
+            {ex.plannedWeightKg != null && <span className="text-indigo-400"> @{ex.plannedWeightKg}kg</span>}
+          </span>
+          {editMode && (
+            <div className="flex items-center gap-0.5 opacity-0 group-hover/ex:opacity-100 transition-opacity">
+              <button onClick={() => setEditing(true)} className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-indigo-300">
+                <Pencil className="w-3 h-3" />
+              </button>
+              <button onClick={onDelete} className="p-1 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400">
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Day card for the calendar ────────────────────────────────────────────────
+function DayCard({
+  dayIndex,
+  planDay,
+  isToday,
+  editMode,
+  planId,
+  onLogSession,
+  onAddExercise,
+  onDeleteExercise,
+  onUpdateExercise,
+  onDeleteDay,
+  onEditDay,
+}: {
+  dayIndex: number;
+  planDay?: PlanDay;
+  isToday: boolean;
+  editMode: boolean;
+  planId: string;
+  onLogSession: (d: PlanDay) => void;
+  onAddExercise: (dayId: string, ex: Exercise) => Promise<void>;
+  onDeleteExercise: (dayId: string, exId: string) => Promise<void>;
+  onUpdateExercise: (dayId: string, exId: string, patch: Partial<PlanExercise>) => Promise<void>;
+  onDeleteDay: (dayId: string) => Promise<void>;
+  onEditDay: (dayId: string, data: { timeOfDay: string; trainingType: string; label?: string }) => Promise<void>;
+}) {
+  const [showSearch, setShowSearch] = useState(false);
+  const [editingDay, setEditingDay] = useState(false);
+  const [timeVal, setTimeVal] = useState(planDay?.timeOfDay ?? "08:00");
+  const [typeVal, setTypeVal] = useState(planDay?.trainingType ?? "full_body");
+  const [labelVal, setLabelVal] = useState(planDay?.label ?? "");
+  const [savingDay, setSavingDay] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const exCount = planDay?.exercises.length ?? 0;
+  const showAll = expanded || exCount <= 3;
+  const visibleEx = showAll ? planDay?.exercises : planDay?.exercises.slice(0, 3);
+
+  const saveDay = async () => {
+    if (!planDay) return;
+    setSavingDay(true);
+    try {
+      await onEditDay(planDay.id, { timeOfDay: timeVal, trainingType: typeVal, label: labelVal });
+      setEditingDay(false);
+    } finally {
+      setSavingDay(false);
+    }
+  };
+
+  return (
+    <div
+      className={`flex flex-col rounded-2xl border transition-all duration-200 overflow-hidden ${
+        isToday
+          ? "bg-gradient-to-br from-indigo-600 to-violet-700 border-indigo-400/50 shadow-lg shadow-indigo-900/40"
+          : planDay
+          ? "bg-slate-800/80 border-slate-700/50 hover:border-slate-600/80"
+          : "bg-slate-900/40 border-slate-800/30 opacity-40"
+      }`}
+    >
+      {/* Day header */}
+      <div className={`px-3 pt-3 pb-2 border-b ${isToday ? "border-white/15" : "border-slate-700/50"}`}>
+        <div className="flex items-center justify-between">
+          <span className={`text-xs font-bold uppercase tracking-wider ${isToday ? "text-indigo-100" : "text-slate-400"}`}>
+            {DAYS_FR[dayIndex]}
+          </span>
+          {isToday && (
+            <span className="text-xs bg-white/20 text-white px-1.5 py-0.5 rounded-full font-medium">
+              Aujourd&apos;hui
+            </span>
+          )}
+          {editMode && planDay && (
+            <div className="flex gap-0.5">
+              <button
+                onClick={() => { setEditingDay(!editingDay); setTimeVal(planDay.timeOfDay); setTypeVal(planDay.trainingType); setLabelVal(planDay.label ?? ""); }}
+                className={`p-1 rounded transition-colors ${isToday ? "hover:bg-white/20 text-white/70" : "hover:bg-white/10 text-slate-400 hover:text-indigo-300"}`}
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+              <button
+                onClick={() => onDeleteDay(planDay.id)}
+                className={`p-1 rounded transition-colors ${isToday ? "hover:bg-red-500/30 text-white/70" : "hover:bg-red-500/20 text-slate-400 hover:text-red-400"}`}
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Day body */}
+      <div className="flex-1 flex flex-col px-3 py-2 gap-2">
+        {planDay ? (
+          <>
+            {editingDay ? (
+              <div className="space-y-1.5">
+                <input
+                  type="time" value={timeVal}
+                  onChange={(e) => setTimeVal(e.target.value)}
+                  className="w-full px-2 py-1 rounded-lg bg-black/30 border border-white/20 text-xs text-white focus:outline-none focus:border-indigo-400"
+                />
+                <select
+                  value={typeVal}
+                  onChange={(e) => setTypeVal(e.target.value)}
+                  className="w-full px-2 py-1 rounded-lg bg-black/30 border border-white/20 text-xs text-white focus:outline-none focus:border-indigo-400"
+                >
+                  {TRAINING_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>
+                  ))}
+                </select>
+                <input
+                  type="text" value={labelVal}
+                  onChange={(e) => setLabelVal(e.target.value)}
+                  placeholder="Label (optionnel)"
+                  className="w-full px-2 py-1 rounded-lg bg-black/30 border border-white/20 text-xs text-white placeholder-white/30 focus:outline-none focus:border-indigo-400"
+                />
+                <div className="flex gap-1">
+                  <button
+                    onClick={saveDay} disabled={savingDay}
+                    className="flex-1 py-1 text-xs font-medium bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 text-white rounded-lg flex items-center justify-center gap-1"
+                  >
+                    {savingDay ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                    OK
+                  </button>
+                  <button
+                    onClick={() => setEditingDay(false)}
+                    className="px-2 py-1 text-xs text-slate-300 bg-white/10 hover:bg-white/20 rounded-lg"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className={`text-xs font-medium ${isToday ? "text-indigo-100" : "text-slate-400"}`}>
+                    {planDay.timeOfDay}
+                  </span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-md border font-medium ${
+                    isToday ? "bg-white/20 text-white border-white/20" : getTypeColor(planDay.trainingType)
+                  }`}>
+                    {getTrainingTypeEmoji(planDay.trainingType)} {getTrainingTypeLabel(planDay.trainingType, planDay.customType)}
+                  </span>
+                </div>
+
+                {/* Exercises */}
+                {exCount > 0 && (
+                  <div className="space-y-0">
+                    {(visibleEx ?? []).map((ex) => (
+                      <ExerciseRow
+                        key={ex.id}
+                        ex={ex}
+                        editMode={editMode}
+                        planId={planId}
+                        dayId={planDay.id}
+                        onDelete={() => onDeleteExercise(planDay.id, ex.id)}
+                        onUpdate={(patch) => onUpdateExercise(planDay.id, ex.id, patch)}
+                      />
+                    ))}
+                    {exCount > 3 && (
+                      <button
+                        onClick={() => setExpanded(!expanded)}
+                        className={`text-xs mt-1 flex items-center gap-1 ${isToday ? "text-indigo-200 hover:text-white" : "text-indigo-400 hover:text-indigo-300"}`}
+                      >
+                        {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        {expanded ? "Réduire" : `+${exCount - 3} exercice${exCount - 3 > 1 ? "s" : ""}`}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Add exercise in edit mode */}
+                {editMode && (
+                  <div className="relative mt-auto pt-1">
+                    {showSearch ? (
+                      <ExerciseSearch
+                        onAdd={(ex) => { onAddExercise(planDay.id, ex); setShowSearch(false); }}
+                        onClose={() => setShowSearch(false)}
+                      />
+                    ) : (
+                      <button
+                        onClick={() => setShowSearch(true)}
+                        className={`w-full py-1 text-xs rounded-lg border border-dashed flex items-center justify-center gap-1 transition-colors ${
+                          isToday
+                            ? "border-white/30 text-white/60 hover:border-white/60 hover:text-white"
+                            : "border-indigo-500/40 text-indigo-400 hover:border-indigo-400 hover:bg-indigo-500/10"
+                        }`}
+                      >
+                        <Plus className="w-3 h-3" />
+                        Exercice
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Log button in view mode */}
+                {!editMode && (
+                  <button
+                    onClick={() => onLogSession(planDay)}
+                    className={`mt-auto py-1.5 text-xs font-medium rounded-xl flex items-center justify-center gap-1 transition-colors ${
+                      isToday
+                        ? "bg-white/25 hover:bg-white/35 text-white"
+                        : "bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400 hover:text-indigo-300 border border-indigo-500/20"
+                    }`}
+                  >
+                    <Play className="w-3 h-3" />
+                    Faire
+                  </button>
+                )}
+              </>
+            )}
+          </>
+        ) : editMode ? (
+          <div className="text-xs text-slate-500 text-center py-2">Repos</div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+// ─── Add day form ─────────────────────────────────────────────────────────────
 function AddDayForm({
   onAdd,
   onCancel,
 }: {
-  onAdd: (data: { dayOfWeek: number; timeOfDay: string; trainingType: string; customType?: string }) => Promise<void>;
+  onAdd: (d: { dayOfWeek: number; timeOfDay: string; trainingType: string; label?: string }) => Promise<void>;
   onCancel: () => void;
 }) {
-  const [dayOfWeek, setDayOfWeek] = useState(1);
-  const [timeOfDay, setTimeOfDay] = useState("08:00");
-  const [trainingType, setTrainingType] = useState("full_body");
-  const [customType, setCustomType] = useState("");
+  const [dow, setDow] = useState(1);
+  const [time, setTime] = useState("08:00");
+  const [type, setType] = useState("full_body");
+  const [label, setLabel] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const handleSubmit = async () => {
+  const submit = async () => {
     setSaving(true);
     try {
-      await onAdd({ dayOfWeek, timeOfDay, trainingType, customType: trainingType === "custom" ? customType : undefined });
+      await onAdd({ dayOfWeek: dow, timeOfDay: time, trainingType: type, label: label || undefined });
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="p-4 rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-900/10 space-y-3">
-      <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-400">Ajouter un jour</p>
-      <div className="grid grid-cols-2 gap-3">
+    <div className="p-4 rounded-2xl border border-dashed border-indigo-500/40 bg-indigo-500/5 space-y-3">
+      <p className="text-sm font-semibold text-indigo-300">Nouveau jour d&apos;entraînement</p>
+      <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Jour</label>
+          <label className="block text-xs text-slate-400 mb-1">Jour</label>
           <select
-            value={dayOfWeek}
-            onChange={(e) => setDayOfWeek(Number(e.target.value))}
-            className="w-full px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            value={dow}
+            onChange={(e) => setDow(Number(e.target.value))}
+            className="w-full px-2 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-sm text-white focus:outline-none focus:border-indigo-400"
           >
-            {DAYS_FULL_FR.map((d, i) => (
-              <option key={i} value={i}>{d}</option>
-            ))}
+            {DAYS_FULL_FR.map((d, i) => <option key={i} value={i}>{d}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Heure</label>
+          <label className="block text-xs text-slate-400 mb-1">Heure</label>
           <input
-            type="time"
-            value={timeOfDay}
-            onChange={(e) => setTimeOfDay(e.target.value)}
-            className="w-full px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            type="time" value={time}
+            onChange={(e) => setTime(e.target.value)}
+            className="w-full px-2 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-sm text-white focus:outline-none focus:border-indigo-400"
           />
         </div>
       </div>
-      <div>
-        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Type</label>
-        <select
-          value={trainingType}
-          onChange={(e) => setTrainingType(e.target.value)}
-          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          {TRAINING_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>
-          ))}
-        </select>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Type</label>
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            className="w-full px-2 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-sm text-white focus:outline-none focus:border-indigo-400"
+          >
+            {TRAINING_TYPES.map((t) => <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Label (optionnel)</label>
+          <input
+            type="text" value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="ex: Jambes"
+            className="w-full px-2 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400"
+          />
+        </div>
       </div>
-      {trainingType === "custom" && (
-        <input
-          type="text"
-          value={customType}
-          onChange={(e) => setCustomType(e.target.value)}
-          placeholder="Label personnalisé"
-          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-      )}
       <div className="flex gap-2">
         <button
-          onClick={handleSubmit}
-          disabled={saving}
-          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+          onClick={submit} disabled={saving}
+          className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors"
         >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           Ajouter
         </button>
         <button
           onClick={onCancel}
-          className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          className="px-4 py-2 rounded-xl border border-slate-600 text-slate-300 text-sm hover:bg-slate-800 transition-colors"
         >
           Annuler
         </button>
@@ -277,456 +628,90 @@ function AddDayForm({
   );
 }
 
-// ---- EditDayForm ----
-function EditDayForm({
-  day,
-  onSave,
-  onCancel,
-}: {
-  day: PlanDay;
-  onSave: (data: { timeOfDay: string; trainingType: string; customType?: string }) => Promise<void>;
-  onCancel: () => void;
-}) {
-  const [timeOfDay, setTimeOfDay] = useState(day.timeOfDay);
-  const [trainingType, setTrainingType] = useState(day.trainingType);
-  const [customType, setCustomType] = useState(day.customType ?? "");
-  const [saving, setSaving] = useState(false);
-
-  const handleSubmit = async () => {
-    setSaving(true);
-    try {
-      await onSave({ timeOfDay, trainingType, customType: trainingType === "custom" ? customType : undefined });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="p-3 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-900/10 space-y-2 mt-2">
-      <div className="grid grid-cols-2 gap-2">
-        <input
-          type="time"
-          value={timeOfDay}
-          onChange={(e) => setTimeOfDay(e.target.value)}
-          className="px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <select
-          value={trainingType}
-          onChange={(e) => setTrainingType(e.target.value)}
-          className="px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          {TRAINING_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>
-          ))}
-        </select>
-      </div>
-      {trainingType === "custom" && (
-        <input
-          type="text"
-          value={customType}
-          onChange={(e) => setCustomType(e.target.value)}
-          placeholder="Label personnalisé"
-          className="w-full px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-      )}
-      <div className="flex gap-2">
-        <button onClick={handleSubmit} disabled={saving} className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-medium">
-          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Enregistrer
-        </button>
-        <button onClick={onCancel} className="px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 text-xs hover:bg-gray-50 dark:hover:bg-gray-800">
-          Annuler
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ---- ExerciseSearch ----
-function ExerciseSearch({
-  onAdd,
-  onClose,
-}: {
-  onAdd: (exercise: Exercise) => void;
-  onClose: () => void;
-}) {
-  const [query, setQuery] = useState("");
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchExercises = async () => {
-      try {
-        const res = await fetch(`${API_URL}/exercises`, { headers: authHeaders() });
-        if (res.ok) {
-          const data = await res.json();
-          setExercises(Array.isArray(data) ? data : data.exercises ?? []);
-        }
-      } catch {
-        // non-blocking
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchExercises();
-  }, []);
-
-  const filtered = exercises.filter((ex) =>
-    ex.name.toLowerCase().includes(query.toLowerCase())
-  );
-
-  return (
-    <div className="p-2 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-gray-900 shadow-md mt-2 space-y-2">
-      <div className="relative">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Rechercher..."
-          autoFocus
-          className="w-full pl-8 pr-8 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <button onClick={onClose} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
-      {loading ? (
-        <div className="flex justify-center py-2"><Loader2 className="w-4 h-4 text-indigo-500 animate-spin" /></div>
-      ) : (
-        <div className="max-h-36 overflow-y-auto space-y-0.5">
-          {filtered.slice(0, 30).map((ex) => (
-            <button
-              key={ex.id}
-              onClick={() => { onAdd(ex); onClose(); }}
-              className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-xs text-gray-700 dark:text-gray-300 transition-colors"
-            >
-              {ex.name}
-              <span className="ml-1.5 text-gray-400">{ex.category}</span>
-            </button>
-          ))}
-          {filtered.length === 0 && (
-            <p className="text-xs text-gray-400 px-2 py-2 text-center">Aucun exercice trouvé</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---- WeeklyCalendar ----
-function WeeklyCalendar({
-  days,
-  editMode,
-  onLogSession,
-  onAddExercise,
-  onDeleteExercise,
-  onAddDay,
-  onDeleteDay,
-  onEditDay,
-}: {
-  days: PlanDay[];
-  editMode: boolean;
-  onLogSession: (day: PlanDay) => void;
-  onAddExercise: (dayId: string, exercise: Exercise) => Promise<void>;
-  onDeleteExercise: (dayId: string, exId: string) => Promise<void>;
-  onAddDay: (data: { dayOfWeek: number; timeOfDay: string; trainingType: string; customType?: string }) => Promise<void>;
-  onDeleteDay: (dayId: string) => Promise<void>;
-  onEditDay: (dayId: string, data: { timeOfDay: string; trainingType: string; customType?: string }) => Promise<void>;
-}) {
-  const todayDow = new Date().getDay();
-  const [searchOpenFor, setSearchOpenFor] = useState<string | null>(null);
-  const [editDayId, setEditDayId] = useState<string | null>(null);
-  const [showAddDayForm, setShowAddDayForm] = useState(false);
-
-  return (
-    <div>
-      <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-        <CalendarDays className="w-4 h-4 text-indigo-500" />
-        Planning hebdomadaire
-      </h3>
-      <div className="grid grid-cols-7 gap-1.5">
-        {Array.from({ length: 7 }, (_, i) => {
-          const planDay = days.find((d) => d.dayOfWeek === i);
-          const isToday = i === todayDow;
-          const visibleExercises = planDay?.exercises.slice(0, 3) ?? [];
-          const extraCount = Math.max(0, (planDay?.exercises.length ?? 0) - 3);
-
-          return (
-            <div
-              key={i}
-              className={`flex flex-col rounded-xl p-2 min-h-[120px] border ${
-                isToday
-                  ? "bg-indigo-600 text-white border-indigo-500"
-                  : planDay
-                  ? "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                  : "bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 opacity-40"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <p className={`text-xs font-semibold ${isToday ? "text-indigo-100" : "text-gray-500 dark:text-gray-400"}`}>
-                  {DAYS_FR[i]}
-                </p>
-                {editMode && planDay && (
-                  <div className="flex gap-0.5">
-                    <button
-                      onClick={() => setEditDayId(editDayId === planDay.id ? null : planDay.id)}
-                      className={`p-0.5 rounded transition-colors ${isToday ? "hover:bg-white/20 text-white/80" : "hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-500"}`}
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={() => onDeleteDay(planDay.id)}
-                      className={`p-0.5 rounded transition-colors ${isToday ? "hover:bg-white/20 text-white/80" : "hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400"}`}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {planDay ? (
-                <div className="flex flex-col gap-1 flex-1">
-                  <p className={`text-xs ${isToday ? "text-indigo-100" : "text-gray-500 dark:text-gray-400"}`}>
-                    {planDay.timeOfDay}
-                  </p>
-                  <span className={`text-xs px-1.5 py-0.5 rounded-md font-medium inline-flex items-center gap-1 w-fit ${
-                    isToday ? "bg-white/20 text-white" : getTypeColor(planDay.trainingType)
-                  }`}>
-                    {getTrainingTypeEmoji(planDay.trainingType)}{" "}
-                    {getTrainingTypeLabel(planDay.trainingType, planDay.customType)}
-                  </span>
-
-                  {visibleExercises.length > 0 && (
-                    <div className="flex flex-col gap-0.5 mt-1">
-                      {visibleExercises.map((ex) => (
-                        <div key={ex.id} className="flex items-center justify-between group/ex">
-                          <p className={`text-xs truncate ${isToday ? "text-indigo-100" : "text-gray-600 dark:text-gray-400"}`}>
-                            • {ex.exercise?.name ?? "Exercice"}
-                          </p>
-                          {editMode && (
-                            <button
-                              onClick={() => onDeleteExercise(planDay.id, ex.id)}
-                              className="opacity-0 group-hover/ex:opacity-100 p-0.5 rounded transition-all text-red-400 hover:text-red-600"
-                            >
-                              <X className="w-2.5 h-2.5" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                      {extraCount > 0 && (
-                        <p className={`text-xs ${isToday ? "text-indigo-200" : "text-gray-400 dark:text-gray-500"}`}>
-                          et {extraCount} autre{extraCount > 1 ? "s" : ""}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {editMode && planDay && editDayId === planDay.id && (
-                    <EditDayForm
-                      day={planDay}
-                      onSave={async (data) => { await onEditDay(planDay.id, data); setEditDayId(null); }}
-                      onCancel={() => setEditDayId(null)}
-                    />
-                  )}
-
-                  {editMode ? (
-                    <>
-                      {searchOpenFor === planDay.id ? (
-                        <ExerciseSearch
-                          onAdd={(ex) => onAddExercise(planDay.id, ex)}
-                          onClose={() => setSearchOpenFor(null)}
-                        />
-                      ) : (
-                        <button
-                          onClick={() => setSearchOpenFor(planDay.id)}
-                          className={`mt-auto text-xs px-1.5 py-1 rounded-lg font-medium transition-colors flex items-center gap-0.5 ${
-                            isToday ? "bg-white/20 hover:bg-white/30 text-white" : "bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400"
-                          }`}
-                        >
-                          <Plus className="w-3 h-3" />
-                          Ajouter
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => onLogSession(planDay)}
-                      className={`mt-auto text-xs px-1.5 py-1 rounded-lg font-medium transition-colors ${
-                        isToday
-                          ? "bg-white/20 hover:bg-white/30 text-white"
-                          : "bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400"
-                      }`}
-                    >
-                      <Play className="w-3 h-3 inline mr-0.5" />
-                      Faire
-                    </button>
-                  )}
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
-
-      {editMode && (
-        <div className="mt-3">
-          {showAddDayForm ? (
-            <AddDayForm
-              onAdd={async (data) => { await onAddDay(data); setShowAddDayForm(false); }}
-              onCancel={() => setShowAddDayForm(false)}
-            />
-          ) : (
-            <button
-              onClick={() => setShowAddDayForm(true)}
-              className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 text-sm font-medium hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Ajouter un jour
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---- NextSession ----
-function NextSession({ nextDay }: { nextDay: PlanDay | null }) {
-  if (!nextDay) return null;
-  return (
-    <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
-      <h3 className="text-sm font-semibold text-indigo-100 mb-3 flex items-center gap-2">
-        <Clock className="w-4 h-4" />
-        Prochaine séance
-      </h3>
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <p className="text-xl font-bold">{DAYS_FULL_FR[nextDay.dayOfWeek]}</p>
-          <p className="text-sm text-indigo-200">
-            {nextDay.timeOfDay} — {getTrainingTypeEmoji(nextDay.trainingType)}{" "}
-            {getTrainingTypeLabel(nextDay.trainingType, nextDay.customType)}
-          </p>
-        </div>
-      </div>
-      {nextDay.exercises.length > 0 && (
-        <div className="space-y-1.5 mt-3 pt-3 border-t border-white/20">
-          {nextDay.exercises.slice(0, 5).map((ex) => (
-            <div key={ex.id} className="flex items-center justify-between text-sm">
-              <span className="text-indigo-100 flex items-center gap-1.5">
-                <Dumbbell className="w-3.5 h-3.5" />
-                {ex.exercise?.name ?? "Exercice"}
-              </span>
-              <span className="text-white font-medium">
-                {ex.plannedSets}×{ex.plannedReps}
-                {ex.plannedWeightKg && ` @ ${ex.plannedWeightKg}kg`}
-              </span>
-            </div>
-          ))}
-          {nextDay.exercises.length > 5 && (
-            <p className="text-xs text-indigo-200">+{nextDay.exercises.length - 5} autres exercices</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---- ProgressSection ----
-function ProgressSection({
-  completionRate,
-  streakDays,
-  weeklyBreakdown,
+// ─── Weight progress card ─────────────────────────────────────────────────────
+function WeightProgress({
   initialWeightKg,
   targetWeightKg,
+  latestMeasurement,
 }: {
-  completionRate: number;
-  streakDays: number;
-  weeklyBreakdown: Array<{ weekStart: string; planned: number; logged: number }>;
   initialWeightKg?: number | null;
   targetWeightKg?: number | null;
+  latestMeasurement?: Measurement | null;
 }) {
-  const weightProgress =
-    initialWeightKg && targetWeightKg && initialWeightKg !== targetWeightKg
-      ? Math.min(100, Math.max(0, Math.round(((initialWeightKg - initialWeightKg) / (initialWeightKg - targetWeightKg)) * 100)))
-      : null;
+  if (!targetWeightKg) return null;
+
+  const currentKg = latestMeasurement?.bodyWeightKg ?? initialWeightKg;
+  const startKg = initialWeightKg ?? currentKg;
+  if (!currentKg || !startKg) return null;
+
+  const totalDelta = targetWeightKg - startKg;
+  const done = currentKg - startKg;
+  const pct = totalDelta !== 0 ? Math.min(100, Math.max(0, Math.round((done / totalDelta) * 100))) : 0;
+  const remaining = Math.abs(targetWeightKg - currentKg);
+  const isLoss = targetWeightKg < (startKg ?? 0);
+  const isOnTrack = isLoss ? currentKg <= (startKg ?? 0) : currentKg >= (startKg ?? 0);
 
   return (
-    <div>
-      <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-        <BarChart2 className="w-4 h-4 text-indigo-500" />
-        Progression
-      </h3>
-
-      {/* Ring + streak */}
-      <div className="flex items-center gap-6 mb-5">
-        <div className="relative flex-shrink-0">
-          <CircleProgress pct={Math.round(completionRate)} />
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
-              {Math.round(completionRate)}%
-            </span>
-            <span className="text-xs text-gray-400">complétion</span>
-          </div>
+    <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Scale className="w-4 h-4 text-indigo-400" />
+          <span className="text-sm font-semibold text-white">Objectif poids</span>
         </div>
-        <div className="flex flex-col gap-3">
-          <div className="p-3 rounded-2xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800 text-center">
-            <p className="text-3xl font-black text-orange-500 dark:text-orange-400 flex items-center justify-center gap-1">
-              {streakDays}
-              <Flame className="w-6 h-6" />
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Jours de streak</p>
+        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pct >= 100 ? "bg-green-500/20 text-green-300" : "bg-indigo-500/20 text-indigo-300"}`}>
+          {pct}%
+        </span>
+      </div>
+
+      <div className="flex items-end gap-3 mb-3">
+        <div className="text-center">
+          <p className="text-xs text-slate-400 mb-1">Départ</p>
+          <p className="text-lg font-bold text-slate-200">{startKg} kg</p>
+        </div>
+        <div className="flex-1 flex flex-col items-center pb-2">
+          <div className="w-full h-2.5 bg-slate-700 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${pct}%`,
+                background: pct >= 100 ? "linear-gradient(90deg, #22c55e, #16a34a)" : "linear-gradient(90deg, #818cf8, #a78bfa)",
+              }}
+            />
           </div>
+          {latestMeasurement?.bodyWeightKg && (
+            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+              {isOnTrack ? <TrendingUp className="w-3 h-3 text-green-400" /> : <TrendingDown className="w-3 h-3 text-orange-400" />}
+              <span>{currentKg} kg</span>
+              <span className="text-slate-500">— {fmtDateShort(latestMeasurement.date)}</span>
+            </p>
+          )}
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-slate-400 mb-1">Objectif</p>
+          <p className="text-lg font-bold text-indigo-400">{targetWeightKg} kg</p>
         </div>
       </div>
 
-      {/* Goal weight progress bar */}
-      {initialWeightKg && targetWeightKg && (
-        <div className="mb-4 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-2 mb-2">
-            <Target className="w-4 h-4 text-indigo-500" />
-            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Objectif poids</span>
-          </div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm font-bold text-gray-900 dark:text-white">{initialWeightKg} kg</span>
-            <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{targetWeightKg} kg</span>
-          </div>
-          <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-indigo-500 rounded-full transition-all duration-700"
-              style={{ width: `${weightProgress ?? 0}%` }}
-            />
-          </div>
-        </div>
+      {pct < 100 && (
+        <p className="text-xs text-slate-400 text-center">
+          Encore <span className="font-semibold text-white">{remaining.toFixed(1)} kg</span> {isLoss ? "à perdre" : "à prendre"}
+        </p>
+      )}
+      {pct >= 100 && (
+        <p className="text-xs text-green-300 text-center font-medium">Objectif atteint ! 🎉</p>
       )}
 
-      {/* Weekly bars */}
-      {weeklyBreakdown.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">4 dernières semaines</p>
-          <div className="flex gap-2 items-end h-16">
-            {weeklyBreakdown.slice(-4).map((week, i) => {
-              const pct = week.planned > 0 ? Math.min((week.logged / week.planned) * 100, 100) : 0;
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full">
-                  <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full flex-1 relative overflow-hidden">
-                    <div
-                      className="absolute bottom-0 left-0 right-0 bg-indigo-500 rounded-full transition-all duration-500"
-                      style={{ height: `${pct}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-400">S{i + 1}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+      {!latestMeasurement?.bodyWeightKg && (
+        <p className="text-xs text-slate-500 text-center mt-1 flex items-center justify-center gap-1">
+          <AlertCircle className="w-3 h-3" />
+          Enregistre tes mensurations pour suivre la progression en temps réel
+        </p>
       )}
     </div>
   );
 }
 
-// ---- Main Component ----
+// ─── Main component ───────────────────────────────────────────────────────────
 const TrainingPlanDashboard: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -738,7 +723,73 @@ const TrainingPlanDashboard: React.FC = () => {
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [logTargetDay, setLogTargetDay] = useState<PlanDay | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const [isSavingPlan, setIsSavingPlan] = useState(false);
+  const [showAddDay, setShowAddDay] = useState(false);
+  const [latestMeasurement, setLatestMeasurement] = useState<Measurement | null>(null);
+
+  // Edit draft state (only used when editMode = true)
+  const [draftName, setDraftName] = useState("");
+  const [draftDesc, setDraftDesc] = useState("");
+  const [draftGoal, setDraftGoal] = useState("");
+  const [draftCustomGoal, setDraftCustomGoal] = useState("");
+  const [draftTargetWeight, setDraftTargetWeight] = useState("");
+  const [draftInitialWeight, setDraftInitialWeight] = useState("");
+  const [draftNotes, setDraftNotes] = useState("");
+  const [draftStartDate, setDraftStartDate] = useState("");
+  const [draftEndDate, setDraftEndDate] = useState("");
+  const [savingPlan, setSavingPlan] = useState(false);
+
+  // Fetch latest measurement for weight sync
+  useEffect(() => {
+    fetch(`${API_URL}/measurements`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((data) => {
+        const list: Measurement[] = Array.isArray(data) ? data : (data.measurements ?? []);
+        const sorted = [...list].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const withWeight = sorted.find((m) => m.bodyWeightKg != null);
+        if (withWeight) setLatestMeasurement(withWeight);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Sync draft state when entering edit mode
+  useEffect(() => {
+    if (editMode && plan) {
+      setDraftName(plan.name);
+      setDraftDesc(plan.description ?? "");
+      setDraftGoal(plan.bodyGoal ?? "");
+      setDraftCustomGoal(plan.customGoal ?? "");
+      setDraftTargetWeight(plan.targetWeightKg != null ? String(plan.targetWeightKg) : "");
+      setDraftInitialWeight(plan.initialWeightKg != null ? String(plan.initialWeightKg) : "");
+      setDraftNotes(plan.initialNotes ?? "");
+      setDraftStartDate(plan.startDate ? plan.startDate.split("T")[0] : "");
+      setDraftEndDate(plan.endDate ? plan.endDate.split("T")[0] : "");
+    }
+  }, [editMode, plan]);
+
+  const handleSaveAllFields = async () => {
+    if (!plan) return;
+    setSavingPlan(true);
+    try {
+      await updatePlan(plan.id, {
+        name: draftName || plan.name,
+        description: draftDesc || null,
+        bodyGoal: draftGoal || null,
+        customGoal: draftGoal === "custom" ? draftCustomGoal : null,
+        targetWeightKg: draftTargetWeight ? Number(draftTargetWeight) : null,
+        initialWeightKg: draftInitialWeight ? Number(draftInitialWeight) : null,
+        initialNotes: draftNotes || null,
+        startDate: draftStartDate || null,
+        endDate: draftEndDate || null,
+      });
+      await refetch();
+      setEditMode(false);
+      showToast("Plan mis à jour", "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Erreur", "error");
+    } finally {
+      setSavingPlan(false);
+    }
+  };
 
   const handleToggleActive = async () => {
     if (!plan) return;
@@ -746,38 +797,20 @@ const TrainingPlanDashboard: React.FC = () => {
       await updatePlan(plan.id, { isActive: !plan.isActive });
       await refetch();
       showToast(plan.isActive ? "Plan désactivé" : "Plan activé", "success");
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Erreur", "error");
+    } catch {
+      showToast("Erreur", "error");
     }
   };
 
   const handleDelete = async () => {
     if (!plan) return;
-    if (!window.confirm(`Supprimer le plan "${plan.name}" ? Cette action est irréversible.`)) return;
+    if (!window.confirm(`Supprimer "${plan.name}" ? Cette action est irréversible.`)) return;
     try {
       await deletePlan(plan.id);
       showToast("Plan supprimé", "success");
       navigate("/dashboard/training-plans");
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Erreur", "error");
-    }
-  };
-
-  const handleOpenLogModal = (day: PlanDay) => {
-    setLogTargetDay(day);
-    setLogModalOpen(true);
-  };
-
-  const handleSavePlanField = async (patch: Record<string, unknown>) => {
-    if (!plan) return;
-    setIsSavingPlan(true);
-    try {
-      await updatePlan(plan.id, patch);
-      await refetch();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Erreur", "error");
-    } finally {
-      setIsSavingPlan(false);
+    } catch {
+      showToast("Erreur lors de la suppression", "error");
     }
   };
 
@@ -812,7 +845,22 @@ const TrainingPlanDashboard: React.FC = () => {
     }
   };
 
-  const handleAddDay = async (data: { dayOfWeek: number; timeOfDay: string; trainingType: string; customType?: string }) => {
+  const handleUpdateExercise = async (dayId: string, exId: string, patch: Partial<PlanExercise>) => {
+    if (!plan) return;
+    await fetch(`${API_URL}/training-plans/${plan.id}/days/${dayId}/exercises/${exId}`, {
+      method: "PUT",
+      headers: authHeaders(),
+      body: JSON.stringify(patch),
+    }).then(async (res) => {
+      if (!res.ok) throw new Error("Erreur modification exercice");
+      await refetch();
+      showToast("Exercice mis à jour", "success");
+    }).catch((err) => {
+      showToast(err instanceof Error ? err.message : "Erreur", "error");
+    });
+  };
+
+  const handleAddDay = async (data: { dayOfWeek: number; timeOfDay: string; trainingType: string; label?: string }) => {
     if (!plan) return;
     try {
       const res = await fetch(`${API_URL}/training-plans/${plan.id}/days`, {
@@ -823,6 +871,7 @@ const TrainingPlanDashboard: React.FC = () => {
       if (!res.ok) throw new Error("Erreur ajout jour");
       await refetch();
       showToast("Jour ajouté", "success");
+      setShowAddDay(false);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Erreur", "error");
     }
@@ -844,7 +893,7 @@ const TrainingPlanDashboard: React.FC = () => {
     }
   };
 
-  const handleEditDay = async (dayId: string, data: { timeOfDay: string; trainingType: string; customType?: string }) => {
+  const handleEditDay = async (dayId: string, data: { timeOfDay: string; trainingType: string; label?: string }) => {
     if (!plan) return;
     try {
       const res = await fetch(`${API_URL}/training-plans/${plan.id}/days/${dayId}`, {
@@ -854,28 +903,25 @@ const TrainingPlanDashboard: React.FC = () => {
       });
       if (!res.ok) throw new Error("Erreur modification jour");
       await refetch();
-      showToast("Jour modifié", "success");
+      showToast("Jour mis à jour", "success");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Erreur", "error");
     }
   };
 
+  // ── Loading / error ──
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
       </div>
     );
   }
-
   if (error || !plan) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-8 text-center">
-        <p className="text-red-600 dark:text-red-400 mb-4">{error ?? "Plan introuvable"}</p>
-        <button
-          onClick={() => navigate("/dashboard/training-plans")}
-          className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
-        >
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        <p className="text-red-400 mb-4">{error ?? "Plan introuvable"}</p>
+        <button onClick={() => navigate("/dashboard/training-plans")} className="text-indigo-400 hover:underline text-sm">
           Retour à mes plans
         </button>
       </div>
@@ -884,197 +930,475 @@ const TrainingPlanDashboard: React.FC = () => {
 
   const nextDay = getNextPlanDay(plan.days);
   const logs = plan.sessions ?? [];
+  const todayDow = new Date().getDay();
+  const totalExercises = plan.days.reduce((s, d) => s + d.exercises.length, 0);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-      {/* Header */}
-      <div>
+    <div className="w-full min-h-screen bg-slate-950">
+      {/* ── HERO HEADER ─────────────────────────────────────── */}
+      <div className="w-full bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 border-b border-white/5 px-4 sm:px-6 lg:px-8 pt-6 pb-8">
         <button
           onClick={() => navigate("/dashboard/training-plans")}
-          className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-4 transition-colors"
+          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white mb-5 transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
           Mes plans
         </button>
 
-        <div className="flex items-start justify-between flex-wrap gap-3">
-          <div className="flex-1 min-w-0">
-            {editMode ? (
-              <div className="space-y-2">
-                <InlineEdit
-                  value={plan.name}
-                  onSave={(v) => handleSavePlanField({ name: v })}
-                  placeholder="Nom du plan"
-                  className="text-2xl font-bold text-gray-900 dark:text-white"
-                />
-                <InlineEdit
-                  value={plan.description ?? ""}
-                  onSave={(v) => handleSavePlanField({ description: v })}
-                  placeholder="Ajouter une description..."
-                  multiline
-                  className="text-sm text-gray-500 dark:text-gray-400"
-                />
-                <InlineEdit
-                  value={plan.initialNotes ?? ""}
-                  onSave={(v) => handleSavePlanField({ initialNotes: v })}
-                  placeholder="Notes pour l'IA..."
-                  multiline
-                  className="text-sm text-gray-500 dark:text-gray-400"
-                />
+        {editMode ? (
+          /* ─ EDIT MODE header ─ */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                <Pencil className="w-3.5 h-3.5" />
+                Mode édition
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveAllFields} disabled={savingPlan}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
+                >
+                  {savingPlan ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Enregistrer
+                </button>
+                <button
+                  onClick={() => setEditMode(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-600 text-slate-300 text-sm hover:bg-slate-800 transition-colors"
+                >
+                  Annuler
+                </button>
               </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{plan.name}</h1>
-                  {plan.bodyGoal && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
-                      <span>{getBodyGoalEmoji(plan.bodyGoal)}</span>
-                      <span>{getBodyGoalLabel(plan.bodyGoal, plan.customGoal)}</span>
-                    </span>
-                  )}
-                </div>
-                {plan.description && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{plan.description}</p>
-                )}
-                {(plan.startDate || (plan.initialWeightKg && plan.targetWeightKg)) && (
-                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    {plan.startDate && (
-                      <span>Début : {formatDate(plan.startDate)}</span>
-                    )}
-                    {plan.initialWeightKg && plan.targetWeightKg && (
-                      <span className="flex items-center gap-1">
-                        {plan.initialWeightKg} kg
-                        <ArrowRight className="w-3 h-3" />
-                        <span className="font-medium text-indigo-600 dark:text-indigo-400">{plan.targetWeightKg} kg</span>
-                      </span>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+            </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <ActiveToggle isActive={plan.isActive} onToggle={handleToggleActive} />
-            <button
-              onClick={() => setEditMode(!editMode)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-sm font-medium transition-colors ${
-                editMode
-                  ? "bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700"
-                  : "border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-              }`}
-            >
-              {editMode ? (
-                <>
-                  {isSavingPlan ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                  Terminer
-                </>
-              ) : (
-                <>
-                  <Pencil className="w-4 h-4" />
-                  Modifier le plan
-                </>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="sm:col-span-2 lg:col-span-2">
+                <label className="block text-xs text-slate-400 mb-1">Nom du plan</label>
+                <EditField value={draftName} onChange={setDraftName} placeholder="Ex: Programme masse" className="w-full text-xl font-bold" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Objectif</label>
+                <select
+                  value={draftGoal}
+                  onChange={(e) => setDraftGoal(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-400"
+                >
+                  <option value="">— Aucun —</option>
+                  {BODY_GOALS.map((g) => (
+                    <option key={g.value} value={g.value}>{g.emoji} {g.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {draftGoal === "custom" && (
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Objectif personnalisé</label>
+                  <EditField value={draftCustomGoal} onChange={setDraftCustomGoal} placeholder="Décrivez votre objectif" className="w-full text-sm" />
+                </div>
               )}
-            </button>
-            <button
-              onClick={handleDelete}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-              Supprimer
-            </button>
+
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Poids de départ (kg)</label>
+                <EditField value={draftInitialWeight} onChange={setDraftInitialWeight} type="number" placeholder="ex: 80" className="w-full text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Poids cible (kg)</label>
+                <EditField value={draftTargetWeight} onChange={setDraftTargetWeight} type="number" placeholder="ex: 75" className="w-full text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Date de début</label>
+                <EditField value={draftStartDate} onChange={setDraftStartDate} type="date" className="w-full text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Date de fin</label>
+                <EditField value={draftEndDate} onChange={setDraftEndDate} type="date" className="w-full text-sm" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs text-slate-400 mb-1">Description</label>
+                <EditTextarea value={draftDesc} onChange={setDraftDesc} placeholder="Description du programme..." />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs text-slate-400 mb-1">Notes pour l&apos;IA</label>
+                <EditTextarea value={draftNotes} onChange={setDraftNotes} placeholder="Contraintes, préférences, informations pour les suggestions IA..." rows={3} />
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          /* ─ VIEW MODE header ─ */
+          <div className="flex items-start justify-between flex-wrap gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 flex-wrap mb-1">
+                <h1 className="text-3xl font-black text-white tracking-tight">{plan.name}</h1>
+                {plan.bodyGoal && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    {getBodyGoalEmoji(plan.bodyGoal)} {getBodyGoalLabel(plan.bodyGoal, plan.customGoal)}
+                  </span>
+                )}
+                <span className={`text-xs px-2 py-1 rounded-full font-medium ${plan.isActive ? "bg-green-500/20 text-green-300 border border-green-500/30" : "bg-slate-700 text-slate-400 border border-slate-600"}`}>
+                  {plan.isActive ? "● Actif" : "○ Inactif"}
+                </span>
+              </div>
+
+              {plan.description && (
+                <p className="text-slate-400 text-sm mt-1 max-w-2xl">{plan.description}</p>
+              )}
+
+              <div className="flex flex-wrap gap-4 mt-3 text-xs text-slate-500">
+                {plan.startDate && <span>Début : <span className="text-slate-300">{fmtDate(plan.startDate)}</span></span>}
+                {plan.endDate && <span>Fin : <span className="text-slate-300">{fmtDate(plan.endDate)}</span></span>}
+                <span>{plan.days.length} jour{plan.days.length > 1 ? "s" : ""}/semaine</span>
+                <span>{totalExercises} exercice{totalExercises > 1 ? "s" : ""} planifié{totalExercises > 1 ? "s" : ""}</span>
+                {plan.initialWeightKg && plan.targetWeightKg && (
+                  <span className="flex items-center gap-1">
+                    {plan.initialWeightKg} kg
+                    <ArrowRight className="w-3 h-3" />
+                    <span className="text-indigo-400 font-semibold">{plan.targetWeightKg} kg</span>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={handleToggleActive}
+                title={plan.isActive ? "Désactiver" : "Activer"}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-sm font-medium transition-colors ${
+                  plan.isActive
+                    ? "border-green-500/30 text-green-300 hover:bg-green-500/10"
+                    : "border-slate-600 text-slate-400 hover:bg-slate-800"
+                }`}
+              >
+                {plan.isActive ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                {plan.isActive ? "Actif" : "Inactif"}
+              </button>
+              <button
+                onClick={() => setEditMode(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-500/40 text-indigo-300 text-sm font-medium hover:bg-indigo-500/10 transition-colors"
+              >
+                <Pencil className="w-4 h-4" />
+                Modifier
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-500/30 text-red-400 text-sm font-medium hover:bg-red-500/10 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Supprimer
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* 2-col layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column (2/3) */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Weekly Calendar */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
-            <WeeklyCalendar
-              days={plan.days}
-              editMode={editMode}
-              onLogSession={handleOpenLogModal}
-              onAddExercise={handleAddExercise}
-              onDeleteExercise={handleDeleteExercise}
-              onAddDay={handleAddDay}
-              onDeleteDay={handleDeleteDay}
-              onEditDay={handleEditDay}
-            />
-          </div>
+      {/* ── MAIN CONTENT ────────────────────────────────────── */}
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
 
-          {/* Next session */}
-          {nextDay && <NextSession nextDay={nextDay} />}
+          {/* ─ LEFT COLUMN (8/12) ─ */}
+          <div className="xl:col-span-8 space-y-6">
 
-          {/* Progression */}
-          {progress && (
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
-              <ProgressSection
-                completionRate={progress.completionRate}
-                streakDays={progress.streakDays}
-                weeklyBreakdown={progress.weeklyBreakdown}
-                initialWeightKg={plan.initialWeightKg}
-                targetWeightKg={plan.targetWeightKg}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Right column (1/3) */}
-        <div className="space-y-6">
-          {/* AI Insights */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
-            <AIPlanInsights planId={plan.id} />
-          </div>
-
-          {/* Session history */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
-            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4">Historique récent</h3>
-            {logs.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">Aucune séance loggée</p>
-            ) : (
-              <div className="space-y-2">
-                {logs.slice(0, 5).map((log) => (
-                  <div
-                    key={log.id}
-                    className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
+            {/* ── WEEKLY CALENDAR ── */}
+            <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-indigo-400" />
+                  Planning hebdomadaire
+                </h2>
+                {editMode && (
+                  <button
+                    onClick={() => setShowAddDay(!showAddDay)}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400 border border-indigo-500/20 font-medium transition-colors"
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {formatDate(log.date)}
-                        </p>
-                        {log.moodScore && (
-                          <span className="text-base">{getMoodEmoji(log.moodScore)}</span>
-                        )}
-                        {log.skipped && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-gray-200 dark:bg-gray-700 text-xs text-gray-500 dark:text-gray-400 font-medium">
-                            Sautée
+                    <Plus className="w-3.5 h-3.5" />
+                    Ajouter un jour
+                  </button>
+                )}
+              </div>
+
+              {/* Mobile: horizontal scroll | Desktop: 7-col grid */}
+              <div className="hidden lg:grid lg:grid-cols-7 gap-2">
+                {Array.from({ length: 7 }, (_, i) => (
+                  <DayCard
+                    key={i}
+                    dayIndex={i}
+                    planDay={plan.days.find((d) => d.dayOfWeek === i)}
+                    isToday={i === todayDow}
+                    editMode={editMode}
+                    planId={plan.id}
+                    onLogSession={(d) => { setLogTargetDay(d); setLogModalOpen(true); }}
+                    onAddExercise={handleAddExercise}
+                    onDeleteExercise={handleDeleteExercise}
+                    onUpdateExercise={handleUpdateExercise}
+                    onDeleteDay={handleDeleteDay}
+                    onEditDay={handleEditDay}
+                  />
+                ))}
+              </div>
+
+              {/* Mobile: horizontal scroll */}
+              <div className="flex lg:hidden gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
+                {Array.from({ length: 7 }, (_, i) => {
+                  const pd = plan.days.find((d) => d.dayOfWeek === i);
+                  if (!pd && !editMode) return null;
+                  return (
+                    <div key={i} className="min-w-[180px] flex-shrink-0 snap-start">
+                      <DayCard
+                        dayIndex={i}
+                        planDay={pd}
+                        isToday={i === todayDow}
+                        editMode={editMode}
+                        planId={plan.id}
+                        onLogSession={(d) => { setLogTargetDay(d); setLogModalOpen(true); }}
+                        onAddExercise={handleAddExercise}
+                        onDeleteExercise={handleDeleteExercise}
+                        onUpdateExercise={handleUpdateExercise}
+                        onDeleteDay={handleDeleteDay}
+                        onEditDay={handleEditDay}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {editMode && showAddDay && (
+                <div className="mt-4">
+                  <AddDayForm onAdd={handleAddDay} onCancel={() => setShowAddDay(false)} />
+                </div>
+              )}
+            </div>
+
+            {/* ── NEXT SESSION ── */}
+            {nextDay && (
+              <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 rounded-2xl p-5">
+                <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/5 -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-black/10 translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+                <div className="relative">
+                  <p className="text-indigo-200 text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5" />
+                    Prochaine séance
+                  </p>
+                  <div className="flex items-start justify-between mb-4 flex-wrap gap-2">
+                    <div>
+                      <h3 className="text-2xl font-black text-white">{DAYS_FULL_FR[nextDay.dayOfWeek]}</h3>
+                      <p className="text-indigo-200 text-sm mt-0.5">
+                        {nextDay.timeOfDay} · {getTrainingTypeEmoji(nextDay.trainingType)} {getTrainingTypeLabel(nextDay.trainingType, nextDay.customType)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setLogTargetDay(nextDay); setLogModalOpen(true); }}
+                      className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm font-semibold rounded-xl transition-colors backdrop-blur"
+                    >
+                      <Play className="w-4 h-4" />
+                      Logger la séance
+                    </button>
+                  </div>
+                  {nextDay.exercises.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {nextDay.exercises.map((ex) => (
+                        <div key={ex.id} className="flex items-center justify-between bg-white/10 rounded-xl px-3 py-2">
+                          <span className="text-sm text-indigo-100 flex items-center gap-2">
+                            <Dumbbell className="w-3.5 h-3.5 text-indigo-200" />
+                            {ex.exercise?.name ?? "Exercice"}
                           </span>
+                          <span className="text-xs text-white font-mono font-bold">
+                            {ex.plannedSets}×{ex.plannedReps}
+                            {ex.plannedWeightKg != null && <span className="text-indigo-200"> @{ex.plannedWeightKg}kg</span>}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── PROGRESSION ── */}
+            {progress && (
+              <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5">
+                <h2 className="text-base font-bold text-white flex items-center gap-2 mb-5">
+                  <BarChart2 className="w-4 h-4 text-indigo-400" />
+                  Progression
+                </h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                  {/* Completion ring */}
+                  <div className="flex flex-col items-center justify-center p-4 bg-slate-800/60 rounded-2xl border border-slate-700/50">
+                    <div className="relative mb-2">
+                      <Ring pct={Math.round(progress.completionRate)} size={80} />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-lg font-black text-indigo-400">{Math.round(progress.completionRate)}%</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-400 font-medium">Complétion</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{progress.totalLoggedSessions}/{progress.totalPlannedSessions} séances</p>
+                  </div>
+
+                  {/* Streak */}
+                  <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-orange-500/10 to-red-500/10 rounded-2xl border border-orange-500/20">
+                    <span className="text-4xl font-black text-orange-400 flex items-center gap-1">
+                      {progress.streakDays}
+                      <Flame className="w-7 h-7" />
+                    </span>
+                    <p className="text-xs text-slate-400 font-medium mt-1">Jours de streak</p>
+                  </div>
+
+                  {/* Mood avg */}
+                  <div className="flex flex-col items-center justify-center p-4 bg-slate-800/60 rounded-2xl border border-slate-700/50">
+                    <span className="text-4xl mb-1">
+                      {progress.averageMoodScore != null ? getMoodEmoji(Math.round(progress.averageMoodScore)) : "—"}
+                    </span>
+                    <p className="text-xs text-slate-400 font-medium">Humeur moyenne</p>
+                    {progress.averageMoodScore != null && (
+                      <p className="text-xs text-slate-500 mt-0.5">{progress.averageMoodScore.toFixed(1)}/5</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4-week chart */}
+                {progress.weeklyBreakdown.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">4 dernières semaines</p>
+                    <div className="flex gap-3 items-end h-24">
+                      {progress.weeklyBreakdown.slice(-4).map((w, i) => {
+                        const pct = w.planned > 0 ? Math.min((w.logged / w.planned) * 100, 100) : 0;
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-1.5 h-full">
+                            <div className="w-full flex-1 bg-slate-800 rounded-lg overflow-hidden relative">
+                              <div
+                                className="absolute bottom-0 left-0 right-0 rounded-lg transition-all duration-700"
+                                style={{
+                                  height: `${pct}%`,
+                                  background: pct >= 80 ? "linear-gradient(180deg, #818cf8, #6366f1)" : pct >= 50 ? "linear-gradient(180deg, #a78bfa, #8b5cf6)" : "linear-gradient(180deg, #64748b, #475569)",
+                                }}
+                              />
+                            </div>
+                            <div className="text-center">
+                              <span className="text-xs font-bold text-white">{Math.round(pct)}%</span>
+                              <span className="block text-xs text-slate-500">S{i + 1}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── SESSION HISTORY ── */}
+            <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5">
+              <h2 className="text-base font-bold text-white flex items-center gap-2 mb-4">
+                <ListChecks className="w-4 h-4 text-indigo-400" />
+                Historique des séances
+              </h2>
+              {logs.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-3">
+                    <Dumbbell className="w-5 h-5 text-slate-600" />
+                  </div>
+                  <p className="text-sm text-slate-500">Aucune séance enregistrée</p>
+                  <p className="text-xs text-slate-600 mt-1">Commence par logger ta première séance !</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {logs.slice(0, 8).map((log) => (
+                    <div
+                      key={log.id}
+                      className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${
+                        log.skipped
+                          ? "bg-slate-800/40 border-slate-700/30 opacity-60"
+                          : "bg-slate-800/60 border-slate-700/50 hover:border-slate-600/80"
+                      }`}
+                    >
+                      <span className="text-xl flex-shrink-0 mt-0.5">
+                        {log.skipped ? "⏭️" : log.moodScore ? getMoodEmoji(log.moodScore) : "✅"}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-white">{fmtDate(log.date)}</p>
+                          {log.skipped && (
+                            <span className="px-1.5 py-0.5 bg-slate-700 rounded-md text-xs text-slate-400 font-medium">Sautée</span>
+                          )}
+                          {log.moodScore && !log.skipped && (
+                            <span className="text-xs text-slate-400">{log.moodScore}/5</span>
+                          )}
+                        </div>
+                        {log.moodNote && (
+                          <p className="text-xs text-slate-400 mt-0.5 truncate">{log.moodNote}</p>
+                        )}
+                        {log.skipReason && (
+                          <p className="text-xs text-slate-500 mt-0.5 italic truncate">{log.skipReason}</p>
                         )}
                       </div>
-                      {log.moodNote && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{log.moodNote}</p>
-                      )}
                     </div>
+                  ))}
+                  {logs.length > 8 && (
+                    <p className="text-xs text-slate-500 text-center pt-1">+{logs.length - 8} séances supplémentaires</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ─ RIGHT COLUMN (4/12) ─ */}
+          <div className="xl:col-span-4 space-y-5">
+
+            {/* Weight sync */}
+            <WeightProgress
+              initialWeightKg={plan.initialWeightKg}
+              targetWeightKg={plan.targetWeightKg}
+              latestMeasurement={latestMeasurement}
+            />
+
+            {/* Stats summary */}
+            <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4">
+              <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-yellow-400" />
+                Résumé du plan
+              </h2>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: "Séances/sem", value: plan.days.length, unit: "jours" },
+                  { label: "Exercices", value: totalExercises, unit: "planifiés" },
+                  { label: "Complétion", value: progress ? `${Math.round(progress.completionRate)}%` : "—", unit: "30 jours" },
+                  { label: "Streak", value: progress?.streakDays ?? 0, unit: "jours" },
+                ].map((stat) => (
+                  <div key={stat.label} className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/40">
+                    <p className="text-xs text-slate-400 font-medium mb-1">{stat.label}</p>
+                    <p className="text-xl font-black text-white">{stat.value}</p>
+                    <p className="text-xs text-slate-500">{stat.unit}</p>
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Plan notes */}
+            {plan.initialNotes && (
+              <div className="bg-slate-900/80 border border-amber-500/20 rounded-2xl p-4">
+                <h2 className="text-sm font-bold text-amber-300 mb-2 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  Notes & contexte
+                </h2>
+                <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">{plan.initialNotes}</p>
+              </div>
             )}
+
+            {/* AI insights */}
+            <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4">
+              <AIPlanInsights planId={plan.id} />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Log session modal */}
-      <LogPlanSessionModal
-        isOpen={logModalOpen}
-        onClose={() => { setLogModalOpen(false); setLogTargetDay(null); }}
-        planId={plan.id}
-        planDay={logTargetDay}
-        onSuccess={refetch}
-      />
+      {/* ── LOG MODAL ── */}
+      {logModalOpen && logTargetDay && (
+        <LogPlanSessionModal
+          planId={plan.id}
+          planDay={logTargetDay}
+          onClose={() => { setLogModalOpen(false); setLogTargetDay(null); }}
+          onLogged={() => { refetch(); setLogModalOpen(false); setLogTargetDay(null); }}
+        />
+      )}
     </div>
   );
 };
