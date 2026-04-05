@@ -17,6 +17,7 @@ import statsRoutes from "./routes/statsRoutes";
 import coachNoteRoutes from "./routes/coachNoteRoutes";
 import { initStreakCron } from "./cron/streakJob";
 import { initReminderCron } from "./cron/reminderJob";
+import { initPlanReminderCron } from "./cron/planReminderJob";
 
 dotenv.config();
 
@@ -89,4 +90,5 @@ app.listen(port, () => {
   // Initialisation des tâches CRON
   initStreakCron();
   initReminderCron();
+  initPlanReminderCron();
 });
