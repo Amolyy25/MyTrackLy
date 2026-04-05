@@ -43,6 +43,12 @@ export interface AISuggestion {
   type: "advice" | "warning" | "motivation";
   title: string;
   content: string;
+  actions?: Array<{
+    id: string;
+    label: string;
+    type: "shift_day" | "change_plan" | "ask_question" | "add_exercise" | "other";
+    payload?: any;
+  }>;
 }
 
 const FALLBACK_SUGGESTION: AISuggestion = {
@@ -99,32 +105,56 @@ function buildPrompt(ctx: GeminiContext): string {
       ? `${ctx.weightTrend > 0 ? "+" : ""}${ctx.weightTrend.toFixed(1)} kg sur les 30 derniers jours`
       : "Pas assez de donnees pour calculer la tendance";
 
-  return `Tu es un coach sportif IA bienveillant qui analyse les donnees d'un sportif pour lui donner des conseils personnalises.
-Reponds UNIQUEMENT en JSON valide avec ce format exact: {"suggestions": [{"type": "advice|warning|motivation", "title": "...", "content": "..."}]}
-Donne entre 3 et 5 suggestions. Sois precis, base sur les donnees fournies.
-Si certaines donnees manquent, mentionne-le dans un conseil "advice".
+  return `Tu es MyTrackLy AI, un coach sportif de haut niveau (expert en musculation, physiologie et psychologie du sport). Ta mission est de transformer les données brutes en conseils d'expert ultra-concrets.
 
-Donnees du sportif:
+TON ANALYSE DOIT PORTER SUR :
+1. LA SURCHARGE PROGRESSIVE : Vérifie si le volume (séries/reps) augmente. Si stagnation > 2 semaines, propose une action.
+2. LA COHÉRENCE RÉCUPÉRATION/EFFORT : Si l'humeur ou la performance baisse, suggère un jour de repos ou un deload.
+3. ADAPTATION DU PLANNING : Si des séances sont sautées le même jour chaque semaine, propose de DÉCALER la séance (action shift_day).
+4. ENGAGEMENT : Pose des questions pour affiner la stratégie (action ask_question).
+
+TON STYLE : Pionnier, motivant mais scientifique. Pas de blabla, de l'action.
+
+INTERACTIVITÉ OBLIGATOIRE :
+Utilise le champ "actions" dès que possible pour :
+- Proposer de décaler une séance manquée.
+- Proposer un nouvel exercice plus adapté si stagnation.
+- Poser une question précise pour adapter le plan (ex: "Ressens-tu une douleur ?", "Ton sommeil est-il bon ?").
+
+FORMAT JSON MÉTIER :
+{
+  "suggestions": [
+    {
+      "type": "advice|warning|motivation",
+      "title": "Titre court & percutant",
+      "content": "Analyse précise avec explication technique courte.",
+      "actions": [
+        {
+          "id": "...",
+          "label": "Bouton d'action",
+          "type": "shift_day|change_plan|ask_question|add_exercise|other",
+          "payload": { ... }
+        }
+      ]
+    }
+  ]
+}
+
+Données du sportif:
 - Nom: ${ctx.user.name}
-- Objectif: ${ctx.user.goalType ?? "Non defini"}
-- Plan: ${ctx.plan.name} (objectif: ${ctx.plan.bodyGoal ?? "Non defini"})
-- Poids cible: ${ctx.plan.targetWeightKg ?? "Non defini"} kg
-- Objectif personnalise: ${ctx.plan.customGoal ?? "Aucun"}
+- Objectif: ${ctx.user.goalType ?? "Non défini"}
+- Plan: ${ctx.plan.name} (objectif: ${ctx.plan.bodyGoal ?? "Non défini"})
 - Notes initiales: ${ctx.plan.initialNotes ?? "Aucune"}
 
-Planning hebdomadaire:
+Planning:
 ${daysDescription}
 
-Seances recentes (10 dernieres):
+Historique séances & Humeur:
 ${sessionsDescription}
-
-Humeur et bien-etre (5 derniers):
 ${moodDescription}
 
-Derniere mensuration:
-${measurementDescription}
-
-Tendance poids (30 jours): ${weightTrendDescription}`;
+Mensurations: ${measurementDescription}
+Tendance: ${weightTrendDescription}`;
 }
 
 export async function getAISuggestions(
@@ -203,6 +233,10 @@ export async function getAISuggestions(
           typeof s.content === "string" &&
           validTypes.includes(s.type)
       )
+      .map((s: any) => ({
+        ...s,
+        actions: Array.isArray(s.actions) ? s.actions : undefined
+      }))
       .slice(0, 5);
 
     return suggestions.length > 0 ? suggestions : [FALLBACK_SUGGESTION];

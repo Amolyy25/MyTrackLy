@@ -202,16 +202,19 @@ const TrainingPlanNew: React.FC = () => {
     });
   };
 
-  const addExercise = (dayOfWeek: number, exercise: Exercise) => {
+  const addExercise = (dayOfWeek: number, exercise: Partial<Exercise> & { name: string }) => {
     const current = state.exercisesByDay[dayOfWeek] ?? [];
-    if (current.some((e) => e.exerciseId === exercise.id)) return;
+    const exerciseId = exercise.id || `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    if (current.some((e) => e.exerciseId === exerciseId)) return;
+    
     update({
       exercisesByDay: {
         ...state.exercisesByDay,
         [dayOfWeek]: [
           ...current,
           {
-            exerciseId: exercise.id,
+            exerciseId: exerciseId,
             exerciseName: exercise.name,
             plannedSets: 3,
             plannedReps: 10,
@@ -558,23 +561,36 @@ const TrainingPlanNew: React.FC = () => {
   // ---- STEP 3 ----
   const renderStep3 = () => (
     <div className="space-y-6">
-      {/* Skip link */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Ajoutez des exercices pour chaque jour (optionnel).
-        </p>
-        <button
-          type="button"
-          onClick={() => setStep(4)}
-          className="inline-flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium flex-shrink-0"
-        >
-          Passer cette étape
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Ajoutez des exercices pour chaque jour.
+          </p>
+          <button
+            type="button"
+            onClick={() => setStep(4)}
+            className="inline-flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium flex-shrink-0"
+          >
+            Passer cette étape
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Note pédagogique Progression */}
+        <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-500/5 border border-indigo-100 dark:border-indigo-500/20">
+          <div className="flex gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+              <Zap className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-bold text-slate-900 dark:text-white">Note sur la progression</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Ces séries et répétitions sont vos <b>points de départ</b>. En fonction de vos performances, l'IA vous suggérera chaque semaine d'augmenter la charge ou le volume pour garantir vos progrès.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
-      <p className="text-xs text-gray-400 dark:text-gray-500 -mt-4">
-        Vous pourrez ajouter des exercices depuis le dashboard
-      </p>
 
       {isLoadingExercises && (
         <div className="flex items-center justify-center py-6">
@@ -628,14 +644,27 @@ const TrainingPlanNew: React.FC = () => {
                           setSearchQuery("");
                         }}
                         disabled={exercises.some((e) => e.exerciseId === ex.id)}
-                        className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-sm text-gray-700 dark:text-gray-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-between"
+                        className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-indigo-900/30 text-sm text-slate-700 dark:text-slate-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-between"
                       >
                         <span>{ex.name}</span>
-                        <span className="text-xs text-gray-400 ml-2">{ex.category}</span>
+                        <span className="text-xs text-slate-400 ml-2">{ex.category}</span>
                       </button>
                     ))}
-                    {filteredExercises.length === 0 && (
-                      <p className="text-xs text-gray-400 px-3 py-2 text-center">Aucun exercice trouvé</p>
+                    {searchQuery.trim().length > 0 && !filteredExercises.some(e => e.name.toLowerCase() === searchQuery.toLowerCase()) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          addExercise(dayOfWeek, { name: searchQuery });
+                          setSearchQuery("");
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-sm font-bold flex items-center gap-2 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all border border-dashed border-indigo-200 dark:border-indigo-500/30"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Créer l'exercice "{searchQuery}"
+                      </button>
+                    )}
+                    {filteredExercises.length === 0 && searchQuery.trim().length === 0 && (
+                      <p className="text-xs text-slate-400 px-3 py-2 text-center">Recherchez un exercice...</p>
                     )}
                   </div>
                 )}

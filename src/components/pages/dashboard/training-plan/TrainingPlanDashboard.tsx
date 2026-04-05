@@ -210,19 +210,30 @@ function ExerciseSearch({ onAdd, onClose }: { onAdd: (ex: Exercise) => void; onC
           <div className="flex justify-center py-4">
             <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
           </div>
-        ) : filtered.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-3">Aucun résultat</p>
-        ) : (
+        ) : filtered.length > 0 ? (
           filtered.map((ex) => (
             <button
               key={ex.id}
               onClick={() => { onAdd(ex); onClose(); }}
-              className="w-full text-left px-3 py-2 hover:bg-indigo-500/20 transition-colors group"
+              className="w-full text-left px-3 py-2 hover:bg-slate-700/50 flex items-center justify-between transition-colors group"
             >
-              <span className="text-sm text-slate-200 group-hover:text-white">{ex.name}</span>
-              <span className="ml-2 text-xs text-slate-500">{ex.category}</span>
+              <div className="flex flex-col">
+                <span className="text-sm text-slate-200 group-hover:text-white">{ex.name}</span>
+                <span className="text-[10px] text-slate-500">{ex.category}</span>
+              </div>
+              <Plus className="w-3.5 h-3.5 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
           ))
+        ) : q.trim().length > 0 ? (
+          <button
+            onClick={() => { onAdd({ name: q } as any); onClose(); }}
+            className="w-full text-left px-3 py-3 bg-indigo-500/10 text-indigo-400 text-sm font-bold flex items-center gap-2 hover:bg-indigo-500/20 transition-all border-t border-indigo-500/20"
+          >
+            <Plus className="w-4 h-4" />
+            Créer l'exercice "{q}"
+          </button>
+        ) : (
+          <p className="text-xs text-slate-500 p-4 text-center italic">Tapez pour rechercher...</p>
         )}
       </div>
     </div>
@@ -812,17 +823,22 @@ const TrainingPlanDashboard: React.FC = () => {
     }
   };
 
-  const handleAddExercise = async (dayId: string, exercise: Exercise) => {
+  const handleAddExercise = async (dayId: string, exercise: Partial<Exercise> & { name: string }) => {
     if (!plan) return;
     try {
       const res = await fetch(`${API_URL}/training-plans/${plan.id}/days/${dayId}/exercises`, {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({ exerciseId: exercise.id, plannedSets: 3, plannedReps: 10 }),
+        body: JSON.stringify({
+          exerciseId: exercise.id,
+          exerciseName: exercise.id ? undefined : exercise.name,
+          plannedSets: 3,
+          plannedReps: 10,
+        }),
       });
       if (!res.ok) throw new Error("Erreur ajout exercice");
       await refetch();
-      showToast("Exercice ajouté", "success");
+      showToast(`${exercise.name} ajouté`, "success");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Erreur", "error");
     }
@@ -934,12 +950,14 @@ const TrainingPlanDashboard: React.FC = () => {
   return (
     <div className="w-full min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       {/* ── HERO HEADER ─────────────────────────────────────── */}
-      <div className="w-full bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950 border-b border-slate-200 dark:border-white/5 px-4 sm:px-6 lg:px-8 pt-6 pb-8">
+      <div className="w-full bg-white dark:bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] dark:from-indigo-900/20 dark:via-slate-900 dark:to-slate-900 border-b border-slate-200 dark:border-white/5 px-4 sm:px-6 lg:px-8 pt-6 pb-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[120px] rounded-full -mr-32 -mt-32" />
+        <div className="relative z-10">
         <button
           onClick={() => navigate("/dashboard/training-plans")}
-          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white mb-5 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-indigo-500 mb-6 transition-all group"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
           Mes plans
         </button>
 
@@ -968,17 +986,17 @@ const TrainingPlanDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="sm:col-span-2 lg:col-span-2">
-                <label className="block text-xs text-slate-400 mb-1">Nom du plan</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Nom du plan</label>
                 <EditField value={draftName} onChange={setDraftName} placeholder="Ex: Programme masse" className="w-full text-xl font-bold" />
               </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Objectif</label>
+              <div className="sm:col-span-2 lg:col-span-2">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Objectif</label>
                 <select
                   value={draftGoal}
                   onChange={(e) => setDraftGoal(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-400"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-indigo-400"
                 >
                   <option value="">— Aucun —</option>
                   {BODY_GOALS.map((g) => (
@@ -988,103 +1006,135 @@ const TrainingPlanDashboard: React.FC = () => {
               </div>
 
               {draftGoal === "custom" && (
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">Objectif personnalisé</label>
+                <div className="sm:col-span-2 lg:col-span-4">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Objectif personnalisé</label>
                   <EditField value={draftCustomGoal} onChange={setDraftCustomGoal} placeholder="Décrivez votre objectif" className="w-full text-sm" />
                 </div>
               )}
 
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Poids de départ (kg)</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Poids départ (kg)</label>
                 <EditField value={draftInitialWeight} onChange={setDraftInitialWeight} type="number" placeholder="ex: 80" className="w-full text-sm" />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Poids cible (kg)</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Poids cible (kg)</label>
                 <EditField value={draftTargetWeight} onChange={setDraftTargetWeight} type="number" placeholder="ex: 75" className="w-full text-sm" />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Date de début</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Date début</label>
                 <EditField value={draftStartDate} onChange={setDraftStartDate} type="date" className="w-full text-sm" />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Date de fin</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Date fin</label>
                 <EditField value={draftEndDate} onChange={setDraftEndDate} type="date" className="w-full text-sm" />
               </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs text-slate-400 mb-1">Description</label>
+              <div className="sm:col-span-2 lg:col-span-4">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Description</label>
                 <EditTextarea value={draftDesc} onChange={setDraftDesc} placeholder="Description du programme..." />
               </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs text-slate-400 mb-1">Notes pour l&apos;IA</label>
+              <div className="sm:col-span-2 lg:col-span-4">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Notes pour l&apos;IA</label>
                 <EditTextarea value={draftNotes} onChange={setDraftNotes} placeholder="Contraintes, préférences, informations pour les suggestions IA..." rows={3} />
               </div>
             </div>
           </div>
         ) : (
           /* ─ VIEW MODE header ─ */
-          <div className="flex items-start justify-between flex-wrap gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 flex-wrap mb-1">
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{plan.name}</h1>
-                {plan.bodyGoal && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
-                    {getBodyGoalEmoji(plan.bodyGoal)} {getBodyGoalLabel(plan.bodyGoal, plan.customGoal)}
-                  </span>
-                )}
-                <span className={`text-xs px-2 py-1 rounded-full font-bold ${plan.isActive ? "bg-green-100 text-green-700 border border-green-200 dark:bg-green-500/20 dark:text-green-300 dark:border-green-500/30" : "bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600"}`}>
-                  {plan.isActive ? "● Actif" : "○ Inactif"}
-                </span>
-              </div>
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                  <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+                    {plan.name}
+                  </h1>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${plan.isActive ? "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"}`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${plan.isActive ? "bg-green-500 animate-pulse" : "bg-slate-400"}`} />
+                      {plan.isActive ? "Actif" : "Inactif"}
+                    </span>
+                    {plan.bodyGoal && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20">
+                        {getBodyGoalEmoji(plan.bodyGoal)} {getBodyGoalLabel(plan.bodyGoal, plan.customGoal)}
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-              {plan.description && (
-                <p className="text-slate-400 text-sm mt-1 max-w-2xl">{plan.description}</p>
-              )}
-
-              <div className="flex flex-wrap gap-4 mt-3 text-xs text-slate-500">
-                {plan.startDate && <span>Début : <span className="text-slate-300">{fmtDate(plan.startDate)}</span></span>}
-                {plan.endDate && <span>Fin : <span className="text-slate-300">{fmtDate(plan.endDate)}</span></span>}
-                <span>{plan.days.length} jour{plan.days.length > 1 ? "s" : ""}/semaine</span>
-                <span>{totalExercises} exercice{totalExercises > 1 ? "s" : ""} planifié{totalExercises > 1 ? "s" : ""}</span>
-                {plan.initialWeightKg && plan.targetWeightKg && (
-                  <span className="flex items-center gap-1">
-                    {plan.initialWeightKg} kg
-                    <ArrowRight className="w-3 h-3" />
-                    <span className="text-indigo-400 font-semibold">{plan.targetWeightKg} kg</span>
-                  </span>
+                {plan.description && (
+                  <p className="text-slate-500 dark:text-slate-400 text-sm max-w-2xl leading-relaxed">
+                    {plan.description}
+                  </p>
                 )}
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+                  <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-2xl border border-slate-100 dark:border-white/5 transition-colors">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Fréquence</p>
+                    <p className="text-sm font-black text-slate-700 dark:text-slate-200">
+                      {plan.days.length} j<span className="text-slate-400 font-medium">/sem</span>
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-2xl border border-slate-100 dark:border-white/5 transition-colors">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Exercices</p>
+                    <p className="text-sm font-black text-slate-700 dark:text-slate-200">
+                      {totalExercises} <span className="text-slate-400 font-medium font-mono font-bold">Total</span>
+                    </p>
+                  </div>
+                  {plan.initialWeightKg && plan.targetWeightKg && (
+                    <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-2xl border border-slate-100 dark:border-white/5 transition-colors col-span-2 md:col-span-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Objectif Poids</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-black text-slate-700 dark:text-slate-200">{plan.initialWeightKg}kg</p>
+                        <ArrowRight className="w-3 h-3 text-slate-300" />
+                        <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">{plan.targetWeightKg}kg</p>
+                        <span className="text-[10px] px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded font-bold">
+                          {Math.abs(plan.targetWeightKg - plan.initialWeightKg).toFixed(1)}kg de {plan.targetWeightKg > plan.initialWeightKg ? "gain" : "perte"}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {(plan.startDate || plan.endDate) && (
+                    <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-2xl border border-slate-100 dark:border-white/5 transition-colors col-span-2 md:col-span-4">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Période du plan</p>
+                      <div className="flex items-center gap-3 text-xs font-bold text-slate-600 dark:text-slate-300">
+                        {plan.startDate && <span>Du {fmtDate(plan.startDate)}</span>}
+                        {plan.endDate && <span>au {fmtDate(plan.endDate)}</span>}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 w-full lg:w-auto mt-4 lg:mt-0 overflow-x-auto pb-1 lg:pb-0 no-scrollbar">
               <button
                 onClick={handleToggleActive}
-                title={plan.isActive ? "Désactiver" : "Activer"}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-sm font-medium transition-colors ${
+                className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl border text-[11px] font-black uppercase tracking-widest transition-all ${
                   plan.isActive
-                    ? "border-green-500/30 text-green-300 hover:bg-green-500/10"
-                    : "border-slate-600 text-slate-400 hover:bg-slate-800"
+                    ? "bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-100"
+                    : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100"
                 }`}
               >
-                {plan.isActive ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                {plan.isActive ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
                 {plan.isActive ? "Actif" : "Inactif"}
               </button>
               <button
                 onClick={() => setEditMode(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-500/40 text-indigo-300 text-sm font-medium hover:bg-indigo-500/10 transition-colors"
+                className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl border border-indigo-200 dark:border-indigo-500/30 bg-white dark:bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 text-[11px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all shadow-sm shadow-indigo-100 dark:shadow-none"
               >
                 <Pencil className="w-4 h-4" />
                 Modifier
               </button>
               <button
                 onClick={handleDelete}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-500/30 text-red-400 text-sm font-medium hover:bg-red-500/10 transition-colors"
+                className="flex items-center justify-center p-2.5 rounded-2xl border border-red-200 dark:border-red-500/30 bg-white dark:bg-red-500/5 text-red-500 dark:text-red-400 hover:bg-red-50 transition-all"
+                title="Supprimer le plan"
               >
                 <Trash2 className="w-4 h-4" />
-                Supprimer
               </button>
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* ── MAIN CONTENT ────────────────────────────────────── */}

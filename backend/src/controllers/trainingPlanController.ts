@@ -664,11 +664,41 @@ export async function logPlanSession(req: Request, res: Response) {
       }
     }
 
+    // If not skipped and no trainingSessionId provided, create a real TrainingSession
+    let finalTrainingSessionId = trainingSessionId;
+    if (!skipped && !finalTrainingSessionId && planDayId) {
+      // Fetch plan day with its exercises to copy them
+      const planDay = await prisma.planDay.findFirst({
+        where: { id: planDayId },
+        include: { exercises: true },
+      });
+
+      if (planDay) {
+        const newSession = await prisma.trainingSession.create({
+          data: {
+            userId,
+            date: parsedDate,
+            notes: moodNote || performanceNote || `Séance du plan: ${plan.name}`,
+            exercises: {
+              create: planDay.exercises.map((ex) => ({
+                exerciseId: ex.exerciseId,
+                sets: ex.plannedSets,
+                repsUniform: ex.plannedReps,
+                weightKg: ex.plannedWeightKg,
+                orderIndex: ex.orderIndex,
+              })),
+            },
+          },
+        });
+        finalTrainingSessionId = newSession.id;
+      }
+    }
+
     const log = await prisma.planSessionLog.create({
       data: {
         planId: id,
         planDayId: planDayId !== undefined ? planDayId : undefined,
-        trainingSessionId: trainingSessionId !== undefined ? trainingSessionId : undefined,
+        trainingSessionId: finalTrainingSessionId !== undefined ? finalTrainingSessionId : undefined,
         date: parsedDate,
         moodScore: moodScore !== undefined ? moodScore : undefined,
         moodNote: moodNote !== undefined ? moodNote : undefined,
