@@ -406,4 +406,10 @@ export interface AISuggestion {
   type: "advice" | "warning" | "motivation";
   title: string;
   content: string;
+  actions?: Array<{
+    id: string;
+    label: string;
+    type: "shift_day" | "change_plan" | "ask_question" | "add_exercise" | "other";
+    payload?: any;
+  }>;
 }

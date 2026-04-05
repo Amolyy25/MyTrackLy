@@ -1,7 +1,8 @@
 import React from "react";
-import { Lightbulb, AlertTriangle, Flame, RefreshCw } from "lucide-react";
+import { Lightbulb, AlertTriangle, Flame, RefreshCw, MessageSquare, Calendar, TrendingUp, Plus } from "lucide-react";
 import { usePlanAISuggestions } from "../../../../hooks/usePlanAISuggestions";
 import { AISuggestion } from "../../../../types";
+import { useToast } from "../../../../contexts/ToastContext";
 
 interface AIPlanInsightsProps {
   planId: string;
@@ -29,22 +30,41 @@ function SuggestionIcon({ type }: { type: AISuggestion["type"] }) {
   );
 }
 
-function SkeletonCard() {
+function ActionButton({ action, onClick }: { action: any; onClick: () => void }) {
+  const getIcon = () => {
+    switch (action.type) {
+      case "shift_day": return <Calendar className="w-3.5 h-3.5" />;
+      case "ask_question": return <MessageSquare className="w-3.5 h-3.5" />;
+      case "change_plan": return <TrendingUp className="w-3.5 h-3.5" />;
+      case "add_exercise": return <Plus className="w-3.5 h-3.5" />;
+      default: return null;
+    }
+  };
+
   return (
-    <div className="flex gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 animate-pulse">
-      <div className="w-9 h-9 rounded-xl bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
-      <div className="flex-1 space-y-2">
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full" />
-        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-4/5" />
-      </div>
-    </div>
+    <button
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-700 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 border border-slate-200 dark:border-slate-600 transition-all shadow-sm active:scale-95"
+    >
+      {getIcon()}
+      {action.label}
+    </button>
   );
 }
 
 const AIPlanInsights: React.FC<AIPlanInsightsProps> = ({ planId }) => {
+  const { showToast } = useToast();
   const { suggestions, isLoading, error, refresh, canRefresh, cooldownText } =
     usePlanAISuggestions(planId);
+
+  const handleAction = (action: any) => {
+    console.log("AI Action triggered:", action);
+    if (action.type === "ask_question") {
+      showToast(`AI Suggestion: ${action.payload.question}`, "success");
+    } else {
+      showToast(`Action: ${action.label} (En cours de développement)`, "success");
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -101,12 +121,23 @@ const AIPlanInsights: React.FC<AIPlanInsightsProps> = ({ planId }) => {
             >
               <SuggestionIcon type={suggestion.type} />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-gray-900 dark:text-white">
+                <p className="font-bold text-sm text-slate-900 dark:text-white">
                   {suggestion.title}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
                   {suggestion.content}
                 </p>
+                {suggestion.actions && suggestion.actions.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {suggestion.actions.map((act) => (
+                      <ActionButton
+                        key={act.id}
+                        action={act}
+                        onClick={() => handleAction(act)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -127,5 +158,12 @@ const AIPlanInsights: React.FC<AIPlanInsightsProps> = ({ planId }) => {
     </div>
   );
 };
+
+
+function SkeletonCard() {
+  return (
+    <div className="h-24 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse w-full" />
+  );
+}
 
 export default AIPlanInsights;
