@@ -161,6 +161,140 @@ export async function googleOAuthCallback(req: Request, res: Response) {
   }
 }
 
+/**
+ * Créer une réservation publique (sans compte utilisateur)
+ */
+export async function createPublicReservation(req: Request, res: Response) {
+  try {
+    const { coachId, serviceId, startDateTime, endDateTime, guestName, guestEmail, notes } = req.body;
+
+    if (!coachId || !serviceId || !startDateTime || !endDateTime || !guestName || !guestEmail) {
+      return res.status(400).json({ message: "Champs obligatoires manquants." });
+    }
+
+    const coach = await prisma.user.findUnique({
+      where: { id: coachId },
+      select: { id: true, name: true, role: true, autoConfirmReservations: true, email: true },
+    });
+
+    if (!coach || coach.role !== "coach") {
+      return res.status(404).json({ message: "Coach non trouvé." });
+    }
+
+    const service = await prisma.coachService.findUnique({
+      where: { id: serviceId },
+    });
+
+    if (!service || service.coachId !== coachId || !service.isActive) {
+      return res.status(400).json({ message: "Prestation invalide ou indisponible." });
+    }
+
+    const start = new Date(startDateTime);
+    const end = new Date(endDateTime);
+
+    if (!validateFutureDate(start) || !validateDateRange(start, end)) {
+      return res.status(400).json({ message: "Dates invalides." });
+    }
+
+    const overlapping = await prisma.reservation.findFirst({
+      where: {
+        coachId,
+        status: { in: ["pending", "confirmed", "approved"] },
+        AND: [{ startDateTime: { lt: end } }, { endDateTime: { gt: start } }],
+      },
+    });
+
+    if (overlapping) {
+      return res.status(400).json({ message: "Ce créneau n'est plus disponible." });
+    }
+
+    let initialStatus = "pending";
+    if (coach.autoConfirmReservations) {
+      initialStatus = service.price > 0 ? "approved" : "confirmed";
+    }
+
+    const reservation = await prisma.reservation.create({
+      data: {
+        coachId,
+        serviceId,
+        guestName,
+        guestEmail,
+        sessionType: service.title,
+        location: service.location,
+        startDateTime: start,
+        endDateTime: end,
+        totalPrice: service.price,
+        status: initialStatus,
+        notes: notes ? sanitizeNotes(notes) : null,
+      },
+    });
+
+    if (coach.email) {
+      await sendEmail(
+        coach.email,
+        "Nouvelle réservation publique - MyTrackLy",
+        "reservationCoachNotification",
+        {
+          coachName: coach.name,
+          studentName: guestName,
+          reservationDateTime: formatDateTimeFrench(start),
+          sessionType: service.title,
+          notes: notes || "",
+        }
+      );
+    }
+
+    if (guestEmail) {
+      if (initialStatus === "pending") {
+        await sendEmail(
+          guestEmail,
+          "Nous avons reçu votre demande de séance - MyTrackLy",
+          "guestReservationReceived",
+          {
+            studentName: guestName,
+            coachName: coach.name,
+            sessionType: service.title,
+            reservationDateTime: formatDateTimeFrench(start),
+          }
+        );
+      } else if (initialStatus === "approved") {
+        const paymentLink = `${process.env.BACKEND_URL || "http://localhost:5050"}/api/stripe/public/pay/${reservation.id}`;
+        
+        await sendEmail(
+          guestEmail,
+          "Action requise : Paiement de votre séance avec " + coach.name,
+          "guestReservationPayment",
+          {
+            studentName: guestName,
+            coachName: coach.name,
+            sessionType: service.title,
+            reservationDateTime: formatDateTimeFrench(start),
+            price: service.price.toString(),
+            paymentLink,
+          }
+        );
+      } else if (initialStatus === "confirmed") {
+         await sendEmail(
+          guestEmail,
+          "Votre séance est confirmée ! - MyTrackLy",
+          "guestReservationConfirmed",
+          {
+            studentName: guestName,
+            coachName: coach.name,
+            sessionType: service.title,
+            reservationDateTime: formatDateTimeFrench(start),
+          }
+        );
+      }
+    }
+
+    res.status(201).json(reservation);
+  } catch (error) {
+    console.error("[Calendar] Public Reservation Error:", error);
+    res.status(500).json({ message: "Erreur lors de la réservation." });
+  }
+}
+
 export async function createReservation(req: Request, res: Response) {
   try {
     const userId = getUserIdFromRequest(req, res);
@@ -271,6 +405,8 @@ export async function createReservation(req: Request, res: Response) {
         name: true,
         role: true,
         email: true,
+        hourlyRate: true,
+        autoConfirmReservations: true,
         googleCalendarAccessToken: true,
         googleCalendarRefreshToken: true,
       },
@@ -292,7 +428,7 @@ export async function createReservation(req: Request, res: Response) {
     const overlapping = await prisma.reservation.findFirst({
       where: {
         coachId,
-        status: { in: ["pending", "confirmed"] },
+        status: { in: ["pending", "confirmed", "approved"] },
         AND: [
           {
             startDateTime: {
@@ -315,6 +451,19 @@ export async function createReservation(req: Request, res: Response) {
       });
     }
 
+    // Calculer le prix basé sur le tarif horaire du coach
+    const durationMs = end.getTime() - start.getTime();
+    const durationHours = durationMs / (1000 * 60 * 60);
+    const totalPrice = coach.hourlyRate ? coach.hourlyRate * durationHours : 0;
+
+    // Déterminer le statut initial :
+    // - Si auto-confirmation activée : "approved" si payant, "confirmed" si gratuit
+    // - Sinon : "pending" (attente coach)
+    let initialStatus = "pending";
+    if (coach.autoConfirmReservations) {
+      initialStatus = totalPrice > 0 ? "approved" : "confirmed";
+    }
+
     // Sanitization des notes
     const sanitizedNotes = sanitizeNotes(notes);
 
@@ -326,7 +475,9 @@ export async function createReservation(req: Request, res: Response) {
         endDateTime: end,
         sessionType,
         notes: sanitizedNotes,
-        status: "pending",
+        status: initialStatus,
+        totalPrice,
+        isPaid: false,
         googleEventId: null,
       },
     });
@@ -535,77 +686,12 @@ export async function updateReservationStatus(req: Request, res: Response) {
         },
       });
     } else {
-      const summary = `Séance ${reservation.sessionType} avec ${
-        reservation.student?.name || ""
-      }`;
-      const description = reservation.notes
-        ? `Motif: ${reservation.sessionType}\nNotes élève: ${reservation.notes}`
-        : `Motif: ${reservation.sessionType}`;
-
-      let googleEventId = reservation.googleEventId;
-
-      try {
-        // Créer/mettre à jour l'événement dans le calendrier du coach
-        if (googleEventId) {
-          await updateEventInCoachCalendar(reservation.coachId, googleEventId, {
-            startDateTime: newStart,
-            endDateTime: newEnd,
-            summary,
-            description,
-          });
-        } else {
-          const event = await createEventInCoachCalendar({
-            coachId: reservation.coachId,
-            startDateTime: newStart,
-            endDateTime: newEnd,
-            summary,
-            description,
-          });
-          googleEventId = event.id || null;
-        }
-
-        // Créer l'événement dans le calendrier de l'élève si connecté
-        if (reservation.studentId) {
-          const student = await prisma.user.findUnique({
-            where: { id: reservation.studentId },
-            select: {
-              googleCalendarAccessToken: true,
-              myTrackLyCalendarId: true,
-              name: true,
-            },
-          });
-
-          if (student?.googleCalendarAccessToken) {
-            try {
-              const studentSummary = `Séance ${reservation.sessionType} avec ${coach.name}`;
-              const studentDescription = reservation.notes
-                ? `Type: ${reservation.sessionType}\nNotes: ${reservation.notes}`
-                : `Type: ${reservation.sessionType}`;
-
-              await createEventInStudentCalendar(reservation.studentId, {
-                startDateTime: newStart,
-                endDateTime: newEnd,
-                summary: studentSummary,
-                description: studentDescription,
-              });
-            } catch (err) {
-              // Ne pas bloquer si l'événement élève échoue, on log juste
-              console.warn(
-                "[Calendar] Erreur lors de la création de l'événement dans le calendrier de l'élève:",
-                err
-              );
-            }
-          }
-        }
-      } catch (err) {
-        console.error(
-          "[Calendar] Erreur lors de la création/mise à jour de l'événement Google:",
-          err
-        );
-        return res.status(500).json({
-          message:
-            "Erreur lors de la synchronisation avec Google Calendar. La réservation n'a pas été confirmée. Veuillez réessayer.",
-        });
+      // Pour action "accept" ou "reschedule" du coach
+      // Si la séance est payante et non payée -> status "approved" (attente paiement élève)
+      // Si gratuite ou déjà payée -> status "confirmed"
+      let newStatus = "confirmed";
+      if (reservation.totalPrice && reservation.totalPrice > 0 && !reservation.isPaid) {
+        newStatus = "approved";
       }
 
       updatedReservation = await prisma.reservation.update({
@@ -613,8 +699,7 @@ export async function updateReservationStatus(req: Request, res: Response) {
         data: {
           startDateTime: newStart,
           endDateTime: newEnd,
-          status: "confirmed",
-          googleEventId,
+          status: newStatus,
         },
         include: {
           coach: {
@@ -627,27 +712,77 @@ export async function updateReservationStatus(req: Request, res: Response) {
       });
     }
 
-    if (reservation.student?.email) {
+    if (reservation.student?.email || reservation.guestEmail) {
+      const emailToSendTo = reservation.student?.email || reservation.guestEmail;
+      const parsedName = reservation.student?.name || reservation.guestName || "Utilisateur";
       const reservationDateTime = formatDateTimeFrench(newStart);
-      let statusLabel = "mise à jour";
-
-      if (action === "accept") statusLabel = "acceptée";
-      if (action === "reschedule") statusLabel = "décalée";
-      if (action === "refuse") statusLabel = "refusée";
-
-      await sendEmail(
-        reservation.student.email,
-        "Mise à jour de votre réservation - MyTrackLy",
-        "reservationStatusUpdate",
-        {
-          studentName: reservation.student.name,
-          coachName: coach.name,
-          reservationDateTime,
-          sessionType: reservation.sessionType,
-          notes: reservation.notes || "",
-          statusLabel,
+      
+      if (reservation.guestEmail) {
+        // Envoi des emails spécifiques pour les réservations publiques (sans compte)
+        if (action === "accept" || action === "reschedule") {
+          if (updatedReservation.status === "approved") {
+             const paymentLink = `${process.env.BACKEND_URL || "http://localhost:5050"}/api/stripe/public/pay/${updatedReservation.id}`;
+             await sendEmail(
+              emailToSendTo as string,
+              "Action requise : Paiement de votre séance avec " + coach.name,
+              "guestReservationPayment",
+              {
+                studentName: parsedName,
+                coachName: coach.name,
+                sessionType: reservation.sessionType,
+                reservationDateTime,
+                price: (reservation.totalPrice || 0).toString(),
+                paymentLink,
+              }
+            );
+          } else if (updatedReservation.status === "confirmed") {
+             await sendEmail(
+              emailToSendTo as string,
+              "Votre séance est confirmée ! - MyTrackLy",
+              "guestReservationConfirmed",
+              {
+                studentName: parsedName,
+                coachName: coach.name,
+                sessionType: reservation.sessionType,
+                reservationDateTime,
+              }
+            );
+          }
+        } else if (action === "refuse") {
+             await sendEmail(
+              emailToSendTo as string,
+              "Votre demande de séance a été annulée",
+              "guestReservationConfirmed", // on réutilise ou on fait un template refusé. On peut faire un mail basic update.
+              {
+                studentName: parsedName,
+                coachName: coach.name,
+                sessionType: reservation.sessionType,
+                reservationDateTime: "Annulée par le coach",
+              }
+            );
         }
-      );
+
+      } else {
+        // Envoi classique aux étudiants avec un compte
+        let statusLabel = "mise à jour";
+        if (action === "accept") statusLabel = "acceptée";
+        if (action === "reschedule") statusLabel = "décalée";
+        if (action === "refuse") statusLabel = "refusée";
+
+        await sendEmail(
+          emailToSendTo as string,
+          "Mise à jour de votre réservation - MyTrackLy",
+          "reservationStatusUpdate",
+          {
+            studentName: parsedName,
+            coachName: coach.name,
+            reservationDateTime,
+            sessionType: reservation.sessionType,
+            notes: reservation.notes || "",
+            statusLabel,
+          }
+        );
+      }
     }
 
     res.json(updatedReservation);
@@ -840,5 +975,56 @@ export async function cancelReservationByStudent(req: Request, res: Response) {
     res.status(500).json({
       message: "Une erreur est survenue lors de l'annulation.",
     });
+  }
+}
+// --- Synchronisation Google Calendar après paiement ---
+export async function syncReservationToGoogleCalendar(reservationId: string) {
+  try {
+    const reservation = await prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        coach: { select: { id: true, name: true, email: true } },
+        student: { select: { id: true, name: true, email: true, googleCalendarAccessToken: true } },
+      },
+    });
+
+    if (!reservation || !reservation.coach) return;
+
+    const summary = `Séance ${reservation.sessionType} avec ${reservation.student?.name || "Élève"}`;
+    const description = reservation.notes
+      ? `Motif: ${reservation.sessionType}\nNotes élève: ${reservation.notes}`
+      : `Motif: ${reservation.sessionType}`;
+
+    // Calendrier Coach
+    const coachEvent = await createEventInCoachCalendar({
+      coachId: reservation.coachId,
+      startDateTime: reservation.startDateTime,
+      endDateTime: reservation.endDateTime,
+      summary,
+      description,
+    });
+
+    // Calendrier Élève (si connecté)
+    if (reservation.studentId && reservation.student?.googleCalendarAccessToken) {
+      try {
+        const studentSummary = `Séance ${reservation.sessionType} avec ${reservation.coach.name}`;
+        await createEventInStudentCalendar(reservation.studentId, {
+          startDateTime: reservation.startDateTime,
+          endDateTime: reservation.endDateTime,
+          summary: studentSummary,
+          description,
+        });
+      } catch (err) {
+        console.warn("[CalendarSync] Erreur calendrier élève:", err);
+      }
+    }
+
+    // Mettre à jour l'ID de l'événement
+    await prisma.reservation.update({
+      where: { id: reservationId },
+      data: { googleEventId: coachEvent.id || null },
+    });
+  } catch (error) {
+    console.error("[CalendarSync] Erreur sync globale:", error);
   }
 }

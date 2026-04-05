@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Séance confirmée</title>
+    <style>
+        body, table, td, p, a, h1, h2, h3 { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { margin: 0; padding: 0; background-color: #f8fafc; color: #334155; }
+        .wrapper { width: 100%; table-layout: fixed; background-color: #f8fafc; padding: 40px 20px; }
+        .main { background-color: #ffffff; margin: 0 auto; width: 100%; max-width: 600px; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .header { background: linear-gradient(135deg, #4f46e5 0%, #8b5cf6 100%); padding: 30px; text-align: center; }
+        .header h1 { color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; }
+        .content { padding: 40px 30px; }
+        .content p { font-size: 16px; line-height: 1.6; margin-top: 0; margin-bottom: 24px; color: #475569; }
+        .metric-card { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+        .footer { padding: 30px; text-align: center; background-color: #f1f5f9; border-top: 1px solid #e2e8f0; }
+        .footer p { margin: 0 0 10px; font-size: 13px; color: #64748b; }
+    </style>
+</head>
+<body>
+    <table class="wrapper" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+        <tr>
+            <td align="center">
+                <table class="main" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                    <tr><td class="header"><h1>MyTrackLy</h1></td></tr>
+                    <tr>
+                        <td class="content">
+                            <h2 style="text-align: center; color: #059669; margin-bottom: 20px;">🎉 Séance confirmée !</h2>
+                            <p>Bonjour {{studentName}},</p>
+                            <p>Super nouvelle ! Le coach <strong>{{coachName}}</strong> a confirmé votre réservation.</p>
+                            
+                            <div class="metric-card">
+                                <ul style="margin: 0; padding-left: 20px; color:#475569;">
+                                    <li>Séance : <strong>{{sessionType}}</strong></li>
+                                    <li>Date : <strong>{{reservationDateTime}}</strong></li>
+                                </ul>
+                            </div>
+
+                            <p>Vous n'avez plus rien à faire. Vous pouvez ajouter l'événement dans votre agenda personnel. Le coach vous contactera si besoin.</p>
+                            
+                            <p style="text-align: center; margin-top: 30px;"><strong>À très vite pour votre séance !</strong></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="footer">
+                            <p>&copy; 2025 MyTrackLy, Tous droits réservés.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

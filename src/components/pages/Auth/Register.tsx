@@ -29,6 +29,7 @@ const Register: React.FC = () => {
   const [searchParams] = useSearchParams();
   const planParam = searchParams.get("plan");
   const coachCodeParam = searchParams.get("coachCode");
+  const sessionIdParam = searchParams.get("session_id");
   const isStudentPlan = planParam === "eleve";
 
   const [formData, setFormData] = useState<RegisterFormData>({
@@ -120,6 +121,7 @@ const Register: React.FC = () => {
           goalType: formData.goalType,
           role: isStudentPlan ? "eleve" : "personnel",
           coachCode: isStudentPlan ? formData.coachCode?.trim() : undefined,
+          sessionId: sessionIdParam || undefined,
         }),
       });
 

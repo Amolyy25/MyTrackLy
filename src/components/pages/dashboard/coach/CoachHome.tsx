@@ -34,6 +34,11 @@ const CoachHome: React.FC = () => {
   const { user, token } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
+  const [revenueStats, setRevenueStats] = useState<{
+    currentMonthRevenue: number;
+    lastMonthRevenue: number;
+    evolution: number;
+  } | null>(null);
 
   // Récupérer les élèves
   useEffect(() => {
@@ -56,8 +61,26 @@ const CoachHome: React.FC = () => {
       }
     };
 
+    const fetchRevenueStats = async () => {
+      try {
+        const response = await fetch(`${API_URL}/stripe/revenue-stats`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setRevenueStats(data);
+        }
+      } catch (err) {
+        console.error("Erreur lors de la récupération des stats de revenus:", err);
+      }
+    };
+
     if (token) {
       fetchStudents();
+      fetchRevenueStats();
     }
   }, [token]);
 
@@ -134,6 +157,8 @@ const CoachHome: React.FC = () => {
     weekActivity: [false, false, false, false, false, false, false],
     studentsCount: students.length,
     upcomingReservations: upcomingReservations.length,
+    monthlyRevenue: revenueStats?.currentMonthRevenue || 0,
+    revenueEvolution: revenueStats?.evolution || 0,
   };
 
   // 3. Recent Activity Data - Combiner séances et réservations

@@ -29,7 +29,8 @@ type Feature = {
   color: string;
 };
 
-type PricingPlan = {
+export type PricingPlan = {
+  id: string;
   name: string;
   price: string;
   period?: string;
@@ -484,47 +485,60 @@ const CoachingSection = ({ theme }: { theme: string }) => {
   );
 };
 
-const PricingSection = ({ theme }: { theme: string }) => {
+export const PricingSection = ({ theme }: { theme: string }) => {
   const plans: PricingPlan[] = [
     {
+      id: "personnel",
       name: "Personnel",
-      price: "5€",
+      price: "4.99€",
       period: "/mois",
-      description: "L'essentiel pour progresser seul.",
+      description: "Parfait pour suivre votre progression personnelle",
       features: [
-        "Carnet d'entraînement illimité",
-        "Calcul du volume & PRs",
-        "Suivi des mensurations",
-        "Sans engagement"
+        "Suivi personnel complet de vos séances",
+        "Statistiques et progression détaillées",
+        "Mensurations et historique",
+        "Habitudes et objectifs personnels",
+        "Historique complet de vos séances",
+        "Support par email",
       ],
       cta: "Essai gratuit 14j",
       highlight: false
     },
     {
-      name: "Coach Pro",
-      price: "50€",
+      id: "coach",
+      name: "Coach",
+      price: "49.99€",
       period: "/mois",
-      description: "Pour les coachs qui veulent scaler.",
+      description: "Solution complète pour gérer vos élèves",
       features: [
-        "Tout du plan Personnel",
-        "Jusqu'à 50 élèves",
-        "Programmes illimités",
-        "Sync Calendrier & Paiements",
-        "Support 24/7"
+        "Toutes les fonctionnalités du plan Personnel",
+        "Gestion illimitée de vos élèves",
+        "Visualisation complète des données de vos élèves",
+        "Création de séances pour vos élèves",
+        "Messagerie avec tous vos élèves",
+        "Programmes d'entraînement personnalisés",
+        "Rappels et notifications par email",
+        "Statistiques globales de vos élèves",
+        "Support prioritaire 24/7",
       ],
       cta: "Essai gratuit 14j",
       popular: true,
       highlight: true
     },
     {
-      name: "Élève (Coaching)",
+      id: "eleve",
+      name: "Élève",
       price: "0€",
-      description: "Inclus avec ton coaching.",
+      period: "",
+      description: "Idéal pour être accompagné par un coach",
       features: [
-        "Accès complet",
-        "Programmes du coach",
-        "Messagerie privée",
-        "Suivi partagé"
+        "Toutes les fonctionnalités du plan Personnel",
+        "Coach assigné pour vous accompagner",
+        "Réservation de séances avec votre coach",
+        "Discussion et messagerie avec le coach",
+        "Accès aux programmes créés par votre coach",
+        "Suivi personnalisé par votre coach",
+        "Support prioritaire",
       ],
       cta: "S'inscrire",
       highlight: false
@@ -554,6 +568,44 @@ const PricingSection = ({ theme }: { theme: string }) => {
 };
 
 const PricingCard = ({ plan, theme }: { plan: PricingPlan, theme: string }) => {
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  const handleCheckout = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5050/api";
+      const endpoint = token 
+          ? `${API_URL}/stripe/create-subscription-checkout` 
+          : `${API_URL}/stripe/public-subscription-checkout`;
+
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) {
+         headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(endpoint, {
+         method: "POST",
+         headers,
+         body: JSON.stringify({ planId: plan.id })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.url) {
+         window.location.href = data.url;
+      } else {
+         console.error("Erreur de paiement", data);
+         alert("Une erreur est survenue lors de l'accès au paiement.");
+      }
+    } catch (err) {
+      console.error("Erreur réseau", err);
+      alert("Problème de connexion au serveur.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <motion.div 
       whileHover={{ y: -10 }}
@@ -570,9 +622,18 @@ const PricingCard = ({ plan, theme }: { plan: PricingPlan, theme: string }) => {
       )}
 
       <h3 className={`text-xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{plan.name}</h3>
-      <div className="flex items-baseline gap-1 mb-4">
-        <span className={`text-4xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{plan.price}</span>
-        {plan.period && <span className="text-slate-500">{plan.period}</span>}
+      <div className="flex items-baseline gap-1 mb-4 h-12">
+        {plan.id === "eleve" ? (
+          <div className="flex flex-col">
+             <span className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Géré par votre coach</span>
+             <span className="text-xs text-slate-500">Votre coach paie pour votre accès</span>
+          </div>
+        ) : (
+          <>
+            <span className={`text-4xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{plan.price}</span>
+            {plan.period && <span className="text-slate-500">{plan.period}</span>}
+          </>
+        )}
       </div>
       <p className="text-sm text-slate-500 mb-8 max-w-[80%]">{plan.description}</p>
 
@@ -585,16 +646,32 @@ const PricingCard = ({ plan, theme }: { plan: PricingPlan, theme: string }) => {
         ))}
       </div>
 
-      <Link
-        to="/register"
-        className={`w-full py-3 rounded-xl font-bold text-center transition-all ${
-          plan.highlight
-            ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/25'
-            : `border-2 ${theme === 'dark' ? 'border-slate-800 text-white hover:bg-slate-800' : 'border-slate-200 text-slate-900 hover:bg-slate-100'}`
-        }`}
-      >
-        {plan.cta}
-      </Link>
+      {plan.id === "eleve" ? (
+        <Link
+          to="/register?plan=eleve"
+          className={`w-full py-3 rounded-xl font-bold text-center transition-all ${
+            plan.highlight
+              ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/25'
+              : `border-2 ${theme === 'dark' ? 'border-slate-800 text-white hover:bg-slate-800' : 'border-slate-200 text-slate-900 hover:bg-slate-100'}`
+          }`}
+        >
+          {plan.cta}
+        </Link>
+      ) : (
+        <button
+          onClick={handleCheckout}
+          disabled={isLoading}
+          className={`w-full flex justify-center items-center py-3 rounded-xl font-bold text-center transition-all ${
+            plan.highlight
+              ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/25'
+              : `border-2 ${theme === 'dark' ? 'border-slate-800 text-white hover:bg-slate-800' : 'border-slate-200 text-slate-900 hover:bg-slate-100'}`
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          {isLoading ? (
+            <span className="w-5 h-5 border-[3px] border-white/30 border-t-white rounded-full animate-spin"></span>
+          ) : plan.cta}
+        </button>
+      )}
     </motion.div>
   );
 };

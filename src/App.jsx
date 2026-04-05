@@ -25,8 +25,7 @@ import {
   ForgotPassword,
   ResetPassword,
 } from "./components/pages/Auth";
-import Plans from "./components/pages/Plans";
-import Payment from "./components/pages/Payment";
+import Plans from "./components/pages/landingpage/PlansPage";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import Home from "./components/pages/dashboard/Home";
 import StudentHome from "./components/pages/dashboard/student/StudentHome";
@@ -43,9 +42,11 @@ import SettingsPage from "./components/pages/dashboard/SettingsPage";
 import StudentReservations from "./components/pages/dashboard/student/Reservations";
 import CoachReservations from "./components/pages/dashboard/coach/Reservations";
 import CoachAvailabilities from "./components/pages/dashboard/coach/Availabilities";
+import CoachPayments from "./components/pages/dashboard/coach/Payments";
 import StudentProfile from "./components/pages/dashboard/coach/StudentProfile";
 import Statistics from "./components/pages/dashboard/statistics";
 import NotFound from "./components/pages/NotFound";
+import PublicBooking from "./components/pages/PublicBooking";
 import TrainingPlanList from "./components/pages/dashboard/training-plan/TrainingPlanList";
 import TrainingPlanNew from "./components/pages/dashboard/training-plan/TrainingPlanNew";
 import TrainingPlanDashboard from "./components/pages/dashboard/training-plan/TrainingPlanDashboard";
@@ -144,9 +145,38 @@ const SoonPage = ({ title }) => {
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user, refetchUser } = useAuth();
+  const location = window.location;
+  const [isRefetching, setIsRefetching] = React.useState(false);
 
-  if (isLoading) {
+  React.useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const isPaymentSuccess = searchParams.get("payment") === "success";
+    const sessionId = searchParams.get("session_id");
+
+    if (isPaymentSuccess && sessionId) {
+      setIsRefetching(true);
+      // On valide la session côté serveur pour être sûr que le statut d'abonnement est mis à jour en BDD
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5050/api'}/stripe/verify-subscription-session?sessionId=${sessionId}`, {
+         headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+         }
+      })
+      .then(() => refetchUser())
+      .finally(() => {
+         setIsRefetching(false);
+         // Remove query params to avoid infinite loops
+         window.history.replaceState({}, document.title, location.pathname);
+      });
+    } else if (isPaymentSuccess) {
+       // Legacy fallback
+       setIsRefetching(true);
+       refetchUser().finally(() => setIsRefetching(false));
+       window.history.replaceState({}, document.title, location.pathname);
+    }
+  }, [location.search, refetchUser, location.pathname]);
+
+  if (isLoading || isRefetching) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -157,7 +187,20 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Check subscription status for paid roles
+  if (user && (user.role === "personnel" || user.role === "coach")) {
+    const status = user.stripeSubscriptionStatus;
+    if (status !== "active" && status !== "trialing") {
+      // Si l'URL demandée n'est pas déjà /features/pricing, on redirige
+      return <Navigate to="/features/pricing" replace />;
+    }
+  }
+
+  return children;
 };
 
 // Public Route Component (redirect if already logged in)
@@ -189,6 +232,7 @@ function AppRoutes() {
       <Route path="/features/science" element={<SciencePage />} />
       <Route path="/features/coaching" element={<CoachingPage />} />
       <Route path="/features/pricing" element={<Plans />} />
+      <Route path="/book/:coachId" element={<PublicBooking />} />
       <Route
         path="/login"
         element={
@@ -224,7 +268,6 @@ function AppRoutes() {
         }
       />
       <Route path="/plans" element={<Plans />} />
-      <Route path="/payment" element={<Payment />} />
 
       {/* Protected routes */}
       <Route
@@ -247,6 +290,7 @@ function AppRoutes() {
         <Route path="reservations" element={<ReservationsPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="availabilities" element={<CoachAvailabilities />} />
+        <Route path="payments" element={<CoachPayments />} />
         {/* Profile & Settings */}
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />

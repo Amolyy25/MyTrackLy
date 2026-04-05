@@ -15,6 +15,7 @@ import calendarRoutes from "./routes/calendarRoutes";
 import availabilityRoutes from "./routes/availabilityRoutes";
 import statsRoutes from "./routes/statsRoutes";
 import coachNoteRoutes from "./routes/coachNoteRoutes";
+import stripeRoutes from "./routes/stripeRoutes";
 import { initStreakCron } from "./cron/streakJob";
 import { initReminderCron } from "./cron/reminderJob";
 import { initPlanReminderCron } from "./cron/planReminderJob";
@@ -30,8 +31,10 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   : [
       // Frontend Vite (dev)
       "http://localhost:5173",
-      // Frontend ou proxy éventuel sur 3000
+      // Frontend ou proxy éventuel sur 3000/3001/5050
       "http://localhost:3000",
+      "http://localhost:3001",
+      "http://localhost:5050",
       // Frontend prod Vercel
       "https://my-track-ly.vercel.app",
       // Backend/preview Railway (si appels cross-origin depuis un autre domaine)
@@ -64,6 +67,9 @@ app.use(
     optionsSuccessStatus: 200, // Pour les anciens navigateurs
   })
 );
+
+// Middleware Stripe Webhook (doit être avant express.json)
+app.use("/api/stripe", stripeRoutes);
 
 app.use(express.json());
 

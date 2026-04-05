@@ -343,6 +343,48 @@ export async function deleteVirtualStudent(req: Request, res: Response) {
   }
 }
 
+// --- Obtenir les informations du coach (pour l'élève) ---
+export async function getMyCoach(req: Request, res: Response) {
+  try {
+    const userId = (req as any).user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Non authentifié" });
+    }
+
+    const student = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { coachId: true },
+    });
+
+    if (!student || !student.coachId) {
+      return res.status(404).json({ message: "Aucun coach assigné." });
+    }
+
+    const coach = await prisma.user.findUnique({
+      where: { id: student.coachId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        hourlyRate: true,
+        slotDuration: true,
+      },
+    });
+
+    if (!coach) {
+      return res.status(404).json({ message: "Coach non trouvé." });
+    }
+
+    res.json(coach);
+  } catch (error) {
+    console.error("GetMyCoach Error:", error);
+    res.status(500).json({
+      message: "Une erreur est survenue lors de la récupération du coach.",
+    });
+  }
+}
+
+
 
 
 

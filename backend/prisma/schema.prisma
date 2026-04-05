@@ -17,6 +17,7 @@ model User {
   coachId              String?              @map("coach_id") // Pour les élèves, ID du coach
   coach                User?                @relation("CoachStudents", fields: [coachId], references: [id], onDelete: SetNull)
   students             User[]               @relation("CoachStudents") // Pour les coaches, liste des élèves
+  services             CoachService[]       @relation("CoachServices") // Types de séances proposés
   createdAt            DateTime             @default(now()) @map("created_at")
   updatedAt            DateTime             @updatedAt @map("updated_at")
 
@@ -47,12 +48,34 @@ model User {
   
   // Configuration Coach
   slotDuration               Int      @default(60) @map("slot_duration") // Durée des créneaux en minutes
+  autoConfirmReservations    Boolean  @default(false) @map("auto_confirm_reservations") // Acceptation automatique
+  hourlyRate                 Float?   @map("hourly_rate") // Tarif horaire
+  bufferTime                 Int      @default(0) @map("buffer_time") // Laps de temps entre les séances (pauses) en minutes
   myTrackLyCalendarId        String?  @map("mytrackly_calendar_id") // ID du calendrier dédié "Séances MyTrackLy"
 
   // Réservations (en tant que coach / élève)
   coachReservations   Reservation[] @relation("CoachReservations")
   studentReservations Reservation[] @relation("StudentReservations")
   availabilities      CoachAvailability[]
+
+  // --- Intégration Stripe Connect (Coaches) ---
+  stripeAccountId           String?  @map("stripe_account_id") // ID du compte Connect Express
+  stripeOnboardingComplete  Boolean  @default(false) @map("stripe_onboarding_complete")
+  stripeChargesEnabled      Boolean  @default(false) @map("stripe_charges_enabled")
+  stripePayoutsEnabled      Boolean  @default(false) @map("stripe_payouts_enabled")
+
+  // --- Abonnements Plateforme ---
+  stripeCustomerId          String?  @unique @map("stripe_customer_id")
+  stripeSubscriptionId      String?  @unique @map("stripe_subscription_id")
+  stripeSubscriptionStatus  String?  @map("stripe_subscription_status") // ex: "active", "trialing", "past_due", "canceled"
+  
+  // Infos Légales / Fiscales (Coaches)
+  businessName              String?  @map("business_name")
+  businessSiret             String?  @map("business_siret")
+  businessAddress           String?  @map("business_address")
+  taxStatus                 String?  @map("tax_status") // "AUTO_ENTREPRENEUR" | "SOCIETE" | "PARTICULIER"
+  isTaxExempt               Boolean  @default(true) @map("is_tax_exempt") // Exonéré de TVA (ex: AE base)
+  taxRate                   Float?   @map("tax_rate") // ex: 20.0
 
   @@map("users")
 }
@@ -172,18 +195,38 @@ model Reservation {
   coachId     String   @map("coach_id")
   coach       User     @relation("CoachReservations", fields: [coachId], references: [id], onDelete: Cascade)
 
-  // Élève qui réserve la séance
-  studentId   String   @map("student_id")
-  student     User     @relation("StudentReservations", fields: [studentId], references: [id], onDelete: Cascade)
+  // Élève qui réserve la séance (optionnel si invité/non connecté)
+  studentId   String?   @map("student_id")
+  student     User?     @relation("StudentReservations", fields: [studentId], references: [id], onDelete: Cascade)
+
+  // Informations de réservation sans compte
+  guestName   String?   @map("guest_name")
+  guestEmail  String?   @map("guest_email")
 
   startDateTime DateTime @map("start_datetime")
   endDateTime   DateTime @map("end_datetime")
 
-  // Type de séance : muscu, yoga, cardio, autre...
+  // Type de séance et service sélectionné
   sessionType String    @map("session_type")
+  serviceId   String?   @map("service_id")
+  service     CoachService? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  
+  // Lieu de la séance (Distanciel, Adresse, Salle de sport...)
+  location    String?
   notes       String?
 
-  status      String    @default("pending") // "pending" | "confirmed" | "cancelled" | "refused"
+  status      String    @default("pending") // "pending" | "approved" | "confirmed" | "cancelled" | "refused"
+  totalPrice  Float?    @map("total_price")
+  isPaid      Boolean   @default(false) @map("is_paid")
+
+  // --- Détails Financiers de la Commande ---
+  taxAmount      Float?      @map("tax_amount") // Montant TVA
+  platformFee    Float?      @map("platform_fee") // Commission MyTrackLy (application_fee)
+  coachEarning   Float?      @map("coach_earning") // Ce qui revient au coach (net d'application_fee)
+  
+  stripeSessionId String?    @map("stripe_session_id")
+  stripeInvoiceId String?    @map("stripe_invoice_id")
+  stripeInvoiceUrl String?   @map("stripe_invoice_url")
 
   // Lien avec Google Calendar
   googleEventId String? @map("google_event_id")
@@ -218,6 +261,27 @@ model CoachAvailability {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("coach_availabilities")
+  @@index([coachId])
+}
+
+model CoachService {
+  id          String   @id @default(uuid())
+  coachId     String   @map("coach_id")
+  coach       User     @relation("CoachServices", fields: [coachId], references: [id], onDelete: Cascade)
+  
+  title       String   // e.g., "Séance Distanciel 1h"
+  description String?
+  duration    Int      // Duration in minutes
+  price       Float    // Price of the service
+  location    String?  // 'Distanciel', Address, etc.
+  isActive    Boolean  @default(true) @map("is_active")
+
+  reservations Reservation[]
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("coach_services")
   @@index([coachId])
 }
 
