@@ -16,6 +16,7 @@ import {
   getBodyGoalEmoji,
 } from "../../../../utils/trainingPlanHelpers";
 import { useToast } from "../../../../contexts/ToastContext";
+import { InstallBanner } from "../../../ui/InstallPrompt";
 
 function goalBadgeColor(goal: string | null | undefined): string {
   switch (goal) {
@@ -180,6 +181,9 @@ const TrainingPlanList: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+      {/* Install banner — visible if app not installed and modal was dismissed */}
+      <InstallBanner />
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>

@@ -2,6 +2,7 @@ import React from "react";
 import { Outlet } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { Header } from "../pages/dashboard-new/header";
+import InstallPrompt from "../ui/InstallPrompt";
 import {
   Home,
   Users,
@@ -114,6 +115,9 @@ const DashboardLayout: React.FC = () => {
       <main className="pt-16">
         <Outlet />
       </main>
+
+      {/* PWA install prompt — shown once if app not installed */}
+      <InstallPrompt />
     </div>
   );
 };
