@@ -82,7 +82,7 @@ export interface Measurement {
   updatedAt: string;
 }
 
-export type HabitFrequency = "DAILY" | "WEEKLY" | "MONTHLY";
+export type HabitFrequency = "DAILY" | "SPECIFIC_DAYS" | "EVERY_X_DAYS" | "WEEKLY" | "BIWEEKLY" | "MONTHLY";
 
 export type HabitCategory =
   | "hydration"
@@ -113,6 +113,7 @@ export interface Habit {
   icon?: string;
   color?: string;
   daysOfWeek?: number[];
+  everyXDays?: number;
   linkedPlanId?: string;
   currentStreak: number;
   longestStreak: number;
