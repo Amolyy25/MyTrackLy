@@ -84,13 +84,36 @@ export interface Measurement {
 
 export type HabitFrequency = "DAILY" | "WEEKLY" | "MONTHLY";
 
+export type HabitCategory =
+  | "hydration"
+  | "sleep"
+  | "nutrition"
+  | "exercise"
+  | "wellness"
+  | "stretching"
+  | "meditation"
+  | "supplements"
+  | "cardio"
+  | "posture"
+  | "journaling"
+  | "cold_exposure"
+  | "reading"
+  | "screen_limit"
+  | "custom";
+
 export interface Habit {
   id: string;
   userId: string;
   name: string;
-  category: "hydration" | "sleep" | "nutrition" | "exercise" | "wellness";
+  category: HabitCategory;
   targetFrequency: HabitFrequency;
   targetCount?: number;
+  targetUnit?: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  daysOfWeek?: number[];
+  linkedPlanId?: string;
   currentStreak: number;
   longestStreak: number;
   lastLogDate?: string;
@@ -98,6 +121,8 @@ export interface Habit {
   reminderEnabled: boolean;
   startDate: string;
   completedToday?: boolean;
+  streak?: number;
+  bestStreak?: number;
   logs?: HabitLog[];
   createdAt: string;
   updatedAt: string;
@@ -108,6 +133,7 @@ export interface HabitLog {
   habitId: string;
   completedAt: string;
   value?: number;
+  notes?: string;
   createdAt: string;
 }
 
