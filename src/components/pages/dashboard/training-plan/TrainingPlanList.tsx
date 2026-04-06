@@ -6,6 +6,7 @@ import {
   Trash2,
   ChevronRight,
   Loader2,
+  Copy,
 } from "lucide-react";
 import { useTrainingPlans } from "../../../../hooks/useTrainingPlans";
 import { TrainingPlan } from "../../../../types";
@@ -34,9 +35,11 @@ function goalBadgeColor(goal: string | null | undefined): string {
 function PlanCard({
   plan,
   onDelete,
+  onDuplicate,
 }: {
   plan: TrainingPlan;
   onDelete: (id: string) => void;
+  onDuplicate: (plan: TrainingPlan) => void;
 }) {
   const daysLabel = plan.days
     .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
@@ -50,13 +53,22 @@ function PlanCard({
         <h3 className="font-black text-slate-900 dark:text-white text-lg leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
           {plan.name}
         </h3>
-        <button
-          onClick={(e) => { e.preventDefault(); onDelete(plan.id); }}
-          className="p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all flex-shrink-0"
-          title="Supprimer le plan"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <div className="flex gap-1">
+          <button
+            onClick={(e) => { e.preventDefault(); onDuplicate(plan); }}
+            className="p-2 rounded-xl text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all flex-shrink-0"
+            title="Dupliquer le plan"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => { e.preventDefault(); onDelete(plan.id); }}
+            className="p-2 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all flex-shrink-0"
+            title="Supprimer le plan"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Badges */}
@@ -106,7 +118,7 @@ function PlanCard({
 
 const TrainingPlanList: React.FC = () => {
   const navigate = useNavigate();
-  const { plans, isLoading, error, deletePlan } = useTrainingPlans();
+  const { plans, isLoading, error, deletePlan, createPlan } = useTrainingPlans();
   const { showToast } = useToast();
 
   const handleDelete = async (id: string) => {
@@ -123,6 +135,44 @@ const TrainingPlanList: React.FC = () => {
     } catch (err) {
       showToast(
         err instanceof Error ? err.message : "Erreur lors de la suppression",
+        "error"
+      );
+    }
+  };
+
+  const handleDuplicate = async (plan: TrainingPlan) => {
+    try {
+      const days = plan.days.map((d) => ({
+        dayOfWeek: d.dayOfWeek,
+        timeOfDay: d.timeOfDay,
+        trainingType: d.trainingType,
+        customType: d.customType ?? null,
+        label: d.label ?? null,
+        exercises: d.exercises.map((ex, idx) => ({
+          exerciseId: ex.exerciseId,
+          plannedSets: ex.plannedSets,
+          plannedReps: ex.plannedReps,
+          plannedWeightKg: ex.plannedWeightKg ?? null,
+          orderIndex: idx,
+        })),
+      }));
+
+      const created = await createPlan({
+        name: `${plan.name} (copie)`,
+        description: plan.description ?? null,
+        bodyGoal: plan.bodyGoal ?? null,
+        customGoal: plan.customGoal ?? null,
+        initialWeightKg: plan.initialWeightKg ?? null,
+        targetWeightKg: plan.targetWeightKg ?? null,
+        initialNotes: plan.initialNotes ?? null,
+        isActive: false,
+        days,
+      });
+      showToast("Plan duplique !", "success");
+      navigate(`/dashboard/training-plans/${created.id}`);
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Erreur lors de la duplication",
         "error"
       );
     }
@@ -190,7 +240,7 @@ const TrainingPlanList: React.FC = () => {
       {!isLoading && plans.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {plans.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} onDelete={handleDelete} />
+            <PlanCard key={plan.id} plan={plan} onDelete={handleDelete} onDuplicate={handleDuplicate} />
           ))}
         </div>
       )}

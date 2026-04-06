@@ -46,6 +46,10 @@ import {
 import { PlanDay, PlanExercise, Exercise, Measurement } from "../../../../types";
 import LogPlanSessionModal from "./LogPlanSessionModal";
 import AIPlanInsights from "./AIPlanInsights";
+import ManageExercisesModal from "./ManageExercisesModal";
+import ExerciseProgressChart from "./ExerciseProgressChart";
+import ProgressiveOverload from "./ProgressiveOverload";
+import PushNotificationSettings from "./PushNotificationSettings";
 import API_URL from "../../../../config/api";
 
 // ─── Auth headers ────────────────────────────────────────────────────────────
@@ -401,6 +405,7 @@ function DayCard({
   onEditDay: (dayId: string, data: { timeOfDay: string; trainingType: string; label?: string }) => Promise<void>;
 }) {
   const [showSearch, setShowSearch] = useState(false);
+  const [showManageModal, setShowManageModal] = useState(false);
   const [editingDay, setEditingDay] = useState(false);
   const [timeVal, setTimeVal] = useState(planDay?.timeOfDay ?? "08:00");
   const [typeVal, setTypeVal] = useState(planDay?.trainingType ?? "full_body");
@@ -564,23 +569,50 @@ function DayCard({
                 {/* Add exercise in edit mode */}
                 {editMode && (
                   <div className="relative mt-auto pt-1">
-                    {showSearch ? (
-                      <ExerciseSearch
-                        onAdd={(ex) => { onAddExercise(planDay.id, ex); setShowSearch(false); }}
-                        onClose={() => setShowSearch(false)}
+                    {/* Desktop: inline search dropdown */}
+                    <div className="hidden lg:block">
+                      {showSearch ? (
+                        <ExerciseSearch
+                          onAdd={(ex) => { onAddExercise(planDay.id, ex); setShowSearch(false); }}
+                          onClose={() => setShowSearch(false)}
+                        />
+                      ) : (
+                        <button
+                          onClick={() => setShowSearch(true)}
+                          className={`w-full py-2 text-xs font-black uppercase tracking-widest rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+                            isToday
+                              ? "border-white/30 text-white/60 hover:border-white/60 hover:text-white"
+                              : "border-indigo-500/30 text-indigo-400 hover:border-indigo-500 hover:bg-indigo-500/10"
+                          }`}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Ajouter un exercice
+                        </button>
+                      )}
+                    </div>
+                    {/* Mobile: button that opens full modal */}
+                    <button
+                      onClick={() => setShowManageModal(true)}
+                      className={`lg:hidden w-full py-2.5 text-xs font-black uppercase tracking-widest rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+                        isToday
+                          ? "border-white/30 text-white/60 hover:border-white/60 hover:text-white"
+                          : "border-indigo-500/30 text-indigo-400 hover:border-indigo-500 hover:bg-indigo-500/10"
+                      }`}
+                    >
+                      <Dumbbell className="w-3.5 h-3.5" />
+                      Gerer les exercices
+                    </button>
+                    {/* Mobile manage modal */}
+                    {planDay && (
+                      <ManageExercisesModal
+                        isOpen={showManageModal}
+                        onClose={() => setShowManageModal(false)}
+                        planDay={planDay}
+                        planId={planId}
+                        onAddExercise={onAddExercise}
+                        onDeleteExercise={onDeleteExercise}
+                        onUpdateExercise={onUpdateExercise}
                       />
-                    ) : (
-                      <button
-                        onClick={() => setShowSearch(true)}
-                        className={`w-full py-2 text-xs font-black uppercase tracking-widest rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
-                          isToday
-                            ? "border-white/30 text-white/60 hover:border-white/60 hover:text-white"
-                            : "border-indigo-500/30 text-indigo-400 hover:border-indigo-500 hover:bg-indigo-500/10"
-                        }`}
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        Ajouter un exercice
-                      </button>
                     )}
                   </div>
                 )}
@@ -1101,6 +1133,38 @@ const TrainingPlanDashboard: React.FC = () => {
               <div className="sm:col-span-2 lg:col-span-4">
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Notes pour l&apos;IA</label>
                 <EditTextarea value={draftNotes} onChange={setDraftNotes} placeholder="Contraintes, préférences, informations pour les suggestions IA..." rows={3} />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {[
+                    { label: "Blessures", text: "J'ai une blessure/douleur au niveau de : " },
+                    { label: "Materiel", text: "Materiel disponible : " },
+                    { label: "Niveau", text: "Mon niveau : debutant/intermediaire/avance. Je m'entraine depuis : " },
+                    { label: "Temps/seance", text: "Je dispose de environ X minutes par seance. " },
+                    { label: "Objectif precis", text: "Mon objectif precis : " },
+                    { label: "Alimentation", text: "Concernant mon alimentation : " },
+                    { label: "Sommeil", text: "Mon sommeil/recuperation : " },
+                  ].map((s) => {
+                    const added = draftNotes.includes(s.text.trim());
+                    return (
+                      <button
+                        key={s.label}
+                        type="button"
+                        disabled={added}
+                        onClick={() => {
+                          const sep = draftNotes.trim() ? "\n" : "";
+                          setDraftNotes(draftNotes + sep + s.text);
+                        }}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                          added
+                            ? "bg-green-500/10 text-green-400 border border-green-500/20 opacity-60 cursor-not-allowed"
+                            : "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 active:scale-95"
+                        }`}
+                      >
+                        {added ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                        {s.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -1483,6 +1547,26 @@ const TrainingPlanDashboard: React.FC = () => {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Progressive overload + Deload */}
+            <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm">
+              <ProgressiveOverload
+                planId={plan.id}
+                days={plan.days}
+                progress={progress}
+                onApplied={refetch}
+              />
+            </div>
+
+            {/* Exercise progress charts */}
+            <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm">
+              <ExerciseProgressChart planId={plan.id} />
+            </div>
+
+            {/* Push notifications */}
+            <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm">
+              <PushNotificationSettings planId={plan.id} days={plan.days} />
             </div>
 
             {/* Plan notes */}
