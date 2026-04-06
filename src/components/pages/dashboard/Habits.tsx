@@ -50,6 +50,7 @@ import {
 import LoadingSpinner from "../../composants/LoadingSpinner";
 import ErrorDisplay from "../../composants/ErrorDisplay";
 import HabitPushNotifications from "../../habits/HabitPushNotifications";
+import { HabitForm } from "../../habits/HabitForm";
 import API_URL from "../../../config/api";
 
 const categoryIcons = {
@@ -931,217 +932,28 @@ const Habits: React.FC = () => {
         </div>
       )}
 
-      {/* Form Modal Overlay */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-            onClick={handleCancel}
-          />
-
-          {/* Modal */}
-          <Card className="relative w-full sm:max-w-lg max-h-[90vh] sm:max-h-[85vh] overflow-hidden border-border bg-card shadow-2xl animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 rounded-t-2xl sm:rounded-2xl">
-            {/* Header */}
-            <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-card/95 backdrop-blur-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                  <Target className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h2 className="font-semibold text-foreground">
-                    {editingHabit ? "Modifier l'habitude" : "Nouvelle habitude"}
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    {editingHabit
-                      ? "Modifiez les détails"
-                      : "Créez une nouvelle habitude"}
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleCancel}
-                className="rounded-xl h-9 w-9 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-
-            {/* Form Content */}
-            <form
-              onSubmit={handleFormSubmit}
-              className="overflow-y-auto max-h-[calc(90vh-160px)] sm:max-h-[calc(85vh-160px)]"
-            >
-              <div className="p-6 space-y-5">
-                {/* Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-sm font-medium">
-                    Nom de l'habitude *
-                  </Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    placeholder="Ex: Boire 2L d'eau"
-                    className="h-12 rounded-xl"
-                    required
-                  />
-                </div>
-
-                {/* Category */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Catégorie *</Label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {Object.entries(categoryIcons).map(([key, icon]) => {
-                      const isSelected = formData.category === key;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() =>
-                            setFormData({
-                              ...formData,
-                              category: key as Habit["category"],
-                            })
-                          }
-                          className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-all ${
-                            isSelected
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-muted/30 text-muted-foreground hover:border-primary/50"
-                          }`}
-                        >
-                          <span className="text-xl">{icon}</span>
-                          <span className="text-[10px] font-medium truncate w-full text-center">
-                            {categoryLabels[key as keyof typeof categoryLabels]}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Frequency */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Fréquence *</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      {
-                        value: "daily",
-                        label: "Quotidienne",
-                        desc: "Tous les jours",
-                      },
-                      {
-                        value: "weekly",
-                        label: "Hebdomadaire",
-                        desc: "Une fois par semaine",
-                      },
-                    ].map((freq) => {
-                      const isSelected =
-                        formData.targetFrequency === freq.value;
-                      return (
-                        <button
-                          key={freq.value}
-                          type="button"
-                          onClick={() =>
-                            setFormData({
-                              ...formData,
-                              targetFrequency:
-                                freq.value as Habit["targetFrequency"],
-                            })
-                          }
-                          className={`flex flex-col items-start p-4 rounded-xl border transition-all ${
-                            isSelected
-                              ? "border-primary bg-primary/10"
-                              : "border-border bg-muted/30 hover:border-primary/50"
-                          }`}
-                        >
-                          <span
-                            className={`font-medium ${
-                              isSelected ? "text-primary" : "text-foreground"
-                            }`}
-                          >
-                            {freq.label}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {freq.desc}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Target Count */}
-                <div className="space-y-2">
-                  <Label htmlFor="targetCount" className="text-sm font-medium">
-                    Quantité cible (optionnel)
-                  </Label>
-                  <Input
-                    id="targetCount"
-                    type="number"
-                    step="0.1"
-                    value={formData.targetCount}
-                    onChange={(e) =>
-                      setFormData({ ...formData, targetCount: e.target.value })
-                    }
-                    placeholder="Ex: 2 (pour 2L)"
-                    className="h-12 rounded-xl"
-                  />
-                </div>
-
-                {/* Start Date */}
-                <div className="space-y-2">
-                  <Label htmlFor="startDate" className="text-sm font-medium">
-                    Date de début
-                  </Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) =>
-                      setFormData({ ...formData, startDate: e.target.value })
-                    }
-                    className="h-12 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="sticky bottom-0 flex gap-3 p-4 border-t border-border bg-card/95 backdrop-blur-sm">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCancel}
-                  disabled={isCreating || isUpdating}
-                  className="flex-1 h-12 rounded-xl"
-                >
-                  Annuler
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isCreating || isUpdating || !formData.name.trim()}
-                  className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground"
-                >
-                  {isCreating || isUpdating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {editingHabit ? "Modification..." : "Création..."}
-                    </>
-                  ) : editingHabit ? (
-                    "Modifier"
-                  ) : (
-                    "Créer"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
+      {/* Habit Form Modal */}
+      <HabitForm
+        habit={editingHabit}
+        open={showForm}
+        onOpenChange={(open) => {
+          setShowForm(open);
+          if (!open) setEditingHabit(null);
+        }}
+        onSubmit={async (data) => {
+          if (editingHabit) {
+            await updateHabit(editingHabit.id, data);
+            showToast("Habitude modifiee !", "success");
+          } else {
+            await createHabit(data);
+            showToast("Habitude creee !", "success");
+          }
+          setShowForm(false);
+          setEditingHabit(null);
+          await refetch();
+        }}
+        isLoading={isCreating || isUpdating}
+      />
     </div>
   );
 };
