@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Bell, BellOff, BellRing, Check, AlertCircle, Clock, Send } from "lucide-react";
+import { Bell, BellOff, BellRing, Check, AlertCircle, Clock } from "lucide-react";
 import { PlanDay } from "../../../../types";
 import { DAYS_FULL_FR, getTrainingTypeLabel, getTrainingTypeEmoji } from "../../../../utils/trainingPlanHelpers";
 import { useToast } from "../../../../contexts/ToastContext";
@@ -193,25 +193,6 @@ const PushNotificationSettings: React.FC<PushNotificationSettingsProps> = ({ pla
     savePrefs(planId, newPrefs);
   };
 
-  const handleTestNotification = () => {
-    if (!isPermissionGranted()) {
-      showToast("Autorisez d'abord les notifications", "error");
-      return;
-    }
-
-    const nextDay = days[0];
-    const label = nextDay?.label || "Seance";
-    const emoji = nextDay ? getTrainingTypeEmoji(nextDay.trainingType) : "💪";
-    const type = nextDay ? getTrainingTypeLabel(nextDay.trainingType, nextDay.customType) : "Entrainement";
-
-    sendNotification(
-      "MyTrackLy — Test",
-      `${emoji} ${label} — ${type} dans ${prefs.reminderMinutes} min !`,
-      "test-notification"
-    );
-    showToast("Notification de test envoyee !", "success");
-  };
-
   if (!canUseNotifications()) {
     return (
       <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/40 rounded-xl p-4">
@@ -268,15 +249,6 @@ const PushNotificationSettings: React.FC<PushNotificationSettingsProps> = ({ pla
 
       {prefs.enabled && permissionState === "granted" && (
         <div className="space-y-3">
-          {/* Test button */}
-          <button
-            onClick={handleTestNotification}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-500/30 text-indigo-500 dark:text-indigo-400 text-xs font-bold uppercase tracking-wider hover:bg-indigo-50 dark:hover:bg-indigo-500/5 transition-all active:scale-95"
-          >
-            <Send className="w-3.5 h-3.5" />
-            Envoyer une notification test
-          </button>
-
           {/* Reminder offset */}
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">

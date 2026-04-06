@@ -50,6 +50,7 @@ import ManageExercisesModal from "./ManageExercisesModal";
 import ExerciseProgressChart from "./ExerciseProgressChart";
 import ProgressiveOverload from "./ProgressiveOverload";
 import PushNotificationSettings from "./PushNotificationSettings";
+import PlanHabitsWidget from "./PlanHabitsWidget";
 import { InstallBanner } from "../../../ui/InstallPrompt";
 import API_URL from "../../../../config/api";
 
@@ -1563,6 +1564,11 @@ const TrainingPlanDashboard: React.FC = () => {
             {/* Exercise progress charts */}
             <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm">
               <ExerciseProgressChart planId={plan.id} />
+            </div>
+
+            {/* Habits linked to this plan */}
+            <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm">
+              <PlanHabitsWidget planId={plan.id} bodyGoal={plan.bodyGoal} />
             </div>
 
             {/* Push notifications */}

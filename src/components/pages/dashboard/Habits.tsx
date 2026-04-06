@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import LoadingSpinner from "../../composants/LoadingSpinner";
 import ErrorDisplay from "../../composants/ErrorDisplay";
+import HabitPushNotifications from "../../habits/HabitPushNotifications";
 import API_URL from "../../../config/api";
 
 const categoryIcons = {
@@ -922,6 +923,11 @@ const Habits: React.FC = () => {
               )}
             </CardContent>
           </Card>
+
+          {/* Push notification settings */}
+          {!isViewingStudent && habits.length > 0 && (
+            <HabitPushNotifications habits={habits} />
+          )}
         </div>
       )}
 
