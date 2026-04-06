@@ -21,6 +21,7 @@ import {
   getTrainingTypeLabel,
   getTrainingTypeEmoji,
 } from "../../../../utils/trainingPlanHelpers";
+import { PLAN_TEMPLATES, PlanTemplate } from "../../../../utils/planTemplates";
 import { useTrainingPlans } from "../../../../hooks/useTrainingPlans";
 import { useToast } from "../../../../contexts/ToastContext";
 import { Exercise } from "../../../../types";
@@ -308,11 +309,85 @@ const TrainingPlanNew: React.FC = () => {
     return true;
   };
 
+  const applyTemplate = (template: PlanTemplate) => {
+    const selectedDays = template.days.map((d) => d.dayOfWeek);
+    const dayConfigs: Record<number, DayConfig> = {};
+    const exercisesByDay: Record<number, ExerciseEntry[]> = {};
+
+    for (const day of template.days) {
+      dayConfigs[day.dayOfWeek] = {
+        dayOfWeek: day.dayOfWeek,
+        timeOfDay: day.timeOfDay,
+        trainingType: day.trainingType,
+        customType: "",
+        durationMinutes: "",
+      };
+      exercisesByDay[day.dayOfWeek] = day.exercises.map((ex, idx) => ({
+        exerciseId: `template-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 5)}`,
+        exerciseName: ex.exerciseName,
+        plannedSets: ex.plannedSets,
+        plannedReps: ex.plannedReps,
+        plannedWeightKg: ex.plannedWeightKg ?? "",
+        orderIndex: idx,
+      }));
+    }
+
+    setState((prev) => ({
+      ...prev,
+      name: template.name,
+      bodyGoal: template.bodyGoal,
+      selectedDays,
+      dayConfigs,
+      exercisesByDay,
+    }));
+    showToast(`Template "${template.name}" applique`, "success");
+  };
+
   const sortedSelectedDays = [...state.selectedDays].sort((a, b) => a - b);
 
   // ---- STEP 1 ----
   const renderStep1 = () => (
     <div className="space-y-6">
+      {/* Templates */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          Partir d'un template
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {PLAN_TEMPLATES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => applyTemplate(t)}
+              className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500/30 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 transition-all text-left group"
+            >
+              <span className="text-2xl">{t.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-slate-800 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  {t.name}
+                </p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                  {t.description}
+                </p>
+                <p className="text-[10px] text-indigo-500 dark:text-indigo-400 font-bold mt-1">
+                  {t.days.length} jours/sem - {t.days.reduce((s, d) => s + d.exercises.length, 0)} exercices
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
+        <div className="relative my-4">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-white dark:bg-gray-900 px-3 text-slate-400 font-medium uppercase tracking-wider">
+              ou personnaliser
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Plan name — prominent */}
       <div>
         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
@@ -438,6 +513,46 @@ const TrainingPlanNew: React.FC = () => {
           <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
           Plus vous donnez de contexte, plus les conseils seront précis
         </p>
+
+        {/* AI note suggestions */}
+        <div className="mt-3">
+          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+            Suggestions - cliquez pour ajouter :
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { label: "Blessures / douleurs", text: "J'ai une blessure/douleur au niveau de : " },
+              { label: "Materiel dispo", text: "Materiel disponible : " },
+              { label: "Jours indisponibles", text: "Je ne suis pas disponible les : " },
+              { label: "Niveau d'experience", text: "Mon niveau : debutant/intermediaire/avance. Je m'entraine depuis : " },
+              { label: "Temps par seance", text: "Je dispose de environ X minutes par seance. " },
+              { label: "Objectif precis", text: "Mon objectif precis : " },
+              { label: "Alimentation", text: "Concernant mon alimentation : " },
+              { label: "Sommeil / recuperation", text: "Mon sommeil/recuperation : " },
+            ].map((suggestion) => {
+              const alreadyAdded = state.initialNotes.includes(suggestion.text.trim());
+              return (
+                <button
+                  key={suggestion.label}
+                  type="button"
+                  disabled={alreadyAdded}
+                  onClick={() => {
+                    const separator = state.initialNotes.trim() ? "\n" : "";
+                    update({ initialNotes: state.initialNotes + separator + suggestion.text });
+                  }}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    alreadyAdded
+                      ? "bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-500/20 opacity-60 cursor-not-allowed"
+                      : "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 hover:border-indigo-300 dark:hover:border-indigo-500/30 active:scale-95"
+                  }`}
+                >
+                  {alreadyAdded ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                  {suggestion.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
