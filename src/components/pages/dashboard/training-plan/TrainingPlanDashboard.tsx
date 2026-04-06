@@ -1593,14 +1593,13 @@ const TrainingPlanDashboard: React.FC = () => {
       </div>
 
       {/* ── LOG MODAL ── */}
-      {logModalOpen && logTargetDay && (
-        <LogPlanSessionModal
-          planId={plan.id}
-          planDay={logTargetDay}
-          onClose={() => { setLogModalOpen(false); setLogTargetDay(null); }}
-          onLogged={() => { refetch(); setLogModalOpen(false); setLogTargetDay(null); }}
-        />
-      )}
+      <LogPlanSessionModal
+        isOpen={logModalOpen && logTargetDay != null}
+        planId={plan.id}
+        planDay={logTargetDay}
+        onClose={() => { setLogModalOpen(false); setLogTargetDay(null); }}
+        onSuccess={() => { refetch(); setLogModalOpen(false); setLogTargetDay(null); }}
+      />
     </div>
   );
 };
