@@ -111,8 +111,8 @@ const DashboardLayout: React.FC = () => {
     <div className="min-h-screen bg-gradient-subtle">
       <Header navItems={navItems} />
 
-      {/* Main Content with top padding to account for fixed header */}
-      <main className="pt-16">
+      {/* Main Content — mobile: compact top bar + bottom nav; desktop: standard top header */}
+      <main className="pt-12 pb-20 lg:pt-16 lg:pb-0">
         <Outlet />
       </main>
 
