@@ -16,11 +16,11 @@ export default defineConfig({
         short_name: "MyTrackLy",
         description: "La solution moderne pour suivre et ameliorer vos performances sportives",
         theme_color: "#4f46e5",
-        background_color: "#0f172a",
+        background_color: "#ffffff",
         display: "standalone",
         orientation: "portrait",
         scope: "/",
-        start_url: "/",
+        start_url: "/dashboard/training-plans",
         icons: [
           {
             src: "/pwa-192x192.png",

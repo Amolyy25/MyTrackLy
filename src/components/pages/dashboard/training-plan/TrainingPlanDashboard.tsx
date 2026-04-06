@@ -50,6 +50,7 @@ import ManageExercisesModal from "./ManageExercisesModal";
 import ExerciseProgressChart from "./ExerciseProgressChart";
 import ProgressiveOverload from "./ProgressiveOverload";
 import PushNotificationSettings from "./PushNotificationSettings";
+import { InstallBanner } from "../../../ui/InstallPrompt";
 import API_URL from "../../../../config/api";
 
 // ─── Auth headers ────────────────────────────────────────────────────────────
@@ -1584,6 +1585,9 @@ const TrainingPlanDashboard: React.FC = () => {
             <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4">
               <AIPlanInsights planId={plan.id} />
             </div>
+
+            {/* Install app banner */}
+            <InstallBanner />
           </div>
         </div>
       </div>
