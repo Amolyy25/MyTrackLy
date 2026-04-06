@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { Bell, BellOff, Check, AlertCircle, Clock } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Bell, BellOff, BellRing, Check, AlertCircle, Clock, Send } from "lucide-react";
 import { PlanDay } from "../../../../types";
 import { DAYS_FULL_FR, getTrainingTypeLabel, getTrainingTypeEmoji } from "../../../../utils/trainingPlanHelpers";
+import { useToast } from "../../../../contexts/ToastContext";
 
 interface PushNotificationSettingsProps {
   planId: string;
@@ -9,12 +10,11 @@ interface PushNotificationSettingsProps {
 }
 
 const NOTIFICATION_KEY = "mytrackly_notifications";
-const REMINDER_OFFSET_KEY = "mytrackly_reminder_offset";
 
 interface NotificationPrefs {
   enabled: boolean;
-  enabledDays: number[]; // dayOfWeek values
-  reminderMinutes: number; // minutes before session
+  enabledDays: number[];
+  reminderMinutes: number;
 }
 
 function getPrefs(planId: string): NotificationPrefs {
@@ -38,86 +38,116 @@ function isPermissionGranted(): boolean {
 }
 
 /**
- * Schedule a notification for the next occurrence of a training day.
- * Uses setTimeout since Service Worker push requires a server.
- * For a PWA, this works when the app tab is open.
+ * Send a notification immediately (used for test & scheduled).
  */
-function scheduleNextNotification(day: PlanDay, reminderMinutes: number): number | null {
+function sendNotification(title: string, body: string, tag?: string) {
+  if (!isPermissionGranted()) return;
+
+  // Try service worker notifications first (works better on mobile/PWA)
+  if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.ready.then((reg) => {
+      reg.showNotification(title, {
+        body,
+        icon: "/pwa-192x192.png",
+        badge: "/pwa-192x192.png",
+        tag: tag || "mytrackly-reminder",
+        vibrate: [200, 100, 200],
+        renotify: true,
+      });
+    }).catch(() => {
+      // Fallback to basic Notification API
+      new Notification(title, {
+        body,
+        icon: "/pwa-192x192.png",
+        tag: tag || "mytrackly-reminder",
+      });
+    });
+  } else {
+    new Notification(title, {
+      body,
+      icon: "/pwa-192x192.png",
+      tag: tag || "mytrackly-reminder",
+    });
+  }
+}
+
+/**
+ * Schedule notifications for the next occurrence of each enabled training day.
+ * Returns timer IDs for cleanup.
+ */
+function scheduleNotifications(
+  days: PlanDay[],
+  enabledDays: number[],
+  reminderMinutes: number
+): number[] {
+  const timers: number[] = [];
   const now = new Date();
   const todayDow = now.getDay();
 
-  // Find next occurrence of this day
-  let daysUntil = day.dayOfWeek - todayDow;
-  if (daysUntil < 0) daysUntil += 7;
-  if (daysUntil === 0) {
-    // Check if time already passed today
+  for (const day of days) {
+    if (!enabledDays.includes(day.dayOfWeek)) continue;
+
+    let daysUntil = day.dayOfWeek - todayDow;
+    if (daysUntil < 0) daysUntil += 7;
+
+    const nextDate = new Date(now);
+    nextDate.setDate(nextDate.getDate() + daysUntil);
     const [h, m] = day.timeOfDay.split(":").map(Number);
-    const sessionTime = new Date(now);
-    sessionTime.setHours(h, m, 0, 0);
-    sessionTime.setMinutes(sessionTime.getMinutes() - reminderMinutes);
-    if (now >= sessionTime) daysUntil = 7;
+    nextDate.setHours(h, m, 0, 0);
+    nextDate.setMinutes(nextDate.getMinutes() - reminderMinutes);
+
+    // If the time already passed today, schedule for next week
+    if (daysUntil === 0 && nextDate.getTime() <= now.getTime()) {
+      nextDate.setDate(nextDate.getDate() + 7);
+    }
+
+    const ms = nextDate.getTime() - now.getTime();
+    if (ms <= 0 || ms > 7 * 24 * 60 * 60 * 1000) continue;
+
+    const typeLabel = getTrainingTypeLabel(day.trainingType, day.customType);
+    const typeEmoji = getTrainingTypeEmoji(day.trainingType);
+    const dayName = DAYS_FULL_FR[day.dayOfWeek];
+    const label = day.label ? `${day.label} — ` : "";
+
+    const timerId = window.setTimeout(() => {
+      sendNotification(
+        "MyTrackLy — C'est l'heure !",
+        `${label}${typeEmoji} ${typeLabel} prevu a ${day.timeOfDay} (${dayName})`,
+        `plan-reminder-${day.id}`
+      );
+    }, ms);
+
+    timers.push(timerId);
   }
 
-  const nextDate = new Date(now);
-  nextDate.setDate(nextDate.getDate() + daysUntil);
-  const [h, m] = day.timeOfDay.split(":").map(Number);
-  nextDate.setHours(h, m, 0, 0);
-  nextDate.setMinutes(nextDate.getMinutes() - reminderMinutes);
-
-  const ms = nextDate.getTime() - now.getTime();
-  if (ms <= 0 || ms > 7 * 24 * 60 * 60 * 1000) return null;
-
-  const typeLabel = getTrainingTypeLabel(day.trainingType, day.customType);
-  const typeEmoji = getTrainingTypeEmoji(day.trainingType);
-  const dayName = DAYS_FULL_FR[day.dayOfWeek];
-  const label = day.label ? `${day.label} — ` : "";
-
-  const timerId = window.setTimeout(() => {
-    if (isPermissionGranted()) {
-      new Notification("MyTrackLy — C'est l'heure !", {
-        body: `${label}${typeEmoji} ${typeLabel} prevu a ${day.timeOfDay} (${dayName})`,
-        icon: "/pwa-192x192.png",
-        badge: "/pwa-192x192.png",
-        tag: `plan-reminder-${day.id}`,
-      });
-    }
-  }, ms);
-
-  return timerId;
+  return timers;
 }
 
 const PushNotificationSettings: React.FC<PushNotificationSettingsProps> = ({ planId, days }) => {
+  const { showToast } = useToast();
   const [prefs, setPrefs] = useState<NotificationPrefs>(() => getPrefs(planId));
   const [permissionState, setPermissionState] = useState<NotificationPermission>(
     canUseNotifications() ? Notification.permission : "denied"
   );
-  const [timers, setTimers] = useState<number[]>([]);
+  const timersRef = useRef<number[]>([]);
 
   // Cleanup timers on unmount
   useEffect(() => {
     return () => {
-      timers.forEach((t) => clearTimeout(t));
+      timersRef.current.forEach((t) => clearTimeout(t));
     };
-  }, [timers]);
+  }, []);
 
   // Re-schedule when prefs change
   useEffect(() => {
-    // Clear old timers
-    timers.forEach((t) => clearTimeout(t));
+    timersRef.current.forEach((t) => clearTimeout(t));
 
     if (!prefs.enabled || permissionState !== "granted") {
-      setTimers([]);
+      timersRef.current = [];
       return;
     }
 
-    const newTimers: number[] = [];
-    for (const day of days) {
-      if (prefs.enabledDays.includes(day.dayOfWeek)) {
-        const t = scheduleNextNotification(day, prefs.reminderMinutes);
-        if (t !== null) newTimers.push(t);
-      }
-    }
-    setTimers(newTimers);
+    timersRef.current = scheduleNotifications(days, prefs.enabledDays, prefs.reminderMinutes);
   }, [prefs, permissionState, days]);
 
   const requestPermission = async () => {
@@ -128,6 +158,9 @@ const PushNotificationSettings: React.FC<PushNotificationSettingsProps> = ({ pla
       const newPrefs = { ...prefs, enabled: true, enabledDays: days.map((d) => d.dayOfWeek) };
       setPrefs(newPrefs);
       savePrefs(planId, newPrefs);
+      showToast("Notifications activees !", "success");
+    } else {
+      showToast("Notifications refusees par le navigateur", "error");
     }
   };
 
@@ -160,6 +193,25 @@ const PushNotificationSettings: React.FC<PushNotificationSettingsProps> = ({ pla
     savePrefs(planId, newPrefs);
   };
 
+  const handleTestNotification = () => {
+    if (!isPermissionGranted()) {
+      showToast("Autorisez d'abord les notifications", "error");
+      return;
+    }
+
+    const nextDay = days[0];
+    const label = nextDay?.label || "Seance";
+    const emoji = nextDay ? getTrainingTypeEmoji(nextDay.trainingType) : "💪";
+    const type = nextDay ? getTrainingTypeLabel(nextDay.trainingType, nextDay.customType) : "Entrainement";
+
+    sendNotification(
+      "MyTrackLy — Test",
+      `${emoji} ${label} — ${type} dans ${prefs.reminderMinutes} min !`,
+      "test-notification"
+    );
+    showToast("Notification de test envoyee !", "success");
+  };
+
   if (!canUseNotifications()) {
     return (
       <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/40 rounded-xl p-4">
@@ -187,27 +239,44 @@ const PushNotificationSettings: React.FC<PushNotificationSettingsProps> = ({ pla
           }`}
         >
           <div
-            className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-transform ${
-              prefs.enabled && permissionState === "granted" ? "translate-x-5.5 left-0" : "left-0.5"
-            }`}
+            className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-transform"
             style={{
-              transform: prefs.enabled && permissionState === "granted" ? "translateX(22px)" : "translateX(0)",
+              transform: prefs.enabled && permissionState === "granted" ? "translateX(22px)" : "translateX(2px)",
             }}
           />
         </button>
       </div>
 
+      {permissionState === "default" && !prefs.enabled && (
+        <button
+          onClick={requestPermission}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-all active:scale-95"
+        >
+          <BellRing className="w-4 h-4" />
+          Activer les notifications
+        </button>
+      )}
+
       {permissionState === "denied" && (
         <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
           <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
           <p className="text-xs text-amber-400">
-            Les notifications sont bloquees. Autorisez-les dans les parametres de votre navigateur.
+            Les notifications sont bloquees. Allez dans Reglages {">"} Safari {">"} Notifications pour les autoriser.
           </p>
         </div>
       )}
 
       {prefs.enabled && permissionState === "granted" && (
         <div className="space-y-3">
+          {/* Test button */}
+          <button
+            onClick={handleTestNotification}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-500/30 text-indigo-500 dark:text-indigo-400 text-xs font-bold uppercase tracking-wider hover:bg-indigo-50 dark:hover:bg-indigo-500/5 transition-all active:scale-95"
+          >
+            <Send className="w-3.5 h-3.5" />
+            Envoyer une notification test
+          </button>
+
           {/* Reminder offset */}
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
@@ -265,6 +334,11 @@ const PushNotificationSettings: React.FC<PushNotificationSettingsProps> = ({ pla
               ))}
             </div>
           </div>
+
+          {/* Info */}
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-relaxed">
+            Les rappels fonctionnent quand l'app est ouverte. Pour des notifications fiables en arriere-plan, gardez un onglet MyTrackLy ouvert.
+          </p>
         </div>
       )}
     </div>
