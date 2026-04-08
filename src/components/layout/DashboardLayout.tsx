@@ -112,7 +112,7 @@ const DashboardLayout: React.FC = () => {
       <Header navItems={navItems} />
 
       {/* Main Content — mobile: compact top bar + bottom nav; desktop: standard top header */}
-      <main className="pt-12 pb-20 lg:pt-16 lg:pb-0">
+      <main className="pb-20 lg:pb-0" style={{ paddingTop: "calc(3rem + env(safe-area-inset-top))" }}>
         <Outlet />
       </main>
 

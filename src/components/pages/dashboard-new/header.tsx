@@ -90,7 +90,7 @@ export function Header({ navItems }: HeaderProps) {
   return (
     <>
       {/* ── Desktop Header (hidden on mobile) ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-border glass bg-background/80 backdrop-blur-md hidden lg:block">
+      <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-border glass bg-background/80 backdrop-blur-md hidden lg:block" style={{ paddingTop: "env(safe-area-inset-top)" }}>
         <div className="mx-auto flex h-full max-w-[1600px] items-center justify-between px-4 lg:px-8">
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-3 group">
@@ -234,8 +234,8 @@ export function Header({ navItems }: HeaderProps) {
       </header>
 
       {/* ── Mobile Top Bar (compact, only logo + key actions) ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-12 border-b border-border bg-background/90 backdrop-blur-md lg:hidden">
-        <div className="flex h-full items-center justify-between px-4">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/90 backdrop-blur-md lg:hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+        <div className="flex h-12 items-center justify-between px-4">
           <Link to="/dashboard" className="flex items-center gap-2">
             <img src="/logo.svg" alt="MyTrackLy" className="h-7 w-7 object-contain" />
             <span className="text-base font-bold tracking-tight text-foreground">
