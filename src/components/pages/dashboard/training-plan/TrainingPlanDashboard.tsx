@@ -45,6 +45,7 @@ import {
 } from "../../../../utils/trainingPlanHelpers";
 import { PlanDay, PlanExercise, Exercise, Measurement } from "../../../../types";
 import LogPlanSessionModal from "./LogPlanSessionModal";
+import { getSavedWorkout, clearSavedWorkout } from "../../../../hooks/useWorkoutAutoSave";
 import AIPlanInsights from "./AIPlanInsights";
 import ManageExercisesModal from "./ManageExercisesModal";
 import ExerciseProgressChart from "./ExerciseProgressChart";
@@ -829,11 +830,10 @@ const TrainingPlanDashboard: React.FC = () => {
   const { plan, isLoading, error, refetch } = usePlanById(id ?? null);
   const { progress } = usePlanProgress(id ?? null);
 
-  const [logModalOpen, setLogModalOpen] = useState(false);
-  const [logTargetDay, setLogTargetDay] = useState<PlanDay | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [showAddDay, setShowAddDay] = useState(false);
   const [latestMeasurement, setLatestMeasurement] = useState<Measurement | null>(null);
+  const [savedWorkout, setSavedWorkout] = useState(() => getSavedWorkout());
 
   // Edit draft state (only used when editMode = true)
   const [draftName, setDraftName] = useState("");
@@ -1304,7 +1304,7 @@ const TrainingPlanDashboard: React.FC = () => {
                     isToday={i === todayDow}
                     editMode={editMode}
                     planId={plan.id}
-                    onLogSession={(d) => { setLogTargetDay(d); setLogModalOpen(true); }}
+                    onLogSession={(d) => { navigate("/dashboard/live-workout", { state: { planId: plan.id, planDay: d } }); }}
                     onAddExercise={handleAddExercise}
                     onDeleteExercise={handleDeleteExercise}
                     onUpdateExercise={handleUpdateExercise}
@@ -1327,7 +1327,7 @@ const TrainingPlanDashboard: React.FC = () => {
                         isToday={i === todayDow}
                         editMode={editMode}
                         planId={plan.id}
-                        onLogSession={(d) => { setLogTargetDay(d); setLogModalOpen(true); }}
+                        onLogSession={(d) => { navigate("/dashboard/live-workout", { state: { planId: plan.id, planDay: d } }); }}
                         onAddExercise={handleAddExercise}
                         onDeleteExercise={handleDeleteExercise}
                         onUpdateExercise={handleUpdateExercise}
@@ -1345,6 +1345,39 @@ const TrainingPlanDashboard: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* ── RECOVERY BANNER ── */}
+            {savedWorkout && savedWorkout.planId === plan.id && (
+              <div className="relative overflow-hidden bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-4 shadow-lg shadow-amber-200 dark:shadow-none">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                      <Play className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-white">Seance en cours</p>
+                      <p className="text-xs text-amber-100 truncate">
+                        {savedWorkout.planDayLabel} · {Math.round((Date.now() - savedWorkout.startedAt) / 60000)} min
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => { clearSavedWorkout(); setSavedWorkout(null); }}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                      Abandonner
+                    </button>
+                    <button
+                      onClick={() => navigate("/dashboard/live-workout", { state: { planId: plan.id, planDay: null, resumed: true } })}
+                      className="px-4 py-1.5 rounded-xl bg-white text-amber-600 text-xs font-bold hover:bg-amber-50 transition-colors"
+                    >
+                      Reprendre
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ── NEXT SESSION ── */}
             {nextDay && (
@@ -1364,11 +1397,11 @@ const TrainingPlanDashboard: React.FC = () => {
                       </p>
                     </div>
                     <button
-                      onClick={() => { setLogTargetDay(nextDay); setLogModalOpen(true); }}
+                      onClick={() => { navigate("/dashboard/live-workout", { state: { planId: plan.id, planDay: nextDay } }); }}
                       className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm font-semibold rounded-xl transition-colors backdrop-blur"
                     >
                       <Play className="w-4 h-4" />
-                      Logger la séance
+                      Commencer
                     </button>
                   </div>
                   {nextDay.exercises.length > 0 && (
@@ -1598,14 +1631,6 @@ const TrainingPlanDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ── LOG MODAL ── */}
-      <LogPlanSessionModal
-        isOpen={logModalOpen && logTargetDay != null}
-        planId={plan.id}
-        planDay={logTargetDay}
-        onClose={() => { setLogModalOpen(false); setLogTargetDay(null); }}
-        onSuccess={() => { refetch(); setLogModalOpen(false); setLogTargetDay(null); }}
-      />
     </div>
   );
 };
