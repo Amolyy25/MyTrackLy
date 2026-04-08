@@ -98,6 +98,64 @@ export async function createPlan(req: Request, res: Response) {
       }
     }
 
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    // Process days and exercises to ensure exercises exist
+    const processedDays = [];
+    for (const day of days) {
+      const processedExercises = [];
+      if (Array.isArray(day.exercises)) {
+        for (const ex of day.exercises) {
+          let exerciseId = ex.exerciseId;
+          const exerciseName = ex.exerciseName;
+
+          // If exerciseId is not a valid UUID, or it's a template/custom placeholder
+          const isInvalidId = !exerciseId || !uuidRegex.test(exerciseId) || exerciseId.startsWith('template-') || exerciseId.startsWith('custom-');
+
+          if (isInvalidId && exerciseName) {
+            // Try to find exercise by name for this user (custom) or built-in
+            let existingExercise = await prisma.exercise.findFirst({
+              where: {
+                name: { equals: exerciseName.trim(), mode: 'insensitive' },
+                OR: [
+                  { isCustom: false },
+                  { isCustom: true, createdByUserId: userId }
+                ]
+              }
+            });
+
+            if (!existingExercise) {
+              // Create new custom exercise
+              existingExercise = await prisma.exercise.create({
+                data: {
+                  name: exerciseName.trim(),
+                  category: 'strength', // Default category
+                  defaultUnit: 'weight', // Default unit
+                  isCustom: true,
+                  createdByUserId: userId
+                }
+              });
+            }
+            exerciseId = existingExercise.id;
+          }
+
+          processedExercises.push({
+            exerciseId,
+            plannedSets: ex.plannedSets,
+            plannedReps: ex.plannedReps,
+            plannedWeightKg: ex.plannedWeightKg,
+            orderIndex: ex.orderIndex,
+            notes: ex.notes
+          });
+        }
+      }
+
+      processedDays.push({
+        ...day,
+        exercises: processedExercises
+      });
+    }
+
     const plan = await prisma.trainingPlan.create({
       data: {
         userId,
@@ -112,23 +170,21 @@ export async function createPlan(req: Request, res: Response) {
         initialWeightKg: initialWeightKg !== undefined ? initialWeightKg : undefined,
         initialNotes: initialNotes !== undefined ? initialNotes : undefined,
         days: {
-          create: days.map((day: any) => ({
+          create: processedDays.map((day: any) => ({
             dayOfWeek: day.dayOfWeek,
             timeOfDay: day.timeOfDay,
             label: day.label !== undefined ? day.label : undefined,
             trainingType: day.trainingType,
             customType: day.customType !== undefined ? day.customType : undefined,
             exercises: {
-              create: Array.isArray(day.exercises)
-                ? day.exercises.map((ex: any, idx: number) => ({
-                    exerciseId: ex.exerciseId,
-                    plannedSets: ex.plannedSets,
-                    plannedReps: ex.plannedReps,
-                    plannedWeightKg: ex.plannedWeightKg !== undefined ? ex.plannedWeightKg : undefined,
-                    orderIndex: ex.orderIndex !== undefined ? ex.orderIndex : idx,
-                    notes: ex.notes !== undefined ? ex.notes : undefined,
-                  }))
-                : [],
+              create: day.exercises.map((ex: any, idx: number) => ({
+                exerciseId: ex.exerciseId,
+                plannedSets: ex.plannedSets,
+                plannedReps: ex.plannedReps,
+                plannedWeightKg: ex.plannedWeightKg !== undefined ? ex.plannedWeightKg : undefined,
+                orderIndex: ex.orderIndex !== undefined ? ex.orderIndex : idx,
+                notes: ex.notes !== undefined ? ex.notes : undefined,
+              })),
             },
           })),
         },
@@ -869,7 +925,7 @@ export async function addPlanExercise(req: Request, res: Response) {
     }
 
     const { id, dayId } = req.params;
-    const { exerciseId, plannedSets, plannedReps, plannedWeightKg } = req.body;
+    const { exerciseId: rawExerciseId, exerciseName, plannedSets, plannedReps, plannedWeightKg } = req.body;
 
     const plan = await prisma.trainingPlan.findFirst({ where: { id, userId } });
     if (!plan) {
@@ -879,6 +935,41 @@ export async function addPlanExercise(req: Request, res: Response) {
     const day = await prisma.planDay.findFirst({ where: { id: dayId, planId: id } });
     if (!day) {
       return res.status(404).json({ message: "Jour non trouve" });
+    }
+
+    let exerciseId = rawExerciseId;
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isInvalidId = !exerciseId || !uuidRegex.test(exerciseId) || exerciseId.startsWith('template-') || exerciseId.startsWith('custom-');
+
+    if (isInvalidId && exerciseName) {
+      // Resolve/Create Exercise
+      let existingExercise = await prisma.exercise.findFirst({
+        where: {
+          name: { equals: exerciseName.trim(), mode: 'insensitive' },
+          OR: [
+            { isCustom: false },
+            { isCustom: true, createdByUserId: userId }
+          ]
+        }
+      });
+
+      if (!existingExercise) {
+        existingExercise = await prisma.exercise.create({
+          data: {
+            name: exerciseName.trim(),
+            category: 'strength',
+            defaultUnit: 'weight',
+            isCustom: true,
+            createdByUserId: userId
+          }
+        });
+      }
+      exerciseId = existingExercise.id;
+    }
+
+    if (!exerciseId || !uuidRegex.test(exerciseId)) {
+      return res.status(400).json({ message: "ID d'exercice manquant ou invalide" });
     }
 
     if (!plannedSets || !Number.isInteger(plannedSets) || plannedSets <= 0) {

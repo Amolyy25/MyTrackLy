@@ -262,6 +262,7 @@ const TrainingPlanNew: React.FC = () => {
         const exercises = (state.exercisesByDay[dayOfWeek] ?? []).map(
           (ex, idx) => ({
             exerciseId: ex.exerciseId,
+            exerciseName: ex.exerciseName,
             plannedSets: ex.plannedSets,
             plannedReps: ex.plannedReps,
             plannedWeightKg: ex.plannedWeightKg ? parseFloat(ex.plannedWeightKg) : null,
