@@ -13,6 +13,7 @@ import {
   CalendarDays,
   Dumbbell,
   X,
+  Zap,
 } from "lucide-react";
 import {
   TRAINING_TYPES,
