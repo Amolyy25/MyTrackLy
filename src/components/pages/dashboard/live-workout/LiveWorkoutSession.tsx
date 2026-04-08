@@ -193,7 +193,10 @@ const LiveWorkoutSession: React.FC = () => {
 
   // Swipe handling
   const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
   const touchEndX = useRef(0);
+  const touchEndY = useRef(0);
+  const isSwiping = useRef(false);
 
   // ── Derived ────────────────────────────────────────────────────────────
   const exercises = sessionData?.exercises ?? [];
@@ -252,6 +255,9 @@ const LiveWorkoutSession: React.FC = () => {
   }, []);
 
   const toggleSetCompleted = useCallback((exIndex: number, setIndex: number) => {
+    let shouldShowTimer = false;
+    let timerDuration = 90;
+
     setSessionData((prev) => {
       if (!prev) return prev;
       const newExercises = [...prev.exercises];
@@ -264,19 +270,24 @@ const LiveWorkoutSession: React.FC = () => {
       };
       newExercises[exIndex] = { ...newExercises[exIndex], sets: newSets };
 
-      // Show rest timer after completing a set (not unchecking, not last set)
+      // Show rest timer after completing a set (not unchecking)
       if (!wasCompleted) {
-        const isLastSet = setIndex === newSets.length - 1;
-        if (!isLastSet) {
-          setRestSeconds(newExercises[exIndex].restSeconds || 90);
-          setShowRestTimer(true);
-        }
+        shouldShowTimer = true;
+        timerDuration = newExercises[exIndex].restSeconds || 90;
       }
 
       return { ...prev, exercises: newExercises };
     });
 
     vibrate();
+
+    // Schedule timer outside the updater to avoid React batching issues
+    requestAnimationFrame(() => {
+      if (shouldShowTimer) {
+        setRestSeconds(timerDuration);
+        setShowRestTimer(true);
+      }
+    });
   }, []);
 
   const addSet = useCallback((exIndex: number) => {
@@ -365,17 +376,27 @@ const LiveWorkoutSession: React.FC = () => {
   // ── Swipe gestures ─────────────────────────────────────────────────────
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.targetTouches[0].clientX;
+    touchStartY.current = e.targetTouches[0].clientY;
+    touchEndX.current = e.targetTouches[0].clientX;
+    touchEndY.current = e.targetTouches[0].clientY;
+    isSwiping.current = false;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     touchEndX.current = e.targetTouches[0].clientX;
+    touchEndY.current = e.targetTouches[0].clientY;
+    isSwiping.current = true;
   };
 
   const handleTouchEnd = () => {
-    const diff = touchStartX.current - touchEndX.current;
-    if (Math.abs(diff) > 60) {
-      if (diff > 0) goToExercise(currentExIndex + 1); // swipe left → next
-      else goToExercise(currentExIndex - 1); // swipe right → prev
+    // Only trigger swipe if there was actual movement
+    if (!isSwiping.current) return;
+    const diffX = touchStartX.current - touchEndX.current;
+    const diffY = Math.abs(touchStartY.current - touchEndY.current);
+    // Require: horizontal > 120px, mostly horizontal (not scrolling vertically)
+    if (Math.abs(diffX) > 120 && Math.abs(diffX) > diffY * 2) {
+      if (diffX > 0) goToExercise(currentExIndex + 1);
+      else goToExercise(currentExIndex - 1);
     }
   };
 
