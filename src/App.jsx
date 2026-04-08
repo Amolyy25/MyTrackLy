@@ -50,6 +50,7 @@ import PublicBooking from "./components/pages/PublicBooking";
 import TrainingPlanList from "./components/pages/dashboard/training-plan/TrainingPlanList";
 import TrainingPlanNew from "./components/pages/dashboard/training-plan/TrainingPlanNew";
 import TrainingPlanDashboard from "./components/pages/dashboard/training-plan/TrainingPlanDashboard";
+import LiveWorkoutSession from "./components/pages/dashboard/live-workout/LiveWorkoutSession";
 
 // Component to redirect to the correct dashboard based on user role
 const DashboardHome = () => {
@@ -298,6 +299,7 @@ function AppRoutes() {
         <Route path="training-plans" element={<TrainingPlanList />} />
         <Route path="training-plans/new" element={<TrainingPlanNew />} />
         <Route path="training-plans/:id" element={<TrainingPlanDashboard />} />
+        <Route path="live-workout" element={<LiveWorkoutSession />} />
         <Route path="programs" element={<SoonPage title="Programmes" />} />
         <Route path="chat" element={<SoonPage title="Discussion" />} />
         <Route path="messagerie" element={<SoonPage title="Messagerie" />} />
