@@ -479,7 +479,7 @@ const LiveWorkoutSession: React.FC = () => {
   // ── FINISH SCREEN ──────────────────────────────────────────────────────
   if (showFinish) {
     return (
-      <div className="fixed inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col">
+      <div className="fixed inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col" style={{ paddingTop: "env(safe-area-inset-top)" }}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
           <button onClick={() => setShowFinish(false)} className="flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -570,7 +570,7 @@ const LiveWorkoutSession: React.FC = () => {
 
   // ── MAIN WORKOUT SCREEN ────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       {/* ── Top Bar ── */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
         <button
