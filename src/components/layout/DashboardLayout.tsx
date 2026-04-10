@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { Header } from "../pages/dashboard-new/header";
 import InstallPrompt from "../ui/InstallPrompt";
+import OnboardingTutorial from "../composants/OnboardingTutorial";
 import {
   Home,
   Users,
@@ -20,6 +21,20 @@ import {
 
 const DashboardLayout: React.FC = () => {
   const { user } = useAuth();
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  useEffect(() => {
+    const completed = localStorage.getItem("mytrackly_onboarding_completed");
+    if (!completed) {
+      const timer = setTimeout(() => setShowTutorial(true), 800);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleTutorialClose = () => {
+    localStorage.setItem("mytrackly_onboarding_completed", "true");
+    setShowTutorial(false);
+  };
 
   const userRole = user?.role || "personnel";
 
@@ -118,6 +133,9 @@ const DashboardLayout: React.FC = () => {
 
       {/* PWA install prompt — shown once if app not installed */}
       <InstallPrompt />
+
+      {/* Onboarding tutorial — shown once for new users */}
+      <OnboardingTutorial isOpen={showTutorial} onClose={handleTutorialClose} />
     </div>
   );
 };

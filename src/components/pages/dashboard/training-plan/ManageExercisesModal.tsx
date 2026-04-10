@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Search, Plus, Trash2, Loader2, Dumbbell, GripVertical } from "lucide-react";
 import { PlanDay, PlanExercise, Exercise } from "../../../../types";
+import { ExerciseInfoButton } from "../../../composants/ExerciseInfoSheet";
 import { DAYS_FULL_FR, getTrainingTypeLabel, getTrainingTypeEmoji } from "../../../../utils/trainingPlanHelpers";
 import API_URL from "../../../../config/api";
 
@@ -228,9 +229,12 @@ const ManageExercisesModal: React.FC<ManageExercisesModalProps> = ({
                       /* View mode */
                       <div className="flex items-center gap-3 p-4">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
-                            {ex.exercise?.name ?? "Exercice"}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
+                              {ex.exercise?.name ?? "Exercice"}
+                            </p>
+                            <ExerciseInfoButton exerciseName={ex.exercise?.name ?? ""} size="sm" />
+                          </div>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                             {ex.plannedSets} series x {ex.plannedReps} reps
                             {ex.plannedWeightKg != null && (
@@ -295,9 +299,12 @@ const ManageExercisesModal: React.FC<ManageExercisesModalProps> = ({
                         className="w-full text-left p-3.5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl flex items-center justify-between transition-all group active:scale-[0.98] border border-transparent hover:border-indigo-200 dark:hover:border-indigo-500/20"
                       >
                         <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate">
-                            {ex.name}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate">
+                              {ex.name}
+                            </span>
+                            <ExerciseInfoButton exerciseName={ex.name} size="sm" />
+                          </div>
                           {ex.category && (
                             <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                               {ex.category}

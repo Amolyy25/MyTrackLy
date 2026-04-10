@@ -20,6 +20,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useToast } from "../../../../contexts/ToastContext";
+import { ExerciseInfoButton } from "../../../composants/ExerciseInfoSheet";
 import {
   useWorkoutAutoSave,
   clearSavedWorkout,
@@ -681,6 +682,7 @@ const LiveWorkoutSession: React.FC = () => {
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">
                   {currentEx.exerciseName}
                 </h3>
+                <ExerciseInfoButton exerciseName={currentEx.exerciseName} size="sm" />
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
                 <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl px-2.5 py-1.5">
@@ -925,7 +927,10 @@ const LiveWorkoutSession: React.FC = () => {
                       onClick={() => addExercise(ex)}
                       className="w-full text-left px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center justify-between transition-colors"
                     >
-                      <span className="truncate">{ex.name}</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="truncate">{ex.name}</span>
+                        <ExerciseInfoButton exerciseName={ex.name} size="sm" />
+                      </div>
                       <span className="text-[10px] text-gray-400 ml-2 flex-shrink-0">{ex.category}</span>
                     </button>
                   ))}

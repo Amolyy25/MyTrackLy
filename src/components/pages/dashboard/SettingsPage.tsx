@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useToast } from "../../../contexts/ToastContext";
+import OnboardingTutorial from "../../composants/OnboardingTutorial";
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import {
@@ -105,6 +106,8 @@ const SettingsPage: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
   
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
   const [notifications, setNotifications] = useState({
     email: true,
     push: false,
@@ -347,9 +350,8 @@ const SettingsPage: React.FC = () => {
                   <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                     Consultez notre centre d'aide ou contactez le support.
                   </p>
-                  <Button size="sm" variant="outline" className="rounded-lg h-8 text-xs" disabled>
-                    Centre d'aide
-                    <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-muted">Soon</span>
+                  <Button size="sm" variant="outline" className="rounded-lg h-8 text-xs" onClick={() => setShowOnboarding(true)}>
+                    Revoir le tutoriel
                   </Button>
                 </div>
               </div>
@@ -368,6 +370,8 @@ const SettingsPage: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      <OnboardingTutorial isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </div>
   );
 };
