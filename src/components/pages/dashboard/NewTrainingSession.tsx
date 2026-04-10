@@ -9,6 +9,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import { useAuth } from "../../../contexts/AuthContext";
 import LoadingSpinner from "../../composants/LoadingSpinner";
 import ErrorDisplay from "../../composants/ErrorDisplay";
+import { ExerciseInfoButton } from "../../composants/ExerciseInfoSheet";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import {
@@ -398,9 +399,12 @@ const NewTrainingSession: React.FC = () => {
                     {index + 1}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">
-                      {exercise.exerciseName}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-foreground">
+                        {exercise.exerciseName}
+                      </h3>
+                      <ExerciseInfoButton exerciseName={exercise.exerciseName} size="sm" />
+                    </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                       <span>{exercise.sets} séries</span>
                       <span>•</span>
@@ -736,10 +740,13 @@ const NewTrainingSession: React.FC = () => {
                                 }
                                 className="flex items-center justify-between p-3 bg-primary/5 hover:bg-primary/10 border border-primary/20 rounded-lg text-left transition-colors group"
                               >
-                                <span className="font-medium text-foreground">
-                                  {ex.name}
-                                </span>
-                                <Plus className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="font-medium text-foreground truncate">
+                                    {ex.name}
+                                  </span>
+                                  <ExerciseInfoButton exerciseName={ex.name} size="sm" />
+                                </div>
+                                <Plus className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                               </button>
                             ))}
                           </div>
@@ -761,10 +768,13 @@ const NewTrainingSession: React.FC = () => {
                                 }
                                 className="flex items-center justify-between p-3 bg-muted/50 hover:bg-muted rounded-lg text-left transition-colors group"
                               >
-                                <span className="font-medium text-foreground">
-                                  {ex.name}
-                                </span>
-                                <Plus className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="font-medium text-foreground truncate">
+                                    {ex.name}
+                                  </span>
+                                  <ExerciseInfoButton exerciseName={ex.name} size="sm" />
+                                </div>
+                                <Plus className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                               </button>
                             ))}
                           </div>

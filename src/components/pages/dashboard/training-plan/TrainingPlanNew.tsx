@@ -27,6 +27,7 @@ import { useTrainingPlans } from "../../../../hooks/useTrainingPlans";
 import { useToast } from "../../../../contexts/ToastContext";
 import { Exercise } from "../../../../types";
 import API_URL from "../../../../config/api";
+import { ExerciseInfoButton } from "../../../composants/ExerciseInfoSheet";
 
 // ---- Types for wizard state ----
 interface DayConfig {
@@ -763,8 +764,11 @@ const TrainingPlanNew: React.FC = () => {
                         disabled={exercises.some((e) => e.exerciseId === ex.id)}
                         className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-indigo-900/30 text-sm text-slate-700 dark:text-slate-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-between"
                       >
-                        <span>{ex.name}</span>
-                        <span className="text-xs text-slate-400 ml-2">{ex.category}</span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="truncate">{ex.name}</span>
+                          <ExerciseInfoButton exerciseName={ex.name} size="sm" />
+                        </div>
+                        <span className="text-xs text-slate-400 ml-2 flex-shrink-0">{ex.category}</span>
                       </button>
                     ))}
                     {searchQuery.trim().length > 0 && !filteredExercises.some(e => e.name.toLowerCase() === searchQuery.toLowerCase()) && (
@@ -795,6 +799,7 @@ const TrainingPlanNew: React.FC = () => {
                         className="flex items-center gap-1.5 pl-2.5 pr-1 py-1 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-full text-sm text-indigo-700 dark:text-indigo-300 group"
                       >
                         <span className="font-medium text-xs">{ex.exerciseName}</span>
+                        <ExerciseInfoButton exerciseName={ex.exerciseName} size="sm" />
                         <span className="text-xs text-indigo-500 dark:text-indigo-400">
                           {ex.plannedSets}×{ex.plannedReps}
                           {ex.plannedWeightKg && ` @${ex.plannedWeightKg}kg`}
