@@ -36,26 +36,34 @@ export const ExerciseInfoButton: React.FC<ExerciseInfoButtonProps> = ({
 
   if (!hasExerciseInfo(exerciseName)) return null;
 
-  const iconSize = size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4";
+  const iconSize = size === "sm" ? "w-4 h-4" : "w-5 h-5";
   const btnSize =
     size === "sm"
-      ? "w-6 h-6 min-w-[24px]"
-      : "w-8 h-8 min-w-[32px]";
+      ? "w-7 h-7 min-w-[28px]"
+      : "w-9 h-9 min-w-[36px]";
 
   return (
     <>
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();
           setOpen(true);
         }}
-        className={`${btnSize} rounded-lg flex items-center justify-center text-indigo-500 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex-shrink-0 ${className}`}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.stopPropagation();
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
+        className={`${btnSize} rounded-lg flex items-center justify-center bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-500/30 active:scale-95 transition-all flex-shrink-0 cursor-pointer ${className}`}
         title={`Voir la fiche de ${exerciseName}`}
       >
         <Info className={iconSize} />
-      </button>
+      </div>
       {open && (
         <ExerciseInfoSheet
           exerciseName={exerciseName}
