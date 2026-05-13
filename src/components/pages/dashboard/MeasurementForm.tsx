@@ -64,10 +64,16 @@ const MeasurementForm: React.FC<MeasurementFormProps> = ({
   onCancel,
   isLoading = false,
 }) => {
+  const toLocalDateTimeInput = (d: Date) => {
+    // datetime-local expects YYYY-MM-DDTHH:mm in local time (no TZ suffix).
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
   const [formData, setFormData] = useState({
     date: measurement?.date
-      ? new Date(measurement.date).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0],
+      ? toLocalDateTimeInput(new Date(measurement.date))
+      : toLocalDateTimeInput(new Date()),
     bodyWeightKg: measurement?.bodyWeightKg?.toString() || "",
     leftArmCm: measurement?.leftArmCm?.toString() || "",
     rightArmCm: measurement?.rightArmCm?.toString() || "",
@@ -102,7 +108,8 @@ const MeasurementForm: React.FC<MeasurementFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSubmit(formData);
+    // Convert local datetime-local string to ISO so backend stores a precise instant.
+    await onSubmit({ ...formData, date: new Date(formData.date).toISOString() });
   };
 
   return (
@@ -111,14 +118,14 @@ const MeasurementForm: React.FC<MeasurementFormProps> = ({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="date" className="text-xs font-medium text-muted-foreground">
-            Date <span className="text-destructive">*</span>
+            Date & heure <span className="text-destructive">*</span>
           </Label>
           <div className="relative">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
               <Calendar className="h-4 w-4" />
             </div>
             <input
-              type="date"
+              type="datetime-local"
               id="date"
               name="date"
               value={formData.date}
