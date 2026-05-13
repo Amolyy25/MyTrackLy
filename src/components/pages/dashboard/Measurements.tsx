@@ -234,6 +234,11 @@ const Measurements: React.FC = () => {
                           day: "numeric",
                           month: "long",
                         })}
+                        {" · "}
+                        {new Date(latestMeasurement.date).toLocaleTimeString("fr-FR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -407,12 +412,15 @@ const Measurements: React.FC = () => {
                   <CardContent className="p-4">
                     <div className="flex items-center gap-4">
                       {/* Date Badge */}
-                      <div className="flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+                      <div className="flex flex-col items-center justify-center w-14 h-16 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
                         <span className="text-lg font-bold text-primary leading-none">
                           {new Date(measurement.date).getDate()}
                         </span>
                         <span className="text-[10px] text-muted-foreground uppercase mt-0.5">
                           {new Date(measurement.date).toLocaleDateString("fr-FR", { month: "short" })}
+                        </span>
+                        <span className="text-[10px] font-semibold text-primary/80 mt-0.5 tabular-nums">
+                          {new Date(measurement.date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </div>
 

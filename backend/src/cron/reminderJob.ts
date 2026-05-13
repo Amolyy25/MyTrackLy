@@ -21,13 +21,16 @@ export const initReminderCron = () => {
   // Run every 15 minutes to catch habit-specific reminder times
   cron.schedule("*/15 * * * *", async () => {
     const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
+    // Compute Paris-local parts so reminderTime ("HH:mm" Paris) matches server time
+    // regardless of server timezone (Railway runs UTC).
+    const parisNow = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Paris" }));
+    const currentHour = parisNow.getHours();
+    const currentMinute = parisNow.getMinutes();
     const currentTimeStr = `${String(currentHour).padStart(2, "0")}:${String(Math.floor(currentMinute / 15) * 15).padStart(2, "0")}`;
-    const currentDay = now.getDay();
-    const currentDate = now.getDate();
+    const currentDay = parisNow.getDay();
+    const currentDate = parisNow.getDate();
 
-    console.log(`[CRON] Checking habit reminders at ${currentTimeStr}...`);
+    console.log(`[CRON] Checking habit reminders at ${currentTimeStr} (Europe/Paris)...`);
 
     try {
       const habits = await prisma.habit.findMany({
@@ -47,7 +50,9 @@ export const initReminderCron = () => {
         // Check if this habit's reminder time matches current window (±15 min)
         const reminderTime = habit.reminderTime;
         if (!reminderTime) {
-          // No specific time: use defaults (20:00 DAILY, 19:00 SUN weekly, 18:00 30th monthly)
+          // No specific time: use defaults (20:00 DAILY, 19:00 SUN weekly, 18:00 28th monthly).
+          // Cron runs every 15min — only fire once per hour at the :00 slot to avoid 4 emails.
+          if (currentMinute >= 15) continue;
           if (habit.targetFrequency === Frequency.DAILY && currentHour !== 20) continue;
           if (habit.targetFrequency === Frequency.WEEKLY && (currentDay !== 0 || currentHour !== 19)) continue;
           if (habit.targetFrequency === Frequency.MONTHLY && (currentDate !== 28 || currentHour !== 18)) continue;
