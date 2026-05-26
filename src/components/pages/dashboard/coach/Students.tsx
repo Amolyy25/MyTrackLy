@@ -199,10 +199,10 @@ const Students: React.FC = () => {
     });
 
     if (result) {
-      setStudents([result as Student, ...students]);
       setClientForm({ name: "", email: "", goalType: "", allowEmails: true });
       setShowCreateClientModal(false);
       showToast("Fiche client créée avec succès !", "success");
+      navigate(`/dashboard/coach/student/${(result as Student).id}`);
     } else {
       showToast("Erreur lors de la création de la fiche client.", "error");
     }

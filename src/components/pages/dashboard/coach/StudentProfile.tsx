@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useStudentProfileStats } from "../../../../hooks/useStudents";
+import { useStudentProfileStats, useUpdateVirtualStudent, useDeleteVirtualStudent, useRemoveStudentCoaching } from "../../../../hooks/useStudents";
 import { useCoachNotes } from "../../../../hooks/useCoachNotes";
 import { useToast } from "../../../../contexts/ToastContext";
 import { Card, CardContent } from "../../ui/card";
@@ -43,6 +43,9 @@ import {
   BarChart3,
   Activity,
   StickyNote,
+  UserX,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 
 const StudentProfile: React.FC = () => {
@@ -55,12 +58,23 @@ const StudentProfile: React.FC = () => {
     createStudentMeasurement,
     isLoading: isCreatingMeasurement,
   } = useCreateStudentMeasurement(id);
+  const { updateVirtualStudent, isLoading: isUpdating } = useUpdateVirtualStudent();
+  const { deleteVirtualStudent, isLoading: isDeleting } = useDeleteVirtualStudent();
+  const { removeStudentCoaching, isLoading: isRemoving } = useRemoveStudentCoaching();
 
   const [newNote, setNewNote] = useState("");
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [showMeasurementModal, setShowMeasurementModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showStopFollowModal, setShowStopFollowModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    goalType: "",
+    allowEmails: true,
+  });
 
   const handleCreateNote = async () => {
     if (!newNote.trim()) return;
@@ -103,6 +117,55 @@ const StudentProfile: React.FC = () => {
           : "Erreur lors de la création de la mensuration",
         "error"
       );
+    }
+  };
+
+  const openEditModal = () => {
+    if (!profileStats) return;
+    setEditForm({
+      name: profileStats.student.name,
+      email: profileStats.student.email,
+      goalType: profileStats.student.goalType || "",
+      allowEmails: profileStats.student.allowEmails,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateStudent = async () => {
+    if (!id || !editForm.name.trim() || !editForm.email.trim()) return;
+    const result = await updateVirtualStudent(id, {
+      name: editForm.name,
+      email: editForm.email,
+      goalType: editForm.goalType,
+      allowEmails: editForm.allowEmails,
+    });
+    if (result) {
+      showToast("Fiche client mise à jour", "success");
+      setShowEditModal(false);
+      await refetch();
+    } else {
+      showToast("Erreur lors de la mise à jour", "error");
+    }
+  };
+
+  const handleStopFollow = async () => {
+    if (!id || !profileStats) return;
+    if (profileStats.student.isVirtual) {
+      const success = await deleteVirtualStudent(id);
+      if (success) {
+        showToast("Fiche client supprimée", "success");
+        navigate("/dashboard/students");
+      } else {
+        showToast("Erreur lors de la suppression", "error");
+      }
+    } else {
+      const success = await removeStudentCoaching(id);
+      if (success) {
+        showToast("Suivi arrêté", "success");
+        navigate("/dashboard/students");
+      } else {
+        showToast("Erreur lors de l'arrêt du suivi", "error");
+      }
     }
   };
 
@@ -225,6 +288,26 @@ const StudentProfile: React.FC = () => {
               >
                 <Scale className="h-4 w-4" />
                 Ajouter une mensuration
+              </Button>
+              {student.isVirtual && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-2"
+                  onClick={openEditModal}
+                >
+                  <Edit3 className="h-4 w-4" />
+                  Modifier la fiche
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-xl gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                onClick={() => setShowStopFollowModal(true)}
+              >
+                <UserX className="h-4 w-4" />
+                Arrêter le suivi
               </Button>
             </div>
           </div>
@@ -610,6 +693,176 @@ const StudentProfile: React.FC = () => {
                   onCancel={() => setShowMeasurementModal(false)}
                   isLoading={isCreatingMeasurement}
                 />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Virtual Student Modal */}
+      {showEditModal && student.isVirtual && (
+        <div className="fixed inset-0 z-[100] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowEditModal(false)} />
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 fade-in duration-200">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-400 to-fuchsia-500">
+                      <Edit3 className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-foreground">Modifier la fiche</h2>
+                      <p className="text-sm text-muted-foreground">{student.name}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowEditModal(false)} className="p-2 rounded-lg hover:bg-muted transition-colors">
+                    <X className="h-5 w-5 text-muted-foreground" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
+                      Prénom et Nom <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
+                      Email <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">Objectif</label>
+                    <select
+                      value={editForm.goalType}
+                      onChange={(e) => setEditForm({ ...editForm, goalType: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground transition-all"
+                    >
+                      <option value="">Sélectionner un objectif</option>
+                      <option value="weight_loss">Perte de poids</option>
+                      <option value="weight_gain">Prise de poids</option>
+                      <option value="muscle_gain">Prise de muscle</option>
+                      <option value="maintenance">Maintien</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50 border border-border">
+                    <div className="flex items-center gap-3">
+                      {editForm.allowEmails ? (
+                        <Mail className="h-5 w-5 text-primary" />
+                      ) : (
+                        <MailX className="h-5 w-5 text-muted-foreground" />
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Autoriser l'envoi d'emails</p>
+                        <p className="text-xs text-muted-foreground">Rapports de séance, notifications</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, allowEmails: !editForm.allowEmails })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${editForm.allowEmails ? "bg-primary" : "bg-muted-foreground/30"}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editForm.allowEmails ? "translate-x-6" : "translate-x-1"}`} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => setShowEditModal(false)}>
+                    Annuler
+                  </Button>
+                  <Button
+                    className="flex-1 rounded-xl h-11 gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                    onClick={handleUpdateStudent}
+                    disabled={isUpdating || !editForm.name.trim() || !editForm.email.trim()}
+                  >
+                    {isUpdating ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Mise à jour...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        Enregistrer
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stop Follow / Delete Modal */}
+      {showStopFollowModal && (
+        <div className="fixed inset-0 z-[100] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowStopFollowModal(false)} />
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 fade-in duration-200">
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10">
+                    <AlertTriangle className="h-6 w-6 text-destructive" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">Arrêter le suivi</h2>
+                    <p className="text-sm text-muted-foreground">{student.name}</p>
+                  </div>
+                </div>
+
+                {student.isVirtual ? (
+                  <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 mb-6">
+                    <p className="text-sm font-semibold text-destructive mb-2">Attention — données définitivement supprimées</p>
+                    <p className="text-sm text-muted-foreground">
+                      Ce client n'a pas de compte. En arrêtant le suivi, <strong>toutes ses données seront supprimées définitivement</strong> : séances, mensurations, notes et la fiche elle-même. Cette action est irréversible.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 mb-6">
+                    <p className="text-sm font-semibold text-amber-600 mb-2">Confirmation requise</p>
+                    <p className="text-sm text-muted-foreground">
+                      Vous ne serez plus le coach de <strong>{student.name}</strong>. Ses données (séances, mensurations) resteront dans son compte.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => setShowStopFollowModal(false)}>
+                    Annuler
+                  </Button>
+                  <Button
+                    className="flex-1 rounded-xl h-11 gap-2 bg-destructive hover:bg-destructive/90"
+                    onClick={handleStopFollow}
+                    disabled={isDeleting || isRemoving}
+                  >
+                    {(isDeleting || isRemoving) ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Suppression...
+                      </>
+                    ) : (
+                      <>
+                        <UserX className="h-4 w-4" />
+                        {student.isVirtual ? "Supprimer la fiche" : "Arrêter le suivi"}
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

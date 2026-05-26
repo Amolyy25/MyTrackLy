@@ -5,6 +5,7 @@ import {
   createVirtualStudent,
   updateVirtualStudent,
   deleteVirtualStudent,
+  removeStudentCoaching,
   getMyCoach,
 } from "../controllers/studentController";
 import { authenticateToken } from "../middleware/auth";
@@ -24,6 +25,9 @@ router.get("/my-coach", getMyCoach);
 router.post("/virtual", createVirtualStudent);
 router.put("/virtual/:studentId", updateVirtualStudent);
 router.delete("/virtual/:studentId", deleteVirtualStudent);
+
+// Arrêter le suivi d'un élève réel
+router.delete("/:studentId/coaching", removeStudentCoaching);
 
 // Détails d'un élève
 router.get("/:studentId", getStudentDetails);
