@@ -343,6 +343,48 @@ export async function deleteVirtualStudent(req: Request, res: Response) {
   }
 }
 
+// --- Retirer le suivi d'un élève réel (retire seulement le coachId) ---
+export async function removeStudentCoaching(req: Request, res: Response) {
+  try {
+    const userId = getCoachId(req);
+    if (!userId) {
+      res.status(401).json({ message: "Non authentifié" });
+      return;
+    }
+
+    if (!(await verifyCoach(userId, res))) return;
+
+    const { studentId } = req.params;
+
+    const student = await prisma.user.findFirst({
+      where: {
+        id: studentId,
+        coachId: userId,
+        isVirtual: false,
+      },
+    });
+
+    if (!student) {
+      res.status(404).json({
+        message: "Élève non trouvé ou vous n'avez pas accès.",
+      });
+      return;
+    }
+
+    await prisma.user.update({
+      where: { id: studentId },
+      data: { coachId: null },
+    });
+
+    res.json({ message: "Suivi arrêté avec succès." });
+  } catch (error) {
+    console.error("RemoveStudentCoaching Error:", error);
+    res.status(500).json({
+      message: "Une erreur est survenue lors de l'arrêt du suivi.",
+    });
+  }
+}
+
 // --- Obtenir les informations du coach (pour l'élève) ---
 export async function getMyCoach(req: Request, res: Response) {
   try {

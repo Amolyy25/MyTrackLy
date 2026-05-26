@@ -91,6 +91,100 @@ export function useCreateVirtualStudent() {
   return { createVirtualStudent, isLoading, error };
 }
 
+// Hook pour mettre à jour une fiche client virtuelle
+export function useUpdateVirtualStudent() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const updateVirtualStudent = async (
+    studentId: string,
+    data: Partial<CreateVirtualStudentForm>
+  ): Promise<StudentListItem | null> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Non authentifié");
+
+      const response = await fetch(`${API_URL}/students/virtual/${studentId}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Erreur lors de la mise à jour");
+      }
+
+      return await response.json();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { updateVirtualStudent, isLoading, error };
+}
+
+// Hook pour supprimer une fiche client virtuelle (toutes données supprimées)
+export function useDeleteVirtualStudent() {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const deleteVirtualStudent = async (studentId: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Non authentifié");
+
+      const response = await fetch(`${API_URL}/students/virtual/${studentId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      return response.ok;
+    } catch {
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { deleteVirtualStudent, isLoading };
+}
+
+// Hook pour arrêter le suivi d'un élève réel (retire seulement le coachId)
+export function useRemoveStudentCoaching() {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const removeStudentCoaching = async (studentId: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Non authentifié");
+
+      const response = await fetch(`${API_URL}/students/${studentId}/coaching`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      return response.ok;
+    } catch {
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { removeStudentCoaching, isLoading };
+}
+
 // Hook pour les stats du profil élève
 export function useStudentProfileStats(studentId: string | undefined) {
   const [profileStats, setProfileStats] = useState<StudentProfileStats | null>(null);
