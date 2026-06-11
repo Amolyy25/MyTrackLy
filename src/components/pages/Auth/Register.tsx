@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { ArrowUpRight } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useToast } from "../../../contexts/ToastContext";
 import API_URL from "../../../config/api";
+import { AuthLayout, labelClass, inputClass, errorTextClass, submitClass } from "./AuthLayout";
 
 interface RegisterFormData {
   name: string;
@@ -138,7 +140,7 @@ const Register: React.FC = () => {
       // Stocker le token et les données utilisateur
       if (data.token && data.user) {
         login(data.token, data.user);
-        
+
         // Afficher notification de succès selon le rôle
         const roleMessages = {
           personnel: "Compte personnel créé avec succès !",
@@ -149,7 +151,7 @@ const Register: React.FC = () => {
           roleMessages[data.user.role as keyof typeof roleMessages] || "Compte créé avec succès !",
           "success"
         );
-        
+
         // Rediriger vers la page de confirmation d'email
         window.location.href = `/email-confirmation?email=${encodeURIComponent(
           formData.email.toLowerCase().trim()
@@ -256,279 +258,198 @@ const Register: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 flex items-center justify-center px-4 py-12">
-      <div className="max-w-md w-full">
-        {/* Logo et titre */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <img src="/logo.svg" alt="MyTrackLy" className="h-12 w-auto" />
+    <AuthLayout
+      planche={isStudentPlan ? "Nouveau carnet — Élève" : "Nouveau carnet"}
+      title={
+        <>
+          Ouvrir{" "}
+          <span className="font-serif-it font-normal text-[var(--lavender)]">votre carnet.</span>
+        </>
+      }
+      subtitle={
+        isStudentPlan
+          ? "Rejoignez votre coach sur MyTrackLy"
+          : "Commencez votre parcours avec MyTrackLy"
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Erreur générale */}
+        {errors.general && (
+          <div className="bg-red-500/10 border border-red-400/30 text-red-300 px-4 py-3 rounded-xl text-sm">
+            {errors.general}
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {isStudentPlan ? "Créer un compte élève" : "Créer un compte"}
-          </h1>
-          <p className="text-gray-600">
-            {isStudentPlan
-              ? "Rejoignez votre coach sur MyTrackLy"
-              : "Commencez votre parcours avec MyTrackLy"}
+        )}
+
+        {/* Name */}
+        <div>
+          <label htmlFor="name" className={labelClass}>
+            Nom complet
+          </label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            className={inputClass(!!errors.name)}
+            placeholder="Jean Dupont"
+            autoComplete="name"
+          />
+          {errors.name && <p className={errorTextClass}>{errors.name}</p>}
+        </div>
+
+        {/* Email */}
+        <div>
+          <label htmlFor="email" className={labelClass}>
+            Email
+          </label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            className={inputClass(!!errors.email)}
+            placeholder="votre@email.com"
+            autoComplete="email"
+          />
+          {errors.email && <p className={errorTextClass}>{errors.email}</p>}
+        </div>
+
+        {/* Password */}
+        <div>
+          <label htmlFor="password" className={labelClass}>
+            Mot de passe
+          </label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            className={inputClass(!!errors.password)}
+            placeholder="••••••••"
+            autoComplete="new-password"
+          />
+          {errors.password && <p className={errorTextClass}>{errors.password}</p>}
+          <p className="mt-1.5 font-anno text-[10px] tracking-[0.08em] text-[var(--slate)]">
+            Au moins 8 caractères, avec majuscule, minuscule et chiffre
           </p>
         </div>
 
-        {/* Formulaire */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Erreur générale */}
-            {errors.general && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {errors.general}
-              </div>
-            )}
+        {/* Confirm Password */}
+        <div>
+          <label htmlFor="confirmPassword" className={labelClass}>
+            Confirmer le mot de passe
+          </label>
+          <input
+            type="password"
+            id="confirmPassword"
+            name="confirmPassword"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            className={inputClass(!!errors.confirmPassword)}
+            placeholder="••••••••"
+            autoComplete="new-password"
+          />
+          {errors.confirmPassword && (
+            <p className={errorTextClass}>{errors.confirmPassword}</p>
+          )}
+        </div>
 
-            {/* Name */}
-            <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-semibold text-gray-700 mb-2"
-              >
-                Nom complet
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 ${
-                  errors.name
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                } focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400`}
-                placeholder="Jean Dupont"
-                autoComplete="name"
-              />
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-              )}
-            </div>
-
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-semibold text-gray-700 mb-2"
-              >
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 ${
-                  errors.email
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                } focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400`}
-                placeholder="votre@email.com"
-                autoComplete="email"
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-              )}
-            </div>
-
-            {/* Password */}
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-semibold text-gray-700 mb-2"
-              >
-                Mot de passe
-              </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 ${
-                  errors.password
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                } focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400`}
-                placeholder="••••••••"
-                autoComplete="new-password"
-              />
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-              )}
-              <p className="mt-1 text-xs text-gray-500">
-                Au moins 8 caractères, avec majuscule, minuscule et chiffre
-              </p>
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label
-                htmlFor="confirmPassword"
-                className="block text-sm font-semibold text-gray-700 mb-2"
-              >
-                Confirmer le mot de passe
-              </label>
-              <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 ${
-                  errors.confirmPassword
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                } focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400`}
-                placeholder="••••••••"
-                autoComplete="new-password"
-              />
-              {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.confirmPassword}
-                </p>
-              )}
-            </div>
-
-            {/* Coach Code - Only for student plan */}
-            {isStudentPlan && (
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 mb-6">
-                <label
-                  htmlFor="coachCode"
-                  className="block text-sm font-semibold text-purple-900 mb-2"
-                >
-                  Code d'invitation du coach <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="coachCode"
-                  name="coachCode"
-                  value={formData.coachCode || ""}
-                  onChange={handleChange}
-                  placeholder="Entrez le code unique fourni par votre coach"
-                  className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 ${
-                    errors.coachCode
-                      ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                      : coachInfo
-                      ? "border-green-300 focus:border-green-500 focus:ring-green-500"
-                      : "border-purple-300 focus:border-purple-500 focus:ring-purple-500"
-                  } focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400`}
-                  disabled={validatingCode}
+        {/* Coach Code - Only for student plan */}
+        {isStudentPlan && (
+          <div className="border border-[var(--indigo)]/40 bg-[var(--indigo)]/[0.07] rounded-xl p-5">
+            <label htmlFor="coachCode" className={labelClass}>
+              Code d'invitation du coach <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              id="coachCode"
+              name="coachCode"
+              value={formData.coachCode || ""}
+              onChange={handleChange}
+              placeholder="Entrez le code unique fourni par votre coach"
+              className={inputClass(!!errors.coachCode, !!coachInfo)}
+              disabled={validatingCode}
+            />
+            {validatingCode && (
+              <p className="mt-2 text-sm text-[var(--lavender)] flex items-center gap-2">
+                <span
+                  className="w-4 h-4 border-2 rounded-full animate-spin shrink-0"
+                  style={{
+                    borderColor: "currentColor",
+                    borderTopColor: "transparent",
+                    opacity: 0.8,
+                  }}
                 />
-                {validatingCode && (
-                  <p className="mt-1 text-sm text-purple-600 flex items-center gap-2">
-                    <svg
-                      className="animate-spin h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Validation en cours...
-                  </p>
-                )}
-                {coachInfo && !validatingCode && (
-                  <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm font-semibold text-green-900">
-                      ✓ Code valide
-                    </p>
-                    <p className="text-xs text-green-700 mt-1">
-                      Coach : {coachInfo.name} ({coachInfo.email})
-                    </p>
-                  </div>
-                )}
-                {errors.coachCode && !validatingCode && (
-                  <p className="mt-1 text-sm text-red-600">{errors.coachCode}</p>
-                )}
-                <p className="mt-2 text-sm text-purple-700">
-                  Le code d'invitation est obligatoire pour créer un compte élève.
+                Validation en cours...
+              </p>
+            )}
+            {coachInfo && !validatingCode && (
+              <div className="mt-3 p-3 bg-emerald-500/10 border border-emerald-400/30 rounded-lg">
+                <p className="text-sm font-semibold text-emerald-300">✓ Code valide</p>
+                <p className="text-xs text-emerald-400/80 mt-1">
+                  Coach : {coachInfo.name} ({coachInfo.email})
                 </p>
               </div>
             )}
-
-            {/* Goal Type */}
-            <div>
-              <label
-                htmlFor="goalType"
-                className="block text-sm font-semibold text-gray-700 mb-2"
-              >
-                Votre objectif
-              </label>
-              <select
-                id="goalType"
-                name="goalType"
-                value={formData.goalType}
-                onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 ${
-                  errors.goalType
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                } focus:outline-none focus:ring-2 transition-colors`}
-              >
-                <option value="">Sélectionnez un objectif</option>
-                {goalOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.emoji} {option.label}
-                  </option>
-                ))}
-              </select>
-              {errors.goalType && (
-                <p className="mt-1 text-sm text-red-600">{errors.goalType}</p>
-              )}
-            </div>
-
-            {/* Bouton submit */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              onSubmit={handleSubmit}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-600/30 hover:shadow-xl hover:shadow-indigo-600/40 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? "Création du compte..." : "Créer mon compte"}
-            </button>
-          </form>
-
-          {/* Lien vers connexion */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Déjà un compte ?{" "}
-              <Link
-                to="/login"
-                className="text-indigo-600 hover:text-indigo-700 font-semibold"
-              >
-                Se connecter
-              </Link>
+            {errors.coachCode && !validatingCode && (
+              <p className={errorTextClass}>{errors.coachCode}</p>
+            )}
+            <p className="mt-2.5 text-xs text-[var(--lavender)]/70">
+              Le code d'invitation est obligatoire pour créer un compte élève.
             </p>
           </div>
+        )}
+
+        {/* Goal Type */}
+        <div>
+          <label htmlFor="goalType" className={labelClass}>
+            Votre objectif
+          </label>
+          <select
+            id="goalType"
+            name="goalType"
+            value={formData.goalType}
+            onChange={handleChange}
+            className={inputClass(!!errors.goalType)}
+          >
+            <option value="">Sélectionnez un objectif</option>
+            {goalOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.emoji} {option.label}
+              </option>
+            ))}
+          </select>
+          {errors.goalType && <p className={errorTextClass}>{errors.goalType}</p>}
         </div>
 
-        {/* Retour à l'accueil */}
-        <div className="mt-6 text-center">
-          <Link to="/" className="text-sm text-gray-600 hover:text-gray-700">
-            ← Retour à l'accueil
+        {/* Bouton submit */}
+        <button type="submit" disabled={isLoading} className={submitClass}>
+          {isLoading ? (
+            "Création du compte..."
+          ) : (
+            <>
+              Créer mon compte <ArrowUpRight size={17} />
+            </>
+          )}
+        </button>
+      </form>
+
+      {/* Lien vers connexion */}
+      <div className="mt-8 pt-6 border-t border-[var(--hairline)] text-center">
+        <p className="text-sm text-[var(--slate)]">
+          Déjà un compte ?{" "}
+          <Link
+            to="/login"
+            className="text-[var(--lavender)] hover:text-white font-semibold transition-colors"
+          >
+            Se connecter
           </Link>
-        </div>
+        </p>
       </div>
-    </div>
+    </AuthLayout>
   );
 };
 

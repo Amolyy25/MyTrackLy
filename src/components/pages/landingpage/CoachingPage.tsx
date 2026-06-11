@@ -1,170 +1,372 @@
-import React from "react";
-import { useTheme } from "../../../contexts/ThemeContext";
-import { Navbar, primaryButtonClass, secondaryButtonClass } from "../../landing/Navbar";
-import { Footer } from "../../landing/Footer";
-import { Users, Calendar, MessageSquare, CreditCard, ArrowRight, Activity, Clock, CheckCircle2 } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
+import {
+  GlobalStyle,
+  Nav,
+  BigFooter,
+  PageHero,
+  FinalCta,
+  ChapterHeader,
+  CornerTicks,
+  CountUp,
+  Magnetic,
+  EASE,
+} from "./kit";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import {
+  Users,
+  Calendar,
+  CreditCard,
+  CheckCircle2,
+  Activity,
+  ArrowUpRight,
+} from "lucide-react";
+
+/* ------------------------------------------------ item de liste */
+
+const FeatureListItem = ({
+  children,
+  paper = false,
+}: {
+  children: ReactNode;
+  paper?: boolean;
+}) => (
+  <li className="flex items-start gap-3">
+    <CheckCircle2
+      size={18}
+      className={`flex-shrink-0 mt-0.5 ${
+        paper ? "text-[var(--indigo)]" : "text-[var(--lavender)]"
+      }`}
+    />
+    <span className={paper ? "text-[var(--ink-text)]/80" : "text-[var(--mist)]"}>
+      {children}
+    </span>
+  </li>
+);
+
+/* ------------------------------------------------ page */
 
 export const CoachingPage = () => {
-  const { theme } = useTheme();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} overflow-x-hidden selection:bg-blue-500/30`}>
-      <Navbar />
-      
-      <main className="pt-20">
-         {/* Hero */}
-         <section className="relative py-20 lg:py-32 overflow-hidden">
-             <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-500/20 via-slate-950/0 to-slate-950/0 opacity-40" />
-             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-blue-500/20 bg-blue-500/10 text-blue-500 text-sm font-medium mb-6"
-                 >
-                    <Users size={16} /> Espace Coach
-                 </motion.div>
-                 
-                 <h1 className="text-4xl md:text-6xl font-bold mb-6">
-                    Gérez et scalez votre <br/>
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500">business de coaching</span>.
-                 </h1>
-                 
-                 <p className={`text-xl max-w-2xl mx-auto mb-10 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Centralisez vos élèves, programmes, paiements et votre calendrier. L'outil professionnel tout-en-un pour les coachs modernes.
-                 </p>
-                 
-                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Link to="/register?role=coach" className={primaryButtonClass.replace('from-indigo-600 via-purple-600 to-indigo-600', 'from-blue-600 via-cyan-600 to-blue-600')}>
-                        Essai Coach Gratuit (14j)
-                    </Link>
-                    <Link to="/features/pricing" className={secondaryButtonClass(theme)}>
-                        Voir les tarifs
-                    </Link>
-                 </div>
-             </div>
-         </section>
+    <div className="crn-root min-h-screen overflow-x-hidden antialiased">
+      <GlobalStyle />
+      <Nav />
+      <main>
+        {/* ============================= Hero ============================= */}
+        <PageHero
+          planche="Planche — Espace Coach"
+          title={
+            <>
+              Gérez et scalez votre{" "}
+              <span className="font-serif-it font-normal text-[var(--lavender)]">
+                business de coaching.
+              </span>
+            </>
+          }
+          subtitle="Centralisez vos élèves, programmes, paiements et votre calendrier. L'outil professionnel tout-en-un pour les coachs modernes."
+          cta={{ label: "Essai Coach Gratuit (14j)", to: "/register?role=coach" }}
+        />
 
-         {/* Detailed Features */}
-         <section className={`py-20 ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
-            <div className="max-w-7xl mx-auto px-4 space-y-24">
-                {/* Feature 1: Student Management */}
-                <div className="grid md:grid-cols-2 gap-12 items-center">
-                    <div>
-                        <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 mb-6">
-                            <Users size={24} />
-                        </div>
-                        <h2 className="text-3xl font-bold mb-4">Gestion de Parc Élèves</h2>
-                        <p className={`text-lg mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
-                            Accédez à une liste exhaustive de tous vos élèves. Consultez leurs profils, leurs dernières séances et leurs mensurations en un clic.
-                        </p>
-                        <ul className="space-y-3">
-                            <FeatureListItem theme={theme}>Assignation de programmes personnalisés</FeatureListItem>
-                            <FeatureListItem theme={theme}>Feedback correctionnel sur les séances</FeatureListItem>
-                            <FeatureListItem theme={theme}>Suivi de l'évolution du poids et des photos</FeatureListItem>
-                        </ul>
-                    </div>
-                    <div className={`p-8 rounded-2xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'} shadow-xl`}>
-                         {/* Mock UI Student List */}
-                         <div className="space-y-4">
-                             <div className="flex justify-between items-center mb-4">
-                                 <h4 className="font-bold">Mes Élèves (12)</h4>
-                                 <div className="text-sm text-blue-500 cursor-pointer">Voir tout</div>
-                             </div>
-                             {[1, 2, 3].map((i) => (
-                                 <div key={i} className={`flex items-center gap-4 p-3 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400" />
-                                     <div className="flex-1">
-                                         <div className="font-semibold text-sm">Thomas {String.fromCharCode(64+i)}.</div>
-                                         <div className="text-xs text-slate-500">Dernière séance: Hier</div>
-                                     </div>
-                                     <div className="px-2 py-1 bg-green-500/10 text-green-500 rounded text-xs font-bold">Actif</div>
-                                 </div>
-                             ))}
-                         </div>
-                    </div>
-                </div>
+        {/* =============== Chapitre I — Parc élèves =============== */}
+        <section className="border-t border-[var(--hairline)] py-24 md:py-36 relative overflow-hidden">
+          <div
+            className="absolute -left-40 top-1/3 w-[520px] h-[420px] rounded-full bg-[var(--indigo)] opacity-[0.07] blur-[120px] pointer-events-none"
+            aria-hidden
+          />
+          <div className="relative max-w-6xl mx-auto px-5 md:px-8">
+            <ChapterHeader
+              numeral="I"
+              label="Parc élèves"
+              title={
+                <>
+                  Gestion de{" "}
+                  <span className="font-serif-it font-normal text-[var(--lavender)]">
+                    Parc Élèves.
+                  </span>
+                </>
+              }
+            />
 
-                {/* Feature 2: Calendar & Planning */}
-                <div className="grid md:grid-cols-2 gap-12 items-center md:flex-row-reverse">
-                    <div className="md:order-2">
-                        <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 mb-6">
-                            <Calendar size={24} />
-                        </div>
-                        <h2 className="text-3xl font-bold mb-4">Planning & Synchronisation</h2>
-                        <p className={`text-lg mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
-                            Organisez vos semaines de coaching sans friction. Synchronisation bidirectionnelle avec Google Calendar pour éviter les doublons.
-                        </p>
-                        <ul className="space-y-3">
-                            <FeatureListItem theme={theme}>Définition de vos disponibilités hebdomadaires</FeatureListItem>
-                            <FeatureListItem theme={theme}>Système de réservation pour les élèves</FeatureListItem>
-                            <FeatureListItem theme={theme}>Notifications automatiques (Email)</FeatureListItem>
-                        </ul>
-                    </div>
-                     <div className={` md:order-1 p-8 rounded-2xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'} shadow-xl relative overflow-hidden`}>
-                        <div className="absolute top-0 right-0 p-4 opacity-10">
-                            <Calendar size={120} />
-                        </div>
-                        <div className="space-y-6 relative z-10">
-                            <div className={`p-4 rounded-xl border-l-4 border-purple-500 ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
-                                <div className="flex justify-between text-sm mb-1">
-                                    <span className="font-bold">09:00 - 10:00</span>
-                                    <span className="text-purple-500 font-medium">Coaching 1:1</span>
-                                </div>
-                                <div className="text-slate-500 text-sm">Séance Pecs avec Alex</div>
-                            </div>
-                            <div className={`p-4 rounded-xl border-l-4 border-blue-500 ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
-                                <div className="flex justify-between text-sm mb-1">
-                                    <span className="font-bold">11:30 - 12:00</span>
-                                    <span className="text-blue-500 font-medium">Bilan Visio</span>
-                                </div>
-                                <div className="text-slate-500 text-sm">Point mensuel avec Sarah</div>
-                            </div>
-                        </div>
-                    </div>
+            <div className="grid md:grid-cols-2 gap-12 lg:gap-16 items-center">
+              <motion.div
+                initial={{ opacity: 0, y: 32 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, ease: EASE }}
+              >
+                <div className="inline-flex items-center gap-3 font-anno text-[10px] uppercase tracking-[0.28em] text-[var(--lavender)] mb-6">
+                  <Users size={14} className="text-[var(--indigo)]" />
+                  Fig. 01 — Vue d'ensemble
                 </div>
+                <p className="text-lg text-[var(--slate)] leading-relaxed mb-8">
+                  Accédez à une liste exhaustive de tous vos élèves. Consultez
+                  leurs profils, leurs dernières séances et leurs mensurations
+                  en un clic.
+                </p>
+                <ul className="space-y-4">
+                  <FeatureListItem>
+                    Assignation de programmes personnalisés
+                  </FeatureListItem>
+                  <FeatureListItem>
+                    Feedback correctionnel sur les séances
+                  </FeatureListItem>
+                  <FeatureListItem>
+                    Suivi de l'évolution du poids et des photos
+                  </FeatureListItem>
+                </ul>
+              </motion.div>
 
-                {/* Feature 3: Finance */}
-                 <div className="grid md:grid-cols-2 gap-12 items-center">
-                    <div>
-                        <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 mb-6">
-                            <CreditCard size={24} />
+              {/* Planche — liste des élèves */}
+              <motion.div
+                initial={{ opacity: 0, y: 32 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: 0.1, ease: EASE }}
+              >
+                <div className="relative border border-[var(--hairline)] rounded-2xl bg-[var(--ink)]/50 p-6 md:p-8 hover:border-[var(--indigo)]/50 transition-colors">
+                  <CornerTicks />
+                  <div className="flex justify-between items-center mb-6 pb-4 border-b border-[var(--hairline)]">
+                    <span className="font-anno text-[11px] uppercase tracking-[0.22em] text-[var(--mist)]">
+                      Mes Élèves (12)
+                    </span>
+                    <span className="font-anno text-[10px] uppercase tracking-[0.2em] text-[var(--indigo)] cursor-pointer hover:text-[var(--lavender)] transition-colors">
+                      Voir tout →
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {["A", "B", "C"].map((letter, i) => (
+                      <div
+                        key={letter}
+                        className="flex items-center gap-4 p-3.5 rounded-xl border border-[var(--hairline)] bg-[var(--night)]/60"
+                      >
+                        <div className="w-10 h-10 rounded-full border border-[var(--indigo)]/50 bg-[var(--indigo)]/15 flex items-center justify-center font-anno text-[11px] text-[var(--lavender)]">
+                          {`0${i + 1}`}
                         </div>
-                        <h2 className="text-3xl font-bold mb-4">Paiements & Facturation</h2>
-                        <p className={`text-lg mb-6 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
-                            Sécurisez vos revenus. Générez des liens de paiement (via Stripe) et suivez vos rentrées d'argent directement depuis le dashboard.
-                        </p>
-                         <ul className="space-y-3">
-                            <FeatureListItem theme={theme}>Gestion des plans d'abonnement élèves</FeatureListItem>
-                            <FeatureListItem theme={theme}>Suivi du Chiffre d'Affaires</FeatureListItem>
-                            <FeatureListItem theme={theme}>Relances automatiques (Bientôt)</FeatureListItem>
-                        </ul>
-                    </div>
-                     <div className={`p-8 rounded-2xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'} shadow-xl flex items-center justify-center`}>
-                        <div className="text-center">
-                            <h3 className="text-xl font-bold mb-2">Revenus ce mois</h3>
-                            <div className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-green-400 mb-2">2 450€</div>
-                            <div className="inline-flex items-center gap-1 text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full text-sm font-bold">
-                                <Activity size={14} /> +12% vs M-1
-                            </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-sm text-[var(--mist)]">
+                            Thomas {letter}.
+                          </div>
+                          <div className="font-anno text-[10px] uppercase tracking-[0.16em] text-[var(--slate)] mt-0.5">
+                            Dernière séance : Hier
+                          </div>
                         </div>
-                    </div>
+                        <span className="font-anno text-[9px] uppercase tracking-[0.2em] text-[var(--lavender)] border border-[var(--indigo)]/40 bg-[var(--indigo)]/10 px-2.5 py-1 rounded-full">
+                          Actif
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+                <div className="font-anno text-[10px] uppercase tracking-[0.24em] text-[var(--slate)] text-center mt-5">
+                  Planche 01 — Liste des élèves
+                </div>
+              </motion.div>
             </div>
-         </section>
-      </main>
+          </div>
+        </section>
 
-      <Footer />
+        {/* =============== Chapitre II — Agenda (section papier) =============== */}
+        <section className="crn-grid-paper text-[var(--ink-text)] border-t border-[var(--hairline)] py-24 md:py-36">
+          <div className="max-w-6xl mx-auto px-5 md:px-8">
+            <ChapterHeader
+              light
+              numeral="II"
+              label="Agenda"
+              title={
+                <>
+                  Planning &{" "}
+                  <span className="font-serif-it font-normal text-[var(--indigo)]">
+                    Synchronisation.
+                  </span>
+                </>
+              }
+            />
+
+            <div className="grid md:grid-cols-2 gap-12 lg:gap-16 items-center">
+              {/* Planche — agenda */}
+              <motion.div
+                initial={{ opacity: 0, y: 32 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, ease: EASE }}
+                className="md:order-1 order-2"
+              >
+                <div className="relative bg-white border border-[var(--indigo)]/20 rounded-2xl p-6 md:p-8 shadow-[0_18px_50px_rgba(30,27,75,0.10)]">
+                  <CornerTicks color="var(--indigo)" />
+                  <div className="flex justify-between items-center mb-6 pb-4 border-b border-[var(--indigo)]/15">
+                    <span className="font-anno text-[11px] uppercase tracking-[0.22em] text-[var(--ink-text)]">
+                      Semaine 24 — Juin
+                    </span>
+                    <Calendar size={16} className="text-[var(--indigo)]" />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl border border-[var(--indigo)]/20 border-l-4 border-l-[var(--indigo)] bg-[var(--paper)]">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="font-anno text-[11px] tracking-[0.1em] text-[var(--ink-text)] font-semibold">
+                          09:00 — 10:00
+                        </span>
+                        <span className="font-anno text-[9px] uppercase tracking-[0.2em] text-[var(--indigo)]">
+                          Coaching 1:1
+                        </span>
+                      </div>
+                      <div className="text-sm text-[var(--ink-text)]/70">
+                        Séance Pecs avec Alex
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-xl border border-[var(--indigo)]/20 border-l-4 border-l-[var(--indigo)] bg-[var(--paper)]">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="font-anno text-[11px] tracking-[0.1em] text-[var(--ink-text)] font-semibold">
+                          11:30 — 12:00
+                        </span>
+                        <span className="font-anno text-[9px] uppercase tracking-[0.2em] text-[var(--indigo)]">
+                          Bilan Visio
+                        </span>
+                      </div>
+                      <div className="text-sm text-[var(--ink-text)]/70">
+                        Point mensuel avec Sarah
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="font-anno text-[10px] uppercase tracking-[0.24em] text-[var(--ink-text)]/55 text-center mt-5">
+                  Planche 02 — Vue agenda coach
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 32 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: 0.1, ease: EASE }}
+                className="md:order-2 order-1"
+              >
+                <div className="inline-flex items-center gap-3 font-anno text-[10px] uppercase tracking-[0.28em] text-[var(--indigo)] mb-6">
+                  <Calendar size={14} />
+                  Fig. 02 — Organisation
+                </div>
+                <p className="text-lg text-[var(--ink-text)]/70 leading-relaxed mb-8">
+                  Organisez vos semaines de coaching sans friction.
+                  Synchronisation bidirectionnelle avec Google Calendar pour
+                  éviter les doublons.
+                </p>
+                <ul className="space-y-4">
+                  <FeatureListItem paper>
+                    Définition de vos disponibilités hebdomadaires
+                  </FeatureListItem>
+                  <FeatureListItem paper>
+                    Système de réservation pour les élèves
+                  </FeatureListItem>
+                  <FeatureListItem paper>
+                    Notifications automatiques (Email)
+                  </FeatureListItem>
+                </ul>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* =============== Chapitre III — Finances =============== */}
+        <section className="border-t border-[var(--hairline)] py-24 md:py-36 relative overflow-hidden">
+          <div
+            className="absolute -right-40 top-1/2 w-[520px] h-[420px] rounded-full bg-[var(--indigo)] opacity-[0.07] blur-[120px] pointer-events-none"
+            aria-hidden
+          />
+          <div className="relative max-w-6xl mx-auto px-5 md:px-8">
+            <ChapterHeader
+              numeral="III"
+              label="Finances"
+              title={
+                <>
+                  Paiements &{" "}
+                  <span className="font-serif-it font-normal text-[var(--lavender)]">
+                    Facturation.
+                  </span>
+                </>
+              }
+            />
+
+            <div className="grid md:grid-cols-2 gap-12 lg:gap-16 items-center">
+              <motion.div
+                initial={{ opacity: 0, y: 32 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, ease: EASE }}
+              >
+                <div className="inline-flex items-center gap-3 font-anno text-[10px] uppercase tracking-[0.28em] text-[var(--lavender)] mb-6">
+                  <CreditCard size={14} className="text-[var(--indigo)]" />
+                  Fig. 03 — Revenus
+                </div>
+                <p className="text-lg text-[var(--slate)] leading-relaxed mb-8">
+                  Sécurisez vos revenus. Générez des liens de paiement (via
+                  Stripe) et suivez vos rentrées d'argent directement depuis le
+                  dashboard.
+                </p>
+                <ul className="space-y-4 mb-10">
+                  <FeatureListItem>
+                    Gestion des plans d'abonnement élèves
+                  </FeatureListItem>
+                  <FeatureListItem>Suivi du Chiffre d'Affaires</FeatureListItem>
+                  <FeatureListItem>
+                    Relances automatiques (Bientôt)
+                  </FeatureListItem>
+                </ul>
+                <Magnetic strength={0.2} className="inline-block">
+                  <Link
+                    to="/features/pricing"
+                    className="inline-flex items-center gap-2 border border-[var(--hairline)] text-[var(--mist)] font-semibold text-sm px-7 py-3 rounded-full hover:border-[var(--lavender)] hover:text-[var(--lavender)] transition-colors bg-[var(--ink)]/40"
+                  >
+                    Voir les tarifs <ArrowUpRight size={15} />
+                  </Link>
+                </Magnetic>
+              </motion.div>
+
+              {/* Planche — revenus */}
+              <motion.div
+                initial={{ opacity: 0, y: 32 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: 0.1, ease: EASE }}
+              >
+                <div className="relative border border-[var(--hairline)] rounded-2xl bg-[var(--ink)]/50 p-8 md:p-12 text-center hover:border-[var(--indigo)]/50 transition-colors">
+                  <CornerTicks />
+                  <div className="font-anno text-[11px] uppercase tracking-[0.28em] text-[var(--lavender)] mb-6">
+                    Revenus ce mois
+                  </div>
+                  <div className="font-display text-6xl md:text-7xl text-[var(--mist)] mb-6">
+                    <CountUp to={2450} />
+                    <span className="text-[var(--lavender)]">€</span>
+                  </div>
+                  <div className="inline-flex items-center gap-2 font-anno text-[10px] uppercase tracking-[0.2em] text-[var(--lavender)] border border-[var(--indigo)]/40 bg-[var(--indigo)]/10 px-3.5 py-1.5 rounded-full">
+                    <Activity size={13} className="text-[var(--indigo)]" />
+                    +<CountUp to={12} suffix="%" /> vs M-1
+                  </div>
+                </div>
+                <div className="font-anno text-[10px] uppercase tracking-[0.24em] text-[var(--slate)] text-center mt-5">
+                  Planche 03 — Tableau de bord financier
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* ============================= CTA final ============================= */}
+        <FinalCta
+          title={
+            <>
+              Faites passer votre coaching{" "}
+              <span className="font-serif-it font-normal text-[var(--lavender)]">
+                au niveau supérieur.
+              </span>
+            </>
+          }
+          sub="Essai gratuit de 14 jours. Sans carte bancaire, sans engagement."
+        />
+      </main>
+      <BigFooter />
     </div>
   );
-}
-
-const FeatureListItem = ({ children, theme }: any) => (
-    <li className="flex items-center gap-3">
-        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-            <CheckCircle2 size={14} className="text-blue-600 dark:text-blue-400" />
-        </div>
-        <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{children}</span>
-    </li>
-);
+};

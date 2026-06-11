@@ -1,193 +1,383 @@
-import React from "react";
-import { useTheme } from "../../../contexts/ThemeContext";
-import { Navbar, primaryButtonClass } from "../../landing/Navbar";
-import { Footer } from "../../landing/Footer";
-import { Ruler, LineChart as LineChartIcon, Camera, Target, ArrowRight } from "lucide-react";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { LineChart as LineChartIcon, Camera, Target, ArrowUpRight } from "lucide-react";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  AreaChart,
-  Area
-} from "recharts";
+  GlobalStyle,
+  Nav,
+  BigFooter,
+  PageHero,
+  FinalCta,
+  ChapterHeader,
+  CornerTicks,
+  CountUp,
+  Magnetic,
+  EASE,
+} from "./kit";
 
-const data = [
-  { name: 'Jan', weight: 82.5, bodyFat: 18 },
-  { name: 'Fév', weight: 81.8, bodyFat: 17.5 },
-  { name: 'Mar', weight: 81.2, bodyFat: 17 },
-  { name: 'Avr', weight: 80.5, bodyFat: 16.2 },
-  { name: 'Mai', weight: 79.8, bodyFat: 15.5 },
-  { name: 'Juin', weight: 79.0, bodyFat: 14.8 },
-  { name: 'Juil', weight: 78.5, bodyFat: 14.2 },
+/* ------------------------------------------------ données de la planche */
+
+const weightData = [
+  { name: "Jan", weight: 82.5 },
+  { name: "Fév", weight: 81.8 },
+  { name: "Mar", weight: 81.2 },
+  { name: "Avr", weight: 80.5 },
+  { name: "Mai", weight: 79.8 },
+  { name: "Juin", weight: 79.0 },
+  { name: "Juil", weight: 78.5 },
 ];
 
+const metrics = [
+  { label: "Tour de Taille", value: "78", unit: " cm", change: "−2.5 cm", count: 78, suffix: " cm" },
+  { label: "Tour de Bras", value: "42", unit: " cm", change: "+1.2 cm", count: 42, suffix: " cm" },
+  { label: "Body Fat", value: "14.2", unit: " %", change: "−3.8 %", count: null, suffix: "" },
+  { label: "Poids", value: "78.5", unit: " kg", change: "−4.0 kg", count: null, suffix: "" },
+];
+
+const features = [
+  {
+    icon: LineChartIcon,
+    title: "Graphiques Intuitifs",
+    desc: "Voyez d'un coup d'œil vos tendances de poids et de mensurations sur la durée.",
+    fig: "Fig. 01",
+  },
+  {
+    icon: Camera,
+    title: "Photos Avant/Après",
+    desc: "Stockez vos photos de progrès de manière sécurisée et comparez votre évolution.",
+    fig: "Fig. 02",
+  },
+  {
+    icon: Target,
+    title: "Objectifs Intelligents",
+    desc: "Définissez des cibles de poids ou de taille et suivez votre chemin vers l'objectif.",
+    fig: "Fig. 03",
+  },
+];
+
+/* géométrie du graphe — viewBox 640 × 240, 78→83 kg sur l'axe Y */
+const X0 = 20;
+const STEP = 100;
+const yOf = (w: number) => 30 + (83 - w) * 36;
+const pts = weightData.map((d, i) => ({ x: X0 + i * STEP, y: yOf(d.weight), ...d }));
+const linePath = pts
+  .map((p, i) => {
+    if (i === 0) return `M ${p.x} ${p.y}`;
+    const prev = pts[i - 1];
+    const mx = (prev.x + p.x) / 2;
+    return `C ${mx} ${prev.y}, ${mx} ${p.y}, ${p.x} ${p.y}`;
+  })
+  .join(" ");
+const areaPath = `${linePath} L ${pts[pts.length - 1].x} 240 L ${X0} 240 Z`;
+
+/* ------------------------------------------------ page */
+
 export const MeasurementsPage = () => {
-  const { theme } = useTheme();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} overflow-x-hidden selection:bg-purple-500/30`}>
-      <Navbar />
-      
-      <main className="pt-20">
-         {/* Hero */}
-         <section className="relative py-20 lg:py-32 overflow-hidden">
-             <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-500/20 via-slate-950/0 to-slate-950/0 opacity-40" />
-             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-purple-500/20 bg-purple-500/10 text-purple-500 text-sm font-medium mb-6"
-                 >
-                    <Ruler size={16} /> Mensurations & Métriques
-                 </motion.div>
-                 
-                 <h1 className="text-4xl md:text-6xl font-bold mb-6">
-                    Visualisez votre <br/>
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500">transformation</span>.
-                 </h1>
-                 
-                 <p className={`text-xl max-w-2xl mx-auto mb-10 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Au delà du poids sur la balance. Suivez l'évolution de chaque groupe musculaire avec précision.
-                 </p>
-                 
-                 <div className="relative mx-auto max-w-5xl grid lg:grid-cols-2 gap-8 items-center">
-                     {/* Interactive Chart Demo */}
-                     <motion.div 
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className={`p-6 rounded-2xl border shadow-xl ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`}
-                     >
-                        <div className="flex justify-between items-center mb-6">
-                            <div>
-                                <h3 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Évolution du Poids</h3>
-                                <p className="text-sm text-slate-500">-4.0 kg sur 6 mois</p>
-                            </div>
-                            <div className="px-3 py-1 bg-purple-500/10 text-purple-500 rounded-full text-sm font-bold">-4.8%</div>
-                        </div>
-                        <div className="h-64 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={data}>
-                                    <defs>
-                                        <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#334155' : '#e2e8f0'} />
-                                    <XAxis 
-                                        dataKey="name" 
-                                        axisLine={false} 
-                                        tickLine={false} 
-                                        tick={{ fill: theme === 'dark' ? '#94a3b8' : '#64748b', fontSize: 12 }} 
-                                        dy={10}
-                                    />
-                                    <YAxis 
-                                        domain={['dataMin - 1', 'dataMax + 1']} 
-                                        axisLine={false} 
-                                        tickLine={false} 
-                                        tick={{ fill: theme === 'dark' ? '#94a3b8' : '#64748b', fontSize: 12 }} 
-                                    />
-                                    <Tooltip 
-                                        contentStyle={{ 
-                                            backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
-                                            borderColor: theme === 'dark' ? '#334155' : '#e2e8f0',
-                                            borderRadius: '8px',
-                                            color: theme === 'dark' ? '#fff' : '#000'
-                                        }}
-                                        itemStyle={{ color: '#8b5cf6' }}
-                                    />
-                                    <Area 
-                                        type="monotone" 
-                                        dataKey="weight" 
-                                        stroke="#8b5cf6" 
-                                        strokeWidth={3} 
-                                        fillOpacity={1} 
-                                        fill="url(#colorWeight)" 
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                     </motion.div>
+    <div className="crn-root min-h-screen overflow-x-hidden antialiased">
+      <GlobalStyle />
+      <Nav />
+      <main>
+        <PageHero
+          planche="Planche — Mensurations & poids"
+          title={
+            <>
+              Visualisez votre{" "}
+              <span className="font-serif-it font-normal text-[var(--lavender)]">
+                transformation.
+              </span>
+            </>
+          }
+          subtitle="Au delà du poids sur la balance. Suivez l'évolution de chaque groupe musculaire avec précision."
+          cta={{ label: "Commencer gratuitement", to: "/register" }}
+        />
 
-                     {/* Stats Cards Demo */}
-                     <motion.div 
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.4 }}
-                        className="grid grid-cols-2 gap-4"
-                     >
-                        <MetricCard theme={theme} label="Tour de Taille" value="78 cm" change="-2.5 cm" positive={true} />
-                        <MetricCard theme={theme} label="Tour de Bras" value="42 cm" change="+1.2 cm" positive={true} />
-                        <MetricCard theme={theme} label="Body Fat" value="14.2%" change="-3.8%" positive={true} />
-                        <MetricCard theme={theme} label="Poids" value="78.5 kg" change="-4.0 kg" positive={true} />
-                     </motion.div>
-                 </div>
-             </div>
-         </section>
+        {/* ============ CHAPITRE I — la courbe de poids ============ */}
+        <section className="border-t border-[var(--hairline)] py-24 md:py-36 relative overflow-hidden">
+          <div
+            className="absolute right-[-200px] top-1/3 w-[600px] h-[400px] rounded-[100%] bg-[var(--indigo)] opacity-[0.08] blur-[120px] pointer-events-none"
+            aria-hidden
+          />
+          <div className="relative max-w-7xl mx-auto px-5 md:px-8">
+            <ChapterHeader
+              numeral="I"
+              label="Courbe de poids"
+              title={
+                <>
+                  Chaque relevé trace{" "}
+                  <span className="font-serif-it font-normal text-[var(--lavender)]">
+                    la tendance.
+                  </span>
+                </>
+              }
+            />
 
-         {/* Detailed Features */}
-         <section className={`py-20 ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
-            <div className="max-w-7xl mx-auto px-4 grid md:grid-cols-3 gap-12">
-                <FeatureDetail 
-                   icon={LineChartIcon}
-                   title="Graphiques Intuitifs"
-                   desc="Voyez d'un coup d'œil vos tendances de poids et de mensurations sur la durée."
-                   theme={theme}
-                />
-                <FeatureDetail 
-                   icon={Camera}
-                   title="Photos Avant/Après"
-                   desc="Stockez vos photos de progrès de manière sécurisée et comparez votre évolution."
-                   theme={theme}
-                />
-                <FeatureDetail 
-                   icon={Target}
-                   title="Objectifs Intelligents"
-                   desc="Définissez des cibles de poids ou de taille et suivez votre chemin vers l'objectif."
-                   theme={theme}
-                />
+            <motion.div
+              initial={{ opacity: 0, y: 32 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, ease: EASE }}
+              className="relative max-w-4xl mx-auto"
+            >
+              <div className="relative border border-[var(--hairline)] rounded-2xl bg-[var(--ink)] p-6 md:p-10">
+                <CornerTicks />
+
+                <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
+                  <div>
+                    <div className="font-anno text-[10px] uppercase tracking-[0.28em] text-[var(--lavender)] mb-2">
+                      Évolution du Poids
+                    </div>
+                    <p className="text-sm text-[var(--slate)]">−4.0 kg sur 6 mois</p>
+                  </div>
+                  <span className="font-anno text-[11px] tracking-[0.2em] uppercase text-[var(--lavender)] border border-[var(--hairline)] rounded-full px-4 py-1.5 bg-[var(--night)]/60">
+                    −4.8%
+                  </span>
+                </div>
+
+                {/* relevé technique — courbe SVG */}
+                <svg
+                  viewBox="0 0 640 240"
+                  className="w-full h-auto"
+                  role="img"
+                  aria-label="Courbe d'évolution du poids de 82.5 kg à 78.5 kg sur sept mois"
+                >
+                  <defs>
+                    <linearGradient id="crnWeightFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#6366F1" stopOpacity="0.35" />
+                      <stop offset="100%" stopColor="#6366F1" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* lignes de cote horizontales */}
+                  {[82, 81, 80, 79].map((kg) => (
+                    <g key={kg}>
+                      <line
+                        x1={X0}
+                        y1={yOf(kg)}
+                        x2="620"
+                        y2={yOf(kg)}
+                        stroke="rgba(165,180,252,0.12)"
+                        strokeWidth="1"
+                        strokeDasharray="4 6"
+                      />
+                      <text
+                        x="624"
+                        y={yOf(kg) + 3}
+                        className="font-anno"
+                        fontSize="9"
+                        fill="#64748B"
+                      >
+                        {kg}
+                      </text>
+                    </g>
+                  ))}
+
+                  {/* aire + courbe */}
+                  <path d={areaPath} fill="url(#crnWeightFill)" />
+                  <path
+                    d={linePath}
+                    fill="none"
+                    stroke="#818CF8"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+
+                  {/* points de relevé */}
+                  {pts.map((p) => (
+                    <circle key={p.name} cx={p.x} cy={p.y} r="3.5" fill="#070B14" stroke="#818CF8" strokeWidth="2" />
+                  ))}
+
+                  {/* cote du dernier relevé */}
+                  <line
+                    x1={pts[6].x}
+                    y1={pts[6].y + 8}
+                    x2={pts[6].x}
+                    y2="214"
+                    stroke="#6366F1"
+                    strokeWidth="1"
+                    strokeDasharray="3 4"
+                  />
+                  <text
+                    x={pts[6].x - 6}
+                    y={pts[6].y - 12}
+                    textAnchor="end"
+                    className="font-anno"
+                    fontSize="10"
+                    fill="#A5B4FC"
+                  >
+                    78.5 kg
+                  </text>
+
+                  {/* règle graduée + mois */}
+                  <line x1={X0} y1="222" x2="620" y2="222" stroke="rgba(165,180,252,0.25)" strokeWidth="1" />
+                  {Array.from({ length: 61 }, (_, i) => X0 + i * 10).map((x, i) => (
+                    <line
+                      key={x}
+                      x1={x}
+                      y1="222"
+                      x2={x}
+                      y2={i % 5 === 0 ? 216 : 219}
+                      stroke="rgba(165,180,252,0.3)"
+                      strokeWidth="1"
+                    />
+                  ))}
+                  {pts.map((p) => (
+                    <text
+                      key={p.name}
+                      x={p.x}
+                      y="237"
+                      textAnchor="middle"
+                      className="font-anno"
+                      fontSize="9"
+                      fill="#64748B"
+                    >
+                      {p.name.toUpperCase()}
+                    </text>
+                  ))}
+                </svg>
+              </div>
+              <p className="font-anno text-[10px] uppercase tracking-[0.24em] text-[var(--slate)] text-center mt-5">
+                Planche 01 — Courbe de poids · Janvier → Juillet
+              </p>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ============ CHAPITRE II — la fiche de mensurations (papier) ============ */}
+        <section className="crn-grid-paper text-[var(--ink-text)] py-24 md:py-36">
+          <div className="max-w-7xl mx-auto px-5 md:px-8">
+            <ChapterHeader
+              numeral="II"
+              label="Fiche de mensurations"
+              title={
+                <>
+                  La précision,{" "}
+                  <span className="font-serif-it font-normal text-[var(--indigo)]">
+                    au millimètre.
+                  </span>
+                </>
+              }
+              light
+            />
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-5xl mx-auto">
+              {metrics.map((m, i) => (
+                <motion.div
+                  key={m.label}
+                  initial={{ opacity: 0, y: 32 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.7, delay: i * 0.08, ease: EASE }}
+                  className="relative border border-[#1E1B4B]/15 rounded-2xl bg-white/70 backdrop-blur-sm p-6 hover:border-[var(--indigo)]/50 hover:-translate-y-1 transition"
+                >
+                  <CornerTicks color="var(--indigo)" />
+                  <div className="font-anno text-[10px] uppercase tracking-[0.24em] text-[var(--indigo)] mb-4">
+                    {m.label}
+                  </div>
+                  <div className="font-display text-4xl leading-none mb-3">
+                    {m.count !== null ? <CountUp to={m.count} suffix={m.suffix} /> : m.value + m.unit}
+                  </div>
+                  {/* trait de cote */}
+                  <div className="flex items-center gap-2 mb-3" aria-hidden>
+                    <span className="h-px flex-1 border-t border-dashed border-[#1E1B4B]/30" />
+                    <span className="w-px h-2.5 bg-[#1E1B4B]/30" />
+                  </div>
+                  <span className="font-anno text-[11px] tracking-[0.16em] text-[var(--indigo)]">
+                    {m.change}
+                  </span>
+                </motion.div>
+              ))}
             </div>
-         </section>
-         
-         {/* CTA */}
-         <section className="py-20 text-center">
-             <div className="max-w-3xl mx-auto px-4">
-                 <h2 className="text-3xl font-bold mb-6">Votre corps change, mesurez-le.</h2>
-                 <Link to="/register" className={primaryButtonClass.replace('from-indigo-600 via-purple-600 to-indigo-600', 'from-purple-600 via-pink-600 to-purple-600')}>
-                     Commencer maintenant <ArrowRight size={20} className="inline ml-2" />
-                 </Link>
-             </div>
-         </section>
-      </main>
 
-      <Footer />
+            <motion.p
+              initial={{ opacity: 0, y: 32 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, delay: 0.2, ease: EASE }}
+              className="font-anno text-[10px] uppercase tracking-[0.24em] text-[#1E1B4B]/55 text-center mt-8"
+            >
+              Planche 02 — Fiche de mensurations · Relevés du mois
+            </motion.p>
+          </div>
+        </section>
+
+        {/* ============ CHAPITRE III — les instruments ============ */}
+        <section className="border-t border-[var(--hairline)] py-24 md:py-36">
+          <div className="max-w-7xl mx-auto px-5 md:px-8">
+            <ChapterHeader
+              numeral="III"
+              label="Instruments"
+              title={
+                <>
+                  Trois outils pour{" "}
+                  <span className="font-serif-it font-normal text-[var(--lavender)]">
+                    tout mesurer.
+                  </span>
+                </>
+              }
+            />
+
+            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+              {features.map((f, i) => (
+                <motion.div
+                  key={f.title}
+                  initial={{ opacity: 0, y: 32 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.7, delay: i * 0.1, ease: EASE }}
+                  className="relative border border-[var(--hairline)] rounded-2xl bg-[var(--ink)]/50 p-7 hover:border-[var(--indigo)]/50 hover:-translate-y-1 transition"
+                >
+                  <CornerTicks />
+                  <div className="flex items-center justify-between mb-7">
+                    <div className="w-11 h-11 rounded-xl border border-[var(--hairline)] bg-[var(--night)]/60 flex items-center justify-center text-[var(--lavender)]">
+                      <f.icon size={20} strokeWidth={1.75} />
+                    </div>
+                    <span className="font-anno text-[10px] uppercase tracking-[0.24em] text-[var(--slate)]">
+                      {f.fig}
+                    </span>
+                  </div>
+                  <h3 className="font-display text-xl mb-3">{f.title}</h3>
+                  <p className="text-[var(--slate)] leading-relaxed text-[15px]">{f.desc}</p>
+                </motion.div>
+              ))}
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 32 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, delay: 0.2, ease: EASE }}
+              className="mt-14 flex justify-center"
+            >
+              <Magnetic>
+                <Link
+                  to="/register"
+                  className="flex items-center justify-center gap-2.5 bg-[var(--indigo)] text-white font-semibold text-base px-8 py-3.5 rounded-full hover:bg-[#7376F5] transition-colors shadow-[0_0_36px_rgba(99,102,241,0.35)]"
+                >
+                  Commencer maintenant <ArrowUpRight size={17} />
+                </Link>
+              </Magnetic>
+            </motion.div>
+          </div>
+        </section>
+
+        <FinalCta
+          title={
+            <>
+              Votre corps change,{" "}
+              <span className="font-serif-it font-normal text-[var(--lavender)]">
+                mesurez-le.
+              </span>
+            </>
+          }
+        />
+      </main>
+      <BigFooter />
     </div>
   );
-}
-
-const MetricCard = ({ theme, label, value, change, positive }: any) => (
-    <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-100 shadow-lg'}`}>
-        <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{label}</p>
-        <div className="flex items-end justify-between">
-            <span className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{value}</span>
-            <span className={`text-sm font-bold ${positive ? 'text-emerald-500' : 'text-red-500'}`}>{change}</span>
-        </div>
-    </div>
-);
-
-const FeatureDetail = ({icon: Icon, title, desc, theme}: any) => (
-    <div className="flex flex-col gap-4">
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-slate-800 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
-            <Icon size={24} />
-        </div>
-        <h3 className="text-xl font-bold">{title}</h3>
-        <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{desc}</p>
-    </div>
-)
+};

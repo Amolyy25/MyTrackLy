@@ -268,46 +268,46 @@ const StudentProfile: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-xl gap-2"
+                className="rounded-xl gap-2 h-10 sm:h-9"
                 onClick={() =>
                   navigate(`/dashboard/training/new?studentId=${student.id}`)
                 }
               >
-                <Dumbbell className="h-4 w-4" />
-                Créer une séance
+                <Dumbbell className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">Créer une séance</span>
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-xl gap-2"
+                className="rounded-xl gap-2 h-10 sm:h-9"
                 onClick={() => setShowMeasurementModal(true)}
               >
-                <Scale className="h-4 w-4" />
-                Ajouter une mensuration
+                <Scale className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">Ajouter une mensuration</span>
               </Button>
               {student.isVirtual && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-xl gap-2"
+                  className="rounded-xl gap-2 h-10 sm:h-9"
                   onClick={openEditModal}
                 >
-                  <Edit3 className="h-4 w-4" />
-                  Modifier la fiche
+                  <Edit3 className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Modifier la fiche</span>
                 </Button>
               )}
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-xl gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                className="rounded-xl gap-2 h-10 sm:h-9 border-destructive/30 text-destructive hover:bg-destructive/10"
                 onClick={() => setShowStopFollowModal(true)}
               >
-                <UserX className="h-4 w-4" />
-                Arrêter le suivi
+                <UserX className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">Arrêter le suivi</span>
               </Button>
             </div>
           </div>
@@ -812,9 +812,9 @@ const StudentProfile: React.FC = () => {
       {showStopFollowModal && (
         <div className="fixed inset-0 z-[100] overflow-y-auto">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowStopFollowModal(false)} />
-          <div className="flex min-h-full items-center justify-center p-4">
-            <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 fade-in duration-200">
-              <div className="p-6">
+          <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="relative bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto animate-in slide-in-from-bottom-4 sm:zoom-in-95 fade-in duration-200">
+              <div className="p-5 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10">
                     <AlertTriangle className="h-6 w-6 text-destructive" />
