@@ -281,17 +281,17 @@ const Students: React.FC = () => {
             </p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <Button
             variant="outline"
-            className="rounded-xl h-11 gap-2"
+            className="rounded-xl h-11 gap-2 w-full sm:w-auto"
             onClick={() => setShowCreateClientModal(true)}
           >
             <Ghost className="h-4 w-4" />
             Ajouter un client
           </Button>
           <Button
-            className="rounded-xl h-11 gap-2 bg-gradient-to-r from-primary to-violet-500 hover:opacity-90 shadow-lg shadow-primary/25"
+            className="rounded-xl h-11 gap-2 w-full sm:w-auto bg-gradient-to-r from-primary to-violet-500 hover:opacity-90 shadow-lg shadow-primary/25"
             onClick={() => setShowInviteModal(true)}
           >
             <UserPlus className="h-4 w-4" />
@@ -629,9 +629,9 @@ const Students: React.FC = () => {
       {showCreateClientModal && (
         <div className="fixed inset-0 z-[100] overflow-y-auto">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCreateClientModal(false)} />
-          <div className="flex min-h-full items-center justify-center p-4">
-            <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 fade-in duration-200">
-              <div className="p-6">
+          <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="relative bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto animate-in slide-in-from-bottom-4 sm:zoom-in-95 fade-in duration-200">
+              <div className="p-5 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-6">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-400 to-fuchsia-500">
@@ -771,9 +771,9 @@ const Students: React.FC = () => {
       {showInviteModal && (
         <div className="fixed inset-0 z-[100] overflow-y-auto">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowInviteModal(false)} />
-          <div className="flex min-h-full items-center justify-center p-4">
-            <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 fade-in duration-200">
-            <div className="p-6">
+          <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="relative bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto animate-in slide-in-from-bottom-4 sm:zoom-in-95 fade-in duration-200">
+            <div className="p-5 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-violet-500">
